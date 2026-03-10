@@ -60,7 +60,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 5: SSH Daemon Hardening Configuration**
     - **Validates: Requirements 3.1-3.9, 3.14, 3.18**
   
-  - [ ]* 3.4 Write property test for SSH access restriction
+  - [x] 3.4 Write property test for SSH access restriction
     - **Property 6: SSH Access Restriction**
     - **Validates: Requirements 3.10**
 
