@@ -1,0 +1,22 @@
+---
+# Tasks for logging role
+
+- name: Deploy journald configuration
+  ansible.builtin.template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart systemd-journald
+
+- name: Ensure journald configuration directory exists
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2755"
+
+- name: Flush handlers to restart journald if configuration changed
+  ansible.builtin.meta: flush_handlers

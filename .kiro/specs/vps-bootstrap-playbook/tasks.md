@@ -191,7 +191,7 @@ The implementation follows a logical progression: project structure → core rol
     - Create journald.conf.j2 template
     - _Requirements: 11.2, 11.3_
   
-  - [-] 11.2 Implement journald configuration
+  - [x] 11.2 Implement journald configuration
     - Configure persistent storage to disk
     - Set SystemMaxUse and MaxRetentionSec from variables
     - Add handler to restart systemd-journald
