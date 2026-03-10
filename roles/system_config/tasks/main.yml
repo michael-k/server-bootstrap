@@ -1,0 +1,9 @@
+---
+# Main tasks for system_config role
+
+- name: Configure hostname
+  ansible.builtin.import_tasks: hostname.yml
+  when: system_hostname is defined and system_hostname | length > 0
+
+- name: Configure time synchronization
+  ansible.builtin.import_tasks: time_sync.yml

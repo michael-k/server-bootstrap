@@ -207,7 +207,7 @@ The implementation follows a logical progression: project structure → core rol
     - Create templates for chrony.conf and timesyncd.conf
     - _Requirements: 6.1, 6.2, 6.3, 12.2_
   
-  - [-] 12.2 Implement hostname configuration
+  - [x] 12.2 Implement hostname configuration
     - Set hostname using hostname module when variable is defined
     - Persist hostname across reboots
     - Skip when hostname variable is empty or undefined

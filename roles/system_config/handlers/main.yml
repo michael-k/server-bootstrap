@@ -1,6 +1,11 @@
 ---
 # Handlers for system_config role
 
+- name: Verify hostname persistence
+  ansible.builtin.command: hostname
+  register: hostname_check
+  changed_when: false
+
 - name: Restart chrony
   ansible.builtin.systemd:
     name: chrony
