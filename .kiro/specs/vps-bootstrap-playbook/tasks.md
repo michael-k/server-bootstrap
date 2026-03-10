@@ -109,7 +109,7 @@ The implementation follows a logical progression: project structure → core rol
     - When Tailscale disabled: listen on all interfaces (0.0.0.0, ::)
     - _Requirements: 5.1, 5.2, 5.3_
   
-  - [ ]* 6.2 Write property test for SSH interface restriction
+  - [x] 6.2 Write property test for SSH interface restriction
     - **Property 12: SSH Interface Restriction with Safety Check**
     - **Property 13: SSH Interface Configuration Based on VPN Status**
     - **Validates: Requirements 5.1, 5.2, 5.3**
