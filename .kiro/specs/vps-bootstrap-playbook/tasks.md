@@ -243,7 +243,7 @@ The implementation follows a logical progression: project structure → core rol
     - Configure boot persistence
     - _Requirements: 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9_
   
-  - [ ] 13.3 Implement disk swap configuration
+  - [x] 13.3 Implement disk swap configuration
     - Create /swapfile with specified size and mode 0600
     - Format and enable swap file with priority 10
     - Add to /etc/fstab for persistence

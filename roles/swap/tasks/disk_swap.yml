@@ -1,3 +1,42 @@
 ---
 # Disk swap configuration tasks
-# This file will be populated in task 13.3
+
+- name: Create swap file
+  ansible.builtin.command:
+    cmd: "fallocate -l {{ disk_swap_size }} /swapfile"
+    creates: /swapfile
+  register: swap_file_created
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: /swapfile
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Format swap file
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  when: swap_file_created.changed
+  register: swap_formatted
+
+- name: Enable swap file
+  ansible.builtin.command:
+    cmd: "swapon --priority {{ disk_swap_priority }} /swapfile"
+  when: swap_formatted.changed
+
+- name: Check if swap file is already in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: "^/swapfile\\s+"
+    state: absent
+  check_mode: true
+  register: fstab_check
+  changed_when: false
+
+- name: Add swap file to fstab for persistence
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw,pri={{ disk_swap_priority }} 0 0"
+    state: present
+  when: fstab_check.found == 0
