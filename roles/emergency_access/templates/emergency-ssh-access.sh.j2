@@ -70,7 +70,9 @@ unrestrict_ssh() {
 
     # Check current state for idempotency
     if grep -q "^ListenAddress 0.0.0.0" "$SSHD_CONFIG" && \
-       grep -q "tcp dport ${SSH_PORT} accept" "$NFTABLES_CONFIG"; then
+       grep -q "^ListenAddress ::" "$SSHD_CONFIG" && \
+       grep -q "tcp dport ${SSH_PORT} accept" "$NFTABLES_CONFIG" && \
+       ! grep -q "iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept" "$NFTABLES_CONFIG"; then
         log_warn "SSH is already unrestricted. No changes needed."
         return 0
     fi
@@ -78,12 +80,15 @@ unrestrict_ssh() {
     # Backup before making changes
     backup_configs
 
-    # Modify SSHD configuration to listen on all IPv4 interfaces
+    # Modify SSHD configuration to listen on all interfaces
     log_info "Updating SSHD configuration to listen on all interfaces..."
-    sed -i "s|^ListenAddress ${TAILSCALE_IPV4}|ListenAddress 0.0.0.0|g" "$SSHD_CONFIG"
     
-    # Also handle the case where it might be commented or in different format
-    sed -i "s|^#\?ListenAddress ${TAILSCALE_IPV4}|ListenAddress 0.0.0.0|g" "$SSHD_CONFIG"
+    # Replace Tailscale IPv4 address with 0.0.0.0
+    sed -i "s|^ListenAddress ${TAILSCALE_IPV4}|ListenAddress 0.0.0.0\nListenAddress ::|g" "$SSHD_CONFIG"
+    
+    # Remove any duplicate IPv6 ListenAddress lines that might have been created
+    # Keep only the first occurrence
+    awk '!seen[$0]++ || !/^ListenAddress ::/' "$SSHD_CONFIG" > "${SSHD_CONFIG}.tmp" && mv "${SSHD_CONFIG}.tmp" "$SSHD_CONFIG"
 
     # Modify NFTables configuration to allow SSH from all interfaces
     log_info "Updating NFTables configuration to allow SSH from all interfaces..."
@@ -119,6 +124,8 @@ restore_ssh() {
 
     # Check current state for idempotency
     if grep -q "^ListenAddress ${TAILSCALE_IPV4}" "$SSHD_CONFIG" && \
+       ! grep -q "^ListenAddress 0.0.0.0" "$SSHD_CONFIG" && \
+       ! grep -q "^ListenAddress ::" "$SSHD_CONFIG" && \
        grep -q "iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept" "$NFTABLES_CONFIG"; then
         log_warn "SSH is already restricted to Tailscale. No changes needed."
         return 0
@@ -129,16 +136,19 @@ restore_ssh() {
 
     # Modify SSHD configuration to listen only on Tailscale interface
     log_info "Updating SSHD configuration to listen on Tailscale interface..."
-    sed -i "s|^ListenAddress 0.0.0.0|ListenAddress ${TAILSCALE_IPV4}|g" "$SSHD_CONFIG"
     
-    # Also handle the case where it might be commented or in different format
-    sed -i "s|^#\?ListenAddress 0.0.0.0|ListenAddress ${TAILSCALE_IPV4}|g" "$SSHD_CONFIG"
+    # Remove all ListenAddress directives and replace with Tailscale IP
+    sed -i '/^ListenAddress /d' "$SSHD_CONFIG"
+    
+    # Add the Tailscale ListenAddress after the Port directive
+    sed -i "/^Port ${SSH_PORT}/a ListenAddress ${TAILSCALE_IPV4}" "$SSHD_CONFIG"
 
     # Modify NFTables configuration to restrict SSH to Tailscale interface
     log_info "Updating NFTables configuration to restrict SSH to Tailscale interface..."
     
     # Replace unrestricted SSH rule with Tailscale-specific rule
-    sed -i "s|tcp dport ${SSH_PORT} accept|iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept|g" "$NFTABLES_CONFIG"
+    # Handle both cases: with or without the iifname already present
+    sed -i "s|^\(\s*\)tcp dport ${SSH_PORT} accept|\1iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept|g" "$NFTABLES_CONFIG"
 
     # Restart SSHD service
     log_info "Restarting SSH daemon..."

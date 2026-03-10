@@ -149,7 +149,7 @@ The implementation follows a logical progression: project structure → core rol
     - Add conditional deployment based on Tailscale enabled flag
     - _Requirements: 9.1, 9.8_
   
-  - [ ] 9.2 Implement emergency access script
+  - [x] 9.2 Implement emergency access script
     - Script toggles SSH ListenAddress between Tailscale IP and 0.0.0.0
     - Script updates NFTables rules to match SSH restriction
     - Script restarts sshd and reloads nftables after changes
