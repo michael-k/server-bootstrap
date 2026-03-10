@@ -1,3 +1,24 @@
 {
-    "kiroAgent.configureMCP": "Disabled"
+    "kiroAgent.commandDenylist": [
+        "commit",
+        "--force",
+        "--no-gpg-sign",
+        "rm -rf",
+        "sudo"
+    ],
+    "kiroAgent.configureMCP": "Disabled",
+    "kiroAgent.trustedCommands": [
+        "make ansible-lint",
+        "make ansible-lint-fix",
+        "make python-lint",
+        "make python-lint-fix",
+        "git diff",
+        "git diff --cached",
+        "git diff --stat",
+        "git log --oneline -5",
+        "git status",
+        "git status --short",
+        "git add .",
+        "uv run ansible-playbook --syntax-check playbooks/site.yml"
+    ]
 }
