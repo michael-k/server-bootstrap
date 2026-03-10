@@ -71,7 +71,7 @@ The implementation follows a logical progression: project structure → core rol
     - Check for /var/run/reboot-required and notify operator
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
   
-  - [ ]* 4.2 Write property test for system updates
+  - [x] 4.2 Write property test for system updates
     - **Property 16: System Package Updates**
     - **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
 
