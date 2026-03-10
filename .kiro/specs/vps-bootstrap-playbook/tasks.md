@@ -16,7 +16,7 @@ The implementation follows a logical progression: project structure → core rol
   - Create ansible.cfg with sensible defaults
   - _Requirements: 16.1, 16.2, 16.3, 16.5, 16.6, 16.7, 16.8, 16.9, 16.10, 16.11, 16.12_
 
-- [ ] 2. Implement users role
+- [x] 2. Implement users role
   - [x] 2.1 Create users role structure (tasks, defaults, handlers)
     - Define default variables for user names, UIDs, SSH key paths
     - _Requirements: 1.1, 1.2, 1.7, 2.1, 2.2, 2.6_
