@@ -20,6 +20,5 @@ ansible_user_uid: 1999
 ansible_user_ssh_key_file: "~/.ssh/id_ed25519_ansible.pub"
 ansible_user_shell: "/bin/bash"
 ansible_user_groups: []
-
 # SSH authorized_keys file permissions
 authorized_keys_mode: "0600"

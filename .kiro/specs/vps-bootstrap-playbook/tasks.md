@@ -49,7 +49,7 @@ The implementation follows a logical progression: project structure → core rol
     - Create sshd_config.j2 template with hardened settings
     - _Requirements: 3.11, 3.15, 3.16, 3.17_
   
-  - [ ] 3.2 Implement SSH daemon hardening configuration
+  - [x] 3.2 Implement SSH daemon hardening configuration
     - Template sshd_config with disabled password auth, root login, dangerous features
     - Restrict algorithms to modern elliptic curves and AEAD ciphers
     - Configure AllowUsers, MaxAuthTries, LoginGraceTime, ClientAlive settings

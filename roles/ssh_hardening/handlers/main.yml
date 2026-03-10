@@ -1,8 +1,8 @@
 ---
 # SSH Hardening Role - Handlers
 
+# Restart SSH daemon when configuration changes (Requirement 3.13)
 - name: Restart sshd
   ansible.builtin.systemd:
     name: sshd
     state: restarted
-  listen: restart sshd
