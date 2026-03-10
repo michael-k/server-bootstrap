@@ -4,26 +4,13 @@ This document contains instructions for AI agents working on this project.
 
 ## Command Execution Rules
 
-### CRITICAL: Always Use `uv run` or `make`
+### CRITICAL: Always Prefer `make` Targets
 
-This project uses `uv` for Python dependency management and virtual environment isolation. All Python-related commands MUST be executed through `uv run` or the provided `make` targets.
+This project uses `uv` for Python dependency management and virtual environment isolation. All Python-related commands MUST be executed through the provided `make` targets when available, or through `uv run` as a fallback.
 
-### ✅ CORRECT Command Patterns
+### ✅ CORRECT Command Patterns (in order of preference)
 
-**Python execution:**
-```bash
-# Use uv run for Python commands
-uv run python -c "print('hello')"
-uv run python script.py
-uv run pytest tests/
-
-# Use uv run for installed tools
-uv run ansible-playbook playbook.yml
-uv run ansible-vault encrypt vault.yml
-uv run pytest --hypothesis-show-statistics
-```
-
-**Make targets (preferred when available):**
+**1. Make targets (ALWAYS USE WHEN AVAILABLE):**
 ```bash
 make bootstrap          # Run the bootstrap playbook
 make verify            # Run verification tests
@@ -36,6 +23,18 @@ make python-lint-fix   # Fix Python code issues with ruff
 make ansible-lint      # Check Ansible files with ansible-lint
 make ansible-lint-fix  # Fix Ansible files with ansible-lint
 make clean             # Clean up generated files
+```
+
+**2. uv run (ONLY when no make target exists):**
+```bash
+# Use uv run for Python commands without make targets
+uv run python -c "print('hello')"
+uv run python script.py
+
+# Use uv run for Ansible commands without make targets
+uv run ansible-vault encrypt inventory/vault.yml
+uv run ansible-vault edit inventory/vault.yml
+uv run ansible-playbook --syntax-check playbook.yml
 ```
 
 ### ❌ INCORRECT Command Patterns (NEVER USE)
@@ -51,14 +50,23 @@ pip install package
 # WRONG - direct virtual environment activation
 source .venv/bin/activate
 .venv/bin/python script.py
+
+# WRONG - using uv run when make target exists
+uv run pytest tests/              # Use: make test
+uv run pytest tests/property/     # Use: make test-property
+uv run ruff check tests/          # Use: make python-lint
+uv run ruff check --fix tests/    # Use: make python-lint-fix
+uv run ansible-lint               # Use: make ansible-lint
 ```
 
 ## Why This Matters
 
-1. **Dependency Isolation**: `uv` ensures all dependencies are installed and isolated in a project-specific environment
-2. **Reproducibility**: Commands run through `uv run` use the exact versions specified in `pyproject.toml`
-3. **Consistency**: All developers and CI/CD pipelines use identical environments
-4. **No Manual Setup**: `uv run` automatically creates and manages the virtual environment
+1. **Consistency**: Make targets provide a consistent interface across all environments
+2. **Simplicity**: Shorter commands that are easier to remember and type
+3. **Dependency Isolation**: `uv` ensures all dependencies are installed and isolated in a project-specific environment
+4. **Reproducibility**: Commands use the exact versions specified in `pyproject.toml`
+5. **No Manual Setup**: `uv run` automatically creates and manages the virtual environment
+6. **Centralized Configuration**: Make targets can include additional flags and options consistently
 
 ## Common Command Translations
 
@@ -66,69 +74,74 @@ source .venv/bin/activate
 |-------------|---------------|
 | `python -c "..."` | `uv run python -c "..."` |
 | `python script.py` | `uv run script.py` |
-| `pytest` | `uv run pytest` or `make test` |
-| `ansible-playbook` | `uv run ansible-playbook` or `make bootstrap` |
+| `pytest` | `make test` |
+| `pytest tests/property/` | `make test-property` |
+| `pytest tests/unit/` | `make test-unit` |
+| `ruff check` | `make python-lint` |
+| `ruff check --fix` | `make python-lint-fix` |
+| `ansible-lint` | `make ansible-lint` |
+| `ansible-playbook` | `make bootstrap` or `uv run ansible-playbook` |
 | `ansible-vault` | `uv run ansible-vault` |
 | `pip install` | `uv add` (to add dependencies) |
 
 ## Testing Commands
 
-Always use `uv run` or `make` for testing:
+**ALWAYS use `make` targets for testing:**
 
 ```bash
+# All tests
+make test
+
 # Property-based tests with Hypothesis
-uv run pytest tests/property/ -v
 make test-property
 
 # Unit tests
-uv run pytest tests/unit/ -v
 make test-unit
 
 # Integration tests
-uv run pytest tests/integration/ -v
 make test-integration
-
-# All tests
-uv run pytest tests/
-make test
 ```
+
+**AVOID using `uv run pytest` directly** - the make targets are preferred for consistency.
 
 ## Linting Commands
 
-Always use `uv run` or `make` for linting:
+**ALWAYS use `make` targets for linting:**
 
 ```bash
 # Python linting with ruff
-uv run ruff check tests/
 make python-lint
 
 # Python auto-fix with ruff
-uv run ruff check --fix tests/
 make python-lint-fix
 
 # Ansible linting
-uv run ansible-lint
-uv run ansible-lint roles/users/
+make ansible-lint
+
+# Ansible linting specific paths
 make ansible-lint ARGS="roles/users/"
 
 # Ansible auto-fix
-uv run ansible-lint --fix
+make ansible-lint-fix
+
+# Ansible auto-fix specific paths
 make ansible-lint-fix ARGS="roles/users/"
 ```
 
+**AVOID using `uv run ruff` or `uv run ansible-lint` directly** - the make targets are preferred for consistency.
+
 ## Ansible Commands
 
-All Ansible commands must use `uv run`:
+**Use `make` targets when available, otherwise use `uv run`:**
 
 ```bash
-# Run playbook
-uv run ansible-playbook -i inventory/hosts.yml playbook.yml
+# Run bootstrap playbook
 make bootstrap
 
 # Verify configuration
-uv run ansible-playbook -i inventory/hosts.yml tests/verify_bootstrap.yml
 make verify
 
+# For other Ansible commands, use uv run:
 # Encrypt secrets
 uv run ansible-vault encrypt inventory/vault.yml
 
@@ -154,4 +167,9 @@ grep pattern file.txt
 
 ## Summary
 
-**Golden Rule**: If it's Python-related or uses a tool from `pyproject.toml`, prefix it with `uv run` or use a `make` target.
+**Golden Rules**: 
+1. **ALWAYS prefer `make` targets when they exist** - they provide consistency and simplicity
+2. **NEVER use `pytest` or `ruff` directly** - always use `make test*` and `make python-lint*`
+3. **NEVER use `ansible-lint` directly** - always use `make ansible-lint*`
+4. If no `make` target exists, use `uv run` to ensure proper environment isolation
+5. Never bypass the environment with direct `python`, `pytest`, `ruff`, or `ansible-*` commands
