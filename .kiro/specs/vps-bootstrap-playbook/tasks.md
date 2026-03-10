@@ -201,7 +201,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 28: Journald Persistent Logging Configuration**
     - **Validates: Requirements 11.1, 11.2, 11.3**
 
-- [-] 12. Implement system_config role
+- [x] 12. Implement system_config role
   - [x] 12.1 Create system_config role structure
     - Define default variables for hostname, NTP servers, and time sync service choice
     - Create templates for chrony.conf and timesyncd.conf
@@ -220,12 +220,12 @@ The implementation follows a logical progression: project structure → core rol
     - Verify synchronization status after service start
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
   
-  - [-] 12.4 Write property test for hostname configuration
+  - [x] 12.4 Write property test for hostname configuration
     - **Property 14: Hostname Configuration Persistence**
     - **Property 15: Hostname Configuration Skip**
     - **Validates: Requirements 6.1, 6.2, 6.3**
   
-  - [ ] 12.5 Write property test for time sync configuration
+  - [x] 12.5 Write property test for time sync configuration
     - **Property 29: Time Synchronization Service Configuration**
     - **Validates: Requirements 12.1-12.5**
 
