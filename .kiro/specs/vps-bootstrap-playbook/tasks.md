@@ -94,7 +94,7 @@ The implementation follows a logical progression: project structure → core rol
     - Fail with clear error if connectivity test fails
     - _Requirements: 5.1_
   
-  - [ ]* 5.4 Write property test for Tailscale installation
+  - [x] 5.4 Write property test for Tailscale installation
     - **Property 10: Tailscale Installation and Configuration**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5**
   
