@@ -1,0 +1,113 @@
+---
+# Tailscale connectivity verification tasks
+# Verifies Tailscale interface exists and is connected before SSH restriction
+# Requirement 5.1: Verify Tailscale connectivity before restricting SSH
+
+- name: Wait for Tailscale interface to be created
+  ansible.builtin.wait_for:
+    path: /sys/class/net/{{ tailscale_interface }}
+    timeout: 30
+  register: tailscale_interface_wait
+  failed_when: false
+  tags:
+    - tailscale
+    - verification
+
+- name: Fail if Tailscale interface does not exist
+  ansible.builtin.fail:
+    msg: >
+      Tailscale interface {{ tailscale_interface }} does not exist after 30 seconds.
+      Tailscale may not be properly configured or connected.
+      Cannot proceed with SSH restriction to prevent lockout.
+  when: tailscale_interface_wait.failed | default(false)
+  tags:
+    - tailscale
+    - verification
+
+- name: Get Tailscale status
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: tailscale_status
+  changed_when: false
+  tags:
+    - tailscale
+    - verification
+
+- name: Parse Tailscale status
+  ansible.builtin.set_fact:
+    tailscale_status_json: "{{ tailscale_status.stdout | from_json }}"
+  tags:
+    - tailscale
+    - verification
+
+- name: Fail if Tailscale is not connected
+  ansible.builtin.fail:
+    msg: >
+      Tailscale is not in a connected state (BackendState: {{ tailscale_status_json.BackendState }}).
+      Cannot proceed with SSH restriction to prevent lockout.
+      Please verify Tailscale authentication and network connectivity.
+  when: tailscale_status_json.BackendState != "Running"
+  tags:
+    - tailscale
+    - verification
+
+- name: Get Tailscale IP address
+  ansible.builtin.command:
+    cmd: tailscale ip -4
+  register: tailscale_ip
+  changed_when: false
+  tags:
+    - tailscale
+    - verification
+
+- name: Set Tailscale IP fact
+  ansible.builtin.set_fact:
+    tailscale_ipv4: "{{ tailscale_ip.stdout | trim }}"
+  tags:
+    - tailscale
+    - verification
+
+- name: Fail if Tailscale IP is not assigned
+  ansible.builtin.fail:
+    msg: >
+      Tailscale interface {{ tailscale_interface }} does not have an IPv4 address assigned.
+      Cannot proceed with SSH restriction to prevent lockout.
+      Please verify Tailscale configuration and network connectivity.
+  when: tailscale_ipv4 == ""
+  tags:
+    - tailscale
+    - verification
+
+- name: Test connectivity through Tailscale interface
+  ansible.builtin.command:
+    cmd: ping -c 3 -I {{ tailscale_interface }} {{ tailscale_ipv4 }}
+  register: tailscale_ping
+  changed_when: false
+  failed_when: false
+  tags:
+    - tailscale
+    - verification
+
+- name: Fail if Tailscale connectivity test fails
+  ansible.builtin.fail:
+    msg: >
+      Connectivity test through Tailscale interface {{ tailscale_interface }} failed.
+      Cannot proceed with SSH restriction to prevent lockout.
+      Please verify Tailscale network configuration and routing.
+      Ping output: {{ tailscale_ping.stdout }}
+  when: tailscale_ping.rc != 0
+  tags:
+    - tailscale
+    - verification
+
+- name: Display Tailscale connectivity verification success
+  ansible.builtin.debug:
+    msg: >
+      Tailscale connectivity verified successfully.
+      Interface: {{ tailscale_interface }}
+      IPv4 Address: {{ tailscale_ipv4 }}
+      Backend State: {{ tailscale_status_json.BackendState }}
+      SSH can now be safely restricted to Tailscale interface.
+  tags:
+    - tailscale
+    - verification

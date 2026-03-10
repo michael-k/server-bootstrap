@@ -3,7 +3,7 @@
 # Installs and configures Tailscale VPN with Headscale control server
 # All tasks are conditional based on tailscale_enabled variable
 
-# Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+# Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1
 
 - name: Include Tailscale installation and configuration tasks
   ansible.builtin.include_tasks: install.yml
@@ -11,3 +11,11 @@
   tags:
     - tailscale
     - vpn
+
+- name: Include Tailscale connectivity verification tasks
+  ansible.builtin.include_tasks: verify.yml
+  when: tailscale_enabled | bool
+  tags:
+    - tailscale
+    - vpn
+    - verification
