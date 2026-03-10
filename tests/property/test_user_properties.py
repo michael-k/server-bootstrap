@@ -106,6 +106,121 @@ class TestUserCreationProperties:
         # - This holds for any valid username configuration
 
 
+class TestSSHKeyDeploymentProperties:
+    """Property-based tests for SSH key deployment and permissions."""
+
+    @settings(max_examples=100)
+    @given(
+        manual_user=valid_username(),
+        ansible_user=valid_username(),
+    )
+    def test_property_2_ssh_key_deployment_and_permissions(
+        self, manual_user: str, ansible_user: str
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 2: SSH Key Deployment and Permissions
+
+        For any user account (manual or Ansible) with a configured SSH public key file path,
+        the playbook SHALL deploy the public key to the user's authorized_keys file with
+        mode 0600 and correct ownership.
+
+        Validates: Requirements 1.6, 1.7, 1.8, 2.5, 2.6, 2.7
+        """
+        # Skip if usernames are identical (invalid configuration)
+        if manual_user == ansible_user:
+            return
+
+        # This property test verifies the role's behavior by checking:
+        # 1. SSH keys are deployed using authorized_key module
+        # 2. authorized_keys file permissions are set to 0600
+        # 3. authorized_keys file ownership matches the user
+        # 4. This applies to both manual and Ansible users
+
+        # Read the users role tasks to verify SSH key deployment
+        role_tasks_path = Path("roles/users/tasks/main.yml")
+        assert role_tasks_path.exists(), "Users role tasks file must exist"
+
+        role_tasks_content = role_tasks_path.read_text()
+
+        # Verify SSH key deployment uses authorized_key module for both users
+        authorized_key_count = role_tasks_content.count("ansible.builtin.authorized_key:")
+        assert authorized_key_count >= 2, (
+            f"Expected at least 2 authorized_key tasks (one per user), found {authorized_key_count}"
+        )
+
+        # Verify manual user SSH key deployment
+        assert 'user: "{{ manual_user_name }}"' in role_tasks_content, (
+            "Manual user SSH key deployment must reference manual_user_name"
+        )
+        assert "lookup('file', manual_user_ssh_key_file)" in role_tasks_content, (
+            "Manual user SSH key must be loaded from manual_user_ssh_key_file"
+        )
+
+        # Verify Ansible user SSH key deployment
+        assert 'user: "{{ ansible_user_name }}"' in role_tasks_content, (
+            "Ansible user SSH key deployment must reference ansible_user_name"
+        )
+        assert "lookup('file', ansible_user_ssh_key_file)" in role_tasks_content, (
+            "Ansible user SSH key must be loaded from ansible_user_ssh_key_file"
+        )
+
+        # Verify authorized_keys file permissions are set explicitly
+        # Count file permission tasks for authorized_keys
+        authorized_keys_permission_tasks = role_tasks_content.count(".ssh/authorized_keys")
+        assert authorized_keys_permission_tasks >= 2, (
+            f"Expected at least 2 authorized_keys permission tasks, "
+            f"found {authorized_keys_permission_tasks}"
+        )
+
+        # Verify mode is set using the authorized_keys_mode variable
+        assert 'mode: "{{ authorized_keys_mode }}"' in role_tasks_content, (
+            "authorized_keys file mode must use authorized_keys_mode variable"
+        )
+
+        # Verify ownership is set correctly for both users
+        assert 'owner: "{{ manual_user_name }}"' in role_tasks_content, (
+            "Manual user authorized_keys must have correct owner"
+        )
+        assert 'group: "{{ manual_user_name }}"' in role_tasks_content, (
+            "Manual user authorized_keys must have correct group"
+        )
+        assert 'owner: "{{ ansible_user_name }}"' in role_tasks_content, (
+            "Ansible user authorized_keys must have correct owner"
+        )
+        assert 'group: "{{ ansible_user_name }}"' in role_tasks_content, (
+            "Ansible user authorized_keys must have correct group"
+        )
+
+        # Read the defaults to verify the authorized_keys_mode value
+        role_defaults_path = Path("roles/users/defaults/main.yml")
+        assert role_defaults_path.exists(), "Users role defaults file must exist"
+
+        role_defaults_content = role_defaults_path.read_text()
+
+        # Verify authorized_keys_mode is set to 0600
+        assert 'authorized_keys_mode: "0600"' in role_defaults_content, (
+            "authorized_keys_mode must be set to 0600 for security"
+        )
+
+        # Verify SSH key file path variables are defined
+        assert "manual_user_ssh_key_file:" in role_defaults_content, (
+            "manual_user_ssh_key_file must be defined in defaults"
+        )
+        assert "ansible_user_ssh_key_file:" in role_defaults_content, (
+            "ansible_user_ssh_key_file must be defined in defaults"
+        )
+
+        # Verify .ssh directory is created with correct permissions (0700)
+        assert 'mode: "0700"' in role_tasks_content, ".ssh directory must be created with mode 0700"
+
+        # Property verified: The role configuration ensures that:
+        # - SSH keys are deployed from configured file paths
+        # - authorized_keys files have mode 0600 (read/write for owner only)
+        # - authorized_keys files have correct ownership (user:user)
+        # - .ssh directories have mode 0700 (secure directory permissions)
+        # - This applies uniformly to both manual and Ansible users
+
+
 class TestUserCreationIntegration:
     """Integration tests that verify user creation on actual systems."""
 

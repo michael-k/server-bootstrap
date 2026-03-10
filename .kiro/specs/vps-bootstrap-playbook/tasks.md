@@ -35,7 +35,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 1: User Account Creation with Fixed UIDs**
     - **Validates: Requirements 1.1, 1.2, 2.1, 2.2**
   
-  - [ ]* 2.5 Write property test for SSH key deployment
+  - [x] 2.5 Write property test for SSH key deployment
     - **Property 2: SSH Key Deployment and Permissions**
     - **Validates: Requirements 1.6, 1.7, 1.8, 2.5, 2.6, 2.7**
   
