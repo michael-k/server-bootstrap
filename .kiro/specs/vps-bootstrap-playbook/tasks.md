@@ -39,7 +39,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 2: SSH Key Deployment and Permissions**
     - **Validates: Requirements 1.6, 1.7, 1.8, 2.5, 2.6, 2.7**
   
-  - [ ]* 2.6 Write property test for sudo configuration
+  - [x] 2.6 Write property test for sudo configuration
     - **Property 3: Sudo Privilege Configuration**
     - **Validates: Requirements 1.4, 2.3**
 
