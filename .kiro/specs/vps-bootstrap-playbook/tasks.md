@@ -185,19 +185,19 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 27: Fail2ban Installation and Configuration**
     - **Validates: Requirements 10.1-10.7**
 
-- [ ] 11. Implement logging role
-  - [ ] 11.1 Create logging role structure
+- [-] 11. Implement logging role
+  - [x] 11.1 Create logging role structure
     - Define default variables for max disk usage and retention time
     - Create journald.conf.j2 template
     - _Requirements: 11.2, 11.3_
   
-  - [ ] 11.2 Implement journald configuration
+  - [-] 11.2 Implement journald configuration
     - Configure persistent storage to disk
     - Set SystemMaxUse and MaxRetentionSec from variables
     - Add handler to restart systemd-journald
     - _Requirements: 11.1, 11.2, 11.3, 11.4_
   
-  - [ ]* 11.3 Write property test for journald configuration
+  - [ ] 11.3 Write property test for journald configuration
     - **Property 28: Journald Persistent Logging Configuration**
     - **Validates: Requirements 11.1, 11.2, 11.3**
 

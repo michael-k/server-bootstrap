@@ -1,0 +1,18 @@
+# Managed by Ansible - DO NOT EDIT MANUALLY
+# journald configuration for persistent logging
+
+[Journal]
+# Store logs persistently on disk
+Storage=persistent
+
+# Maximum disk space that may be used by journal files
+SystemMaxUse={{ journald_max_disk_usage }}
+
+# Maximum time to store journal entries
+MaxRetentionSec={{ journald_max_retention_time }}
+
+# Compress journal files
+Compress=yes
+
+# Forward to syslog (disabled, using journald directly)
+ForwardToSyslog=no
