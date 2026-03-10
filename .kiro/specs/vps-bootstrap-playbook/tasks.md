@@ -133,7 +133,7 @@ The implementation follows a logical progression: project structure → core rol
     - Enable nftables service for boot persistence
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.10, 8.11_
   
-  - [ ]* 8.3 Write property test for NFTables configuration
+  - [x] 8.3 Write property test for NFTables configuration
     - **Property 17: NFTables Dual-Stack Configuration**
     - **Property 18: NFTables Stateful Firewall Rules**
     - **Property 19: NFTables SSH Access Control**

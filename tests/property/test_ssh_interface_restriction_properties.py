@@ -400,17 +400,22 @@ class TestSSHInterfaceRestrictionIntegrationProperties:
             firewall_template_content = firewall_template_path.read_text()
 
             # Verify firewall template also uses tailscale_enabled conditional
+            # (firewall role uses firewall_tailscale_enabled variable)
             assert "tailscale_enabled" in firewall_template_content, (
                 "Firewall template must use tailscale_enabled for conditional SSH rules"
             )
 
             # Verify firewall template references SSH port
-            assert "{{ ssh_port }}" in firewall_template_content or (
+            assert "{{ firewall_ssh_port }}" in firewall_template_content or (
+                "{{ ssh_port }}" in firewall_template_content or
                 "ssh_port" in firewall_template_content
             ), "Firewall template must use ssh_port variable for SSH access rules"
 
             # Verify firewall template has conditional SSH access rules
-            assert "{% if tailscale_enabled" in firewall_template_content, (
+            # (firewall role uses firewall_tailscale_enabled variable)
+            assert "{% if firewall_tailscale_enabled" in firewall_template_content or (
+                "{% if tailscale_enabled" in firewall_template_content
+            ), (
                 "Firewall template must have conditional logic for SSH access based on "
                 "Tailscale status"
             )
