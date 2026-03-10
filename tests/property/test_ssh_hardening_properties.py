@@ -376,12 +376,14 @@ class TestSSHSessionSecurityProperties:
 
         # Verify Requirement 3.17: ClientAliveInterval is configured
         assert has_uncommented_directive("ClientAliveInterval {{ ssh_client_alive_interval }}"), (
-            "ClientAliveInterval must be configured using ssh_client_alive_interval variable (uncommented)"
+            "ClientAliveInterval must be configured using "
+            "ssh_client_alive_interval variable (uncommented)"
         )
 
         # Verify Requirement 3.17: ClientAliveCountMax is configured
         assert has_uncommented_directive("ClientAliveCountMax {{ ssh_client_alive_count_max }}"), (
-            "ClientAliveCountMax must be configured using ssh_client_alive_count_max variable (uncommented)"
+            "ClientAliveCountMax must be configured using "
+            "ssh_client_alive_count_max variable (uncommented)"
         )
 
         # Read the defaults to verify reasonable default values
