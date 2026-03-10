@@ -118,7 +118,7 @@ The implementation follows a logical progression: project structure → core rol
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement firewall role
-  - [ ] 8.1 Create firewall role structure
+  - [x] 8.1 Create firewall role structure
     - Define variables for SSH port, Tailscale interface, enable flag
     - Create nftables.conf.j2 template
     - _Requirements: 8.1, 8.2_

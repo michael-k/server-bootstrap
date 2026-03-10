@@ -1,0 +1,21 @@
+---
+# Firewall Role - Default Variables
+
+# SSH port configuration (inherited from ssh_hardening role)
+# Used to configure firewall rules for SSH access
+firewall_ssh_port: "{{ ssh_port | default(22) }}"
+
+# Tailscale configuration (Requirements 8.7, 8.8, 8.9)
+# Enable flag determines whether to restrict SSH to Tailscale interface
+firewall_tailscale_enabled: "{{ tailscale_enabled | default(false) }}"
+
+# Tailscale interface name for SSH restriction
+firewall_tailscale_interface: "{{ tailscale_interface | default('tailscale0') }}"
+
+# Tailscale IPv4 address for SSH restriction
+# Set by tailscale role's verify.yml tasks
+firewall_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
+
+# WireGuard port for Tailscale VPN traffic (Requirement 8.9)
+# Tailscale uses UDP port 41641 by default
+firewall_wireguard_port: 41641
