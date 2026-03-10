@@ -31,6 +31,10 @@ make test              # Run all tests
 make test-unit         # Run unit tests
 make test-property     # Run property-based tests
 make test-integration  # Run integration tests
+make python-lint       # Check Python code with ruff
+make python-lint-fix   # Fix Python code issues with ruff
+make ansible-lint      # Check Ansible files with ansible-lint
+make ansible-lint-fix  # Fix Ansible files with ansible-lint
 make clean             # Clean up generated files
 ```
 
@@ -87,6 +91,29 @@ make test-integration
 # All tests
 uv run pytest tests/
 make test
+```
+
+## Linting Commands
+
+Always use `uv run` or `make` for linting:
+
+```bash
+# Python linting with ruff
+uv run ruff check tests/
+make python-lint
+
+# Python auto-fix with ruff
+uv run ruff check --fix tests/
+make python-lint-fix
+
+# Ansible linting
+uv run ansible-lint
+uv run ansible-lint roles/users/
+make ansible-lint ARGS="roles/users/"
+
+# Ansible auto-fix
+uv run ansible-lint --fix
+make ansible-lint-fix ARGS="roles/users/"
 ```
 
 ## Ansible Commands

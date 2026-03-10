@@ -1,0 +1,38 @@
+---
+# Ansible-lint configuration for VPS Bootstrap Playbook
+
+# Skip list - rules to ignore
+skip_list:
+  # Variable naming: Our variables are part of the spec requirements
+  # and changing them would require updating all documentation
+  - var-naming[no-role-prefix]
+
+# Warn list - rules that should warn but not fail
+warn_list:
+  - experimental
+
+# Enable checking of role defaults
+kinds:
+  - yaml: "**/*.yaml"
+  - yaml: "**/*.yml"
+  - playbook: "**/playbooks/*.yml"
+  - playbook: "**/playbooks/*.yaml"
+  - tasks: "**/tasks/*.yml"
+  - tasks: "**/tasks/*.yaml"
+  - handlers: "**/handlers/*.yml"
+  - handlers: "**/handlers/*.yaml"
+  - vars: "**/vars/*.yml"
+  - vars: "**/vars/*.yaml"
+  - defaults: "**/defaults/*.yml"
+  - defaults: "**/defaults/*.yaml"
+  - meta: "**/meta/main.yml"
+  - meta: "**/meta/main.yaml"
+
+# Exclude paths
+exclude_paths:
+  - .venv/
+  - .git/
+  - .hypothesis/
+  - .pytest_cache/
+  - __pycache__/
+  - "*.pyc"

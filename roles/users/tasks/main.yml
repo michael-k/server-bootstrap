@@ -32,7 +32,7 @@
     - manual_user
 
 - name: Deploy SSH public key to manual user authorized_keys
-  ansible.builtin.authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ manual_user_name }}"
     key: "{{ lookup('file', manual_user_ssh_key_file) }}"
     state: present
@@ -93,7 +93,7 @@
     - ansible_user
 
 - name: Deploy SSH public key to Ansible user authorized_keys
-  ansible.builtin.authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ ansible_user_name }}"
     key: "{{ lookup('file', ansible_user_ssh_key_file) }}"
     state: present

@@ -143,7 +143,7 @@ class TestSSHKeyDeploymentProperties:
         role_tasks_content = role_tasks_path.read_text()
 
         # Verify SSH key deployment uses authorized_key module for both users
-        authorized_key_count = role_tasks_content.count("ansible.builtin.authorized_key:")
+        authorized_key_count = role_tasks_content.count("ansible.posix.authorized_key:")
         assert authorized_key_count >= 2, (
             f"Expected at least 2 authorized_key tasks (one per user), found {authorized_key_count}"
         )
