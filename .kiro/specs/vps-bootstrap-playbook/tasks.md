@@ -103,7 +103,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Validates: Requirements 4.6, 9.8**
 
 - [ ] 6. Implement SSH interface restriction
-  - [ ] 6.1 Add SSH interface restriction logic to ssh_hardening role
+  - [x] 6.1 Add SSH interface restriction logic to ssh_hardening role
     - Configure ListenAddress based on Tailscale status
     - When Tailscale enabled: listen only on Tailscale interface
     - When Tailscale disabled: listen on all interfaces (0.0.0.0, ::)
