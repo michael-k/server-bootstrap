@@ -163,7 +163,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 25: Emergency Script Round-Trip Restoration**
     - **Validates: Requirements 9.2, 9.3, 9.4, 9.5, 9.6**
   
-  - [ ]* 9.4 Write unit tests for emergency script edge cases
+  - [x] 9.4 Write unit tests for emergency script edge cases
     - Test script behavior with missing configuration files
     - Test service restart failures
     - Test idempotency in both modes
