@@ -26,7 +26,7 @@ The implementation follows a logical progression: project structure → core rol
     - Deploy SSH public keys to authorized_keys with mode 0600
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8_
   
-  - [ ] 2.3 Implement Ansible user creation
+  - [x] 2.3 Implement Ansible user creation
     - Create user with uid 1999, no password, passwordless sudo
     - Deploy SSH public keys to authorized_keys with mode 0600
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.7, 2.8_

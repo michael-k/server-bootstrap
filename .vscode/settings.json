@@ -17,6 +17,7 @@
         "git diff --stat",
         "git log --oneline -5",
         "git status",
+        "git status --porcelain",
         "git status --short",
         "git add .",
         "uv run ansible-playbook --syntax-check playbooks/site.yml"
