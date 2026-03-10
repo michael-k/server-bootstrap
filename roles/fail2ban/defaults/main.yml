@@ -1,0 +1,23 @@
+---
+# Fail2ban Role - Default Variables
+
+# Fail2ban configuration (Requirements 10.3, 10.4)
+# Maximum number of failed authentication attempts before banning
+fail2ban_max_retry: 5
+
+# Duration to ban an IP address after max_retry failures
+fail2ban_ban_time: "10m"
+
+# Time window for counting failed authentication attempts
+fail2ban_find_time: "10m"
+
+# SSH jail configuration
+# Enable SSH monitoring by default
+fail2ban_ssh_enabled: true
+
+# Backend for log monitoring (journald for systemd-based systems)
+fail2ban_ssh_backend: "systemd"
+
+# Firewall integration (Requirement 10.5)
+# Use nftables for dynamic IP blocking
+fail2ban_banaction: "nftables-multiport"

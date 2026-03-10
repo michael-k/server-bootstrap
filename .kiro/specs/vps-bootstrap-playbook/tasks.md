@@ -169,7 +169,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test idempotency in both modes
 
 - [ ] 10. Implement fail2ban role
-  - [ ] 10.1 Create fail2ban role structure
+  - [x] 10.1 Create fail2ban role structure
     - Define default variables for max retry, ban time, find time
     - Create jail.local.j2 template for SSH monitoring
     - _Requirements: 10.3, 10.4_
