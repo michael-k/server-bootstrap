@@ -1,0 +1,19 @@
+---
+# Emergency Access Role - Default Variables
+
+# Emergency script deployment (Requirements 9.1, 9.8)
+# Script is only deployed when Tailscale is enabled
+emergency_access_enabled: "{{ tailscale_enabled | default(false) }}"
+
+# SSH port configuration (inherited from ssh_hardening role)
+emergency_access_ssh_port: "{{ ssh_port | default(22) }}"
+
+# Tailscale interface name for SSH restriction
+emergency_access_tailscale_interface: "{{ tailscale_interface | default('tailscale0') }}"
+
+# Tailscale IPv4 address for SSH restriction
+# Set by tailscale role's verify.yml tasks
+emergency_access_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
+
+# Emergency script deployment path (Requirement 9.1)
+emergency_access_script_path: "/root/emergency-ssh-access.sh"

@@ -1,0 +1,14 @@
+---
+# Emergency Access Role - Main Tasks
+# Deploys emergency script to toggle SSH restrictions when Tailscale VPN fails
+# Requirements: 9.1, 9.8
+
+- name: Deploy emergency SSH access script
+  ansible.builtin.template:
+    src: emergency-ssh-access.sh.j2
+    dest: "{{ emergency_access_script_path }}"
+    owner: root
+    group: root
+    mode: "0700"
+  become: true
+  when: emergency_access_enabled | bool
