@@ -1,0 +1,9 @@
+---
+# Default variables for system_updates role
+# These can be overridden in inventory or playbook variables
+
+# APT update and upgrade configuration
+apt_update_cache_valid_time: 3600 # Cache validity in seconds (1 hour)
+apt_upgrade_type: "dist" # Options: dist, full, safe, yes (dist recommended for Debian stable)
+apt_autoremove: true # Remove unused dependencies after upgrade
+apt_autoclean: true # Clean up package cache after upgrade

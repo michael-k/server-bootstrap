@@ -65,7 +65,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Validates: Requirements 3.10**
 
 - [ ] 4. Implement system_updates role
-  - [ ] 4.1 Create system_updates role with apt update and upgrade tasks
+  - [x] 4.1 Create system_updates role with apt update and upgrade tasks
     - Execute apt update to refresh package lists
     - Execute apt upgrade with non-interactive mode
     - Check for /var/run/reboot-required and notify operator

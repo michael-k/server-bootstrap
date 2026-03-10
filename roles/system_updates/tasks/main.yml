@@ -1,0 +1,55 @@
+---
+# Main tasks file for system_updates role
+# Updates system packages and notifies operator if reboot is required
+# Requirements: 7.1, 7.2, 7.3, 7.4
+
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ apt_update_cache_valid_time }}"
+  tags:
+    - system_updates
+    - apt
+
+- name: Upgrade all packages to latest version
+  ansible.builtin.apt:
+    upgrade: "{{ apt_upgrade_type }}"
+    autoremove: "{{ apt_autoremove }}"
+    autoclean: "{{ apt_autoclean }}"
+  register: apt_upgrade_result
+  tags:
+    - system_updates
+    - apt
+
+- name: Check if system reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: reboot_required_file
+  tags:
+    - system_updates
+    - reboot_check
+
+- name: Notify operator that reboot is required
+  ansible.builtin.debug:
+    msg: |
+      ⚠️  REBOOT REQUIRED ⚠️
+      Package upgrades have been installed that require a system reboot.
+      Please reboot the system at your earliest convenience to complete the update process.
+
+      Packages requiring reboot:
+      {{ reboot_packages.stdout_lines | default(['Information not available']) | join('\n      ') }}
+  when: reboot_required_file.stat.exists
+  tags:
+    - system_updates
+    - reboot_check
+
+- name: Read packages requiring reboot
+  ansible.builtin.command:
+    cmd: cat /var/run/reboot-required.pkgs
+  register: reboot_packages
+  changed_when: false
+  failed_when: false
+  when: reboot_required_file.stat.exists
+  tags:
+    - system_updates
+    - reboot_check
