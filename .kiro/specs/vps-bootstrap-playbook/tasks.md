@@ -117,7 +117,7 @@ The implementation follows a logical progression: project structure → core rol
 - [x] 7. Checkpoint - Verify core access configuration
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement firewall role
+- [x] 8. Implement firewall role
   - [x] 8.1 Create firewall role structure
     - Define variables for SSH port, Tailscale interface, enable flag
     - Create nftables.conf.j2 template
