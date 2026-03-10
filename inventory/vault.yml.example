@@ -1,0 +1,16 @@
+---
+# Example vault file for sensitive data
+# Copy this file to vault.yml, customize, and encrypt with:
+#   uv run ansible-vault encrypt inventory/vault.yml
+
+# Root password for initial connection (if using password auth)
+vault_root_password: "your-root-password-here"
+
+# Manual user password (hashed)
+# Generate with: mkpasswd --method=sha-512
+# Or: python3 -c 'import crypt; print(crypt.crypt("your-password", crypt.mksalt(crypt.METHOD_SHA512)))'
+vault_manual_user_password: "$6$rounds=656000$YourSaltHere$YourHashedPasswordHere"
+
+# Tailscale pre-authentication key (if using Tailscale)
+# Generate from your Headscale control server
+vault_tailscale_pre_auth_key: "tskey-auth-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

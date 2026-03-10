@@ -1,0 +1,89 @@
+---
+# Example inventory file for VPS Bootstrap Playbook
+# Copy this file to hosts.yml and customize for your environment
+
+all:
+  hosts:
+    my-vps:
+      ansible_host: 192.0.2.100  # Replace with your VPS IP address
+      ansible_user: root
+      # Use either password or SSH key for initial connection
+      # ansible_ssh_pass: "{{ vault_root_password }}"  # From vault
+      # ansible_ssh_private_key_file: ~/.ssh/id_rsa
+  
+  vars:
+    # ============================================================================
+    # User Configuration (REQUIRED)
+    # ============================================================================
+    
+    # Manual access user (human administrator)
+    manual_user_name: "admin"
+    manual_user_password: "{{ vault_manual_user_password }}"  # Hashed password from vault
+    manual_user_ssh_key_file: "~/.ssh/id_ed25519_admin.pub"
+    
+    # Ansible automation user
+    ansible_user_name: "ansible"
+    ansible_user_ssh_key_file: "~/.ssh/id_ed25519_ansible.pub"
+    
+    # ============================================================================
+    # SSH Configuration (OPTIONAL)
+    # ============================================================================
+    
+    ssh_port: 22
+    ssh_max_auth_tries: 3
+    ssh_login_grace_time: "30s"
+    ssh_client_alive_interval: 300
+    ssh_client_alive_count_max: 2
+    
+    # ============================================================================
+    # Tailscale VPN Configuration (OPTIONAL)
+    # ============================================================================
+    
+    tailscale_enabled: false
+    # Uncomment and configure if using Tailscale:
+    # tailscale_control_server: "https://headscale.example.com"
+    # tailscale_pre_auth_key: "{{ vault_tailscale_pre_auth_key }}"
+    # tailscale_interface: "tailscale0"
+    
+    # ============================================================================
+    # Fail2ban Configuration (OPTIONAL)
+    # ============================================================================
+    
+    fail2ban_max_retry: 5
+    fail2ban_ban_time: "10m"
+    fail2ban_find_time: "10m"
+    
+    # ============================================================================
+    # Logging Configuration (OPTIONAL)
+    # ============================================================================
+    
+    journald_max_disk_usage: "500M"
+    journald_max_retention_time: "1month"
+    
+    # ============================================================================
+    # Time Synchronization Configuration (OPTIONAL)
+    # ============================================================================
+    
+    time_sync_service: "chrony"  # Options: chrony, timesyncd
+    ntp_servers:
+      - "0.debian.pool.ntp.org"
+      - "1.debian.pool.ntp.org"
+      - "2.debian.pool.ntp.org"
+      - "3.debian.pool.ntp.org"
+    
+    # ============================================================================
+    # Swap Configuration (OPTIONAL)
+    # ============================================================================
+    
+    # Zram (compressed swap in memory)
+    zram_enabled: false
+    # zram_size: "50%"  # Percentage of RAM (e.g., "50%") or absolute size (e.g., "2G")
+    
+    # Disk swap file
+    disk_swap_size: ""  # e.g., "2G" or empty to disable
+    
+    # ============================================================================
+    # Hostname Configuration (OPTIONAL)
+    # ============================================================================
+    
+    system_hostname: ""  # Leave empty to skip hostname configuration
