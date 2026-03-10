@@ -21,7 +21,7 @@ The implementation follows a logical progression: project structure → core rol
     - Define default variables for user names, UIDs, SSH key paths
     - _Requirements: 1.1, 1.2, 1.7, 2.1, 2.2, 2.6_
   
-  - [ ] 2.2 Implement manual access user creation
+  - [x] 2.2 Implement manual access user creation
     - Create user with uid 1000, password authentication, sudo with password
     - Deploy SSH public keys to authorized_keys with mode 0600
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8_

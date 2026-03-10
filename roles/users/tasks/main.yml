@@ -1,3 +1,65 @@
 ---
 # Main tasks file for users role
 # Creates manual access user and Ansible automation user with appropriate configurations
+
+# Manual Access User Creation (uid 1000)
+# Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8
+
+- name: Create manual access user with uid 1000
+  ansible.builtin.user:
+    name: "{{ manual_user_name }}"
+    uid: "{{ manual_user_uid }}"
+    shell: "{{ manual_user_shell }}"
+    groups: "{{ manual_user_groups }}"
+    append: true
+    create_home: true
+    password: "{{ manual_user_password | password_hash('sha512') }}"
+    update_password: on_create
+    state: present
+  tags:
+    - users
+    - manual_user
+
+- name: Ensure .ssh directory exists for manual user
+  ansible.builtin.file:
+    path: "/home/{{ manual_user_name }}/.ssh"
+    state: directory
+    owner: "{{ manual_user_name }}"
+    group: "{{ manual_user_name }}"
+    mode: "0700"
+  tags:
+    - users
+    - manual_user
+
+- name: Deploy SSH public key to manual user authorized_keys
+  ansible.builtin.authorized_key:
+    user: "{{ manual_user_name }}"
+    key: "{{ lookup('file', manual_user_ssh_key_file) }}"
+    state: present
+    exclusive: false
+  tags:
+    - users
+    - manual_user
+
+- name: Set correct permissions on manual user authorized_keys
+  ansible.builtin.file:
+    path: "/home/{{ manual_user_name }}/.ssh/authorized_keys"
+    owner: "{{ manual_user_name }}"
+    group: "{{ manual_user_name }}"
+    mode: "{{ authorized_keys_mode }}"
+  tags:
+    - users
+    - manual_user
+
+- name: Grant sudo privileges to manual user (password required)
+  ansible.builtin.copy:
+    content: "{{ manual_user_name }} ALL=(ALL:ALL) ALL\n"
+    dest: "/etc/sudoers.d/{{ manual_user_name }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: 'visudo -cf %s'
+  tags:
+    - users
+    - manual_user
+    - sudo

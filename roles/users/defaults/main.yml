@@ -9,6 +9,9 @@ manual_user_uid: 1000
 manual_user_ssh_key_file: "~/.ssh/id_ed25519_admin.pub"
 manual_user_shell: "/bin/bash"
 manual_user_groups: []
+# manual_user_password should be provided at runtime or from vault
+# Example: ansible-playbook -e "manual_user_password=SecurePassword123"
+# Or from vault: manual_user_password: "{{ vault_manual_user_password }}"
 
 # Ansible User Configuration (uid 1999)
 # Automation account with SSH key-only authentication
