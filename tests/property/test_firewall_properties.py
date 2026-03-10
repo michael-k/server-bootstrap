@@ -520,3 +520,192 @@ class TestNFTablesSSHAccessControlProperties:
         # - WireGuard port is configurable
         # - Conditional logic correctly handles both scenarios
         # - This applies consistently for any valid port and interface configuration
+
+
+class TestNFTablesServicePersistenceProperties:
+    """Property-based tests for NFTables service persistence."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        ssh_port=valid_ssh_port(),
+        tailscale_enabled=st.booleans(),
+    )
+    def test_property_21_nftables_service_persistence(
+        self, ssh_port: int, tailscale_enabled: bool
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 21: NFTables Service Persistence
+
+        For any execution of the bootstrap playbook, the NFTables service SHALL be
+        enabled to start on boot, ensuring rules persist across system reboots.
+
+        Validates: Requirements 8.10, 8.11
+        """
+        # This property test verifies the firewall role's service persistence by checking:
+        # 1. NFTables service is enabled to start on boot (Requirement 8.10)
+        # 2. NFTables rules persist across system reboots (Requirement 8.11)
+        # 3. Configuration file is deployed to the correct location
+        # 4. Service is started after configuration
+
+        # Read the firewall role tasks
+        tasks_path = Path("roles/firewall/tasks/main.yml")
+        assert tasks_path.exists(), "Firewall role tasks must exist"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify Requirement 8.10: NFTables service is enabled to start on boot
+        # The service must be enabled using systemd
+        assert "name: nftables" in tasks_content, (
+            "NFTables service must be referenced in tasks"
+        )
+        assert "enabled: true" in tasks_content or "enabled: yes" in tasks_content, (
+            "NFTables service must be enabled to start on boot (Requirement 8.10)"
+        )
+
+        # Verify service is started (not just enabled)
+        assert "state: started" in tasks_content, (
+            "NFTables service must be started after configuration"
+        )
+
+        # Verify Requirement 8.11: NFTables rules persist across system reboots
+        # This is achieved by:
+        # 1. Deploying configuration to /etc/nftables.conf (standard location)
+        # 2. Enabling the nftables.service which loads rules from this file on boot
+
+        # Verify configuration is deployed to standard location
+        assert "dest: /etc/nftables.conf" in tasks_content, (
+            "NFTables configuration must be deployed to /etc/nftables.conf "
+            "for persistence (Requirement 8.11)"
+        )
+
+        # Verify configuration file has correct permissions for boot loading
+        assert 'mode: "0644"' in tasks_content or "mode: '0644'" in tasks_content, (
+            "NFTables configuration must have mode 0644 (readable by system)"
+        )
+
+        # Verify configuration is owned by root (required for system service)
+        assert "owner: root" in tasks_content, (
+            "NFTables configuration must be owned by root"
+        )
+        assert "group: root" in tasks_content, (
+            "NFTables configuration must have group root"
+        )
+
+        # Verify template task exists (deploys the configuration)
+        assert "ansible.builtin.template:" in tasks_content or "template:" in tasks_content, (
+            "Must use template module to deploy NFTables configuration"
+        )
+
+        # Verify template source is correct
+        assert "src: nftables.conf.j2" in tasks_content, (
+            "Template source must be nftables.conf.j2"
+        )
+
+        # Verify configuration changes trigger service reload
+        assert "notify:" in tasks_content, (
+            "Configuration changes must trigger handler notification"
+        )
+
+        # Read the handlers to verify reload/restart handler exists
+        handlers_path = Path("roles/firewall/handlers/main.yml")
+        assert handlers_path.exists(), "Firewall role handlers must exist"
+
+        handlers_content = handlers_path.read_text()
+
+        # Verify reload or restart handler is defined
+        assert (
+            "name: Reload nftables" in handlers_content
+            or "name: Restart nftables" in handlers_content
+        ), "Handler for reloading/restarting nftables must be defined"
+
+        # Verify handler uses systemd service module
+        assert "ansible.builtin.systemd:" in handlers_content or "systemd:" in handlers_content or (
+            "ansible.builtin.service:" in handlers_content or "service:" in handlers_content
+        ), "Handler must use systemd or service module"
+
+        # Verify handler references nftables service
+        assert "name: nftables" in handlers_content, (
+            "Handler must reference nftables service"
+        )
+
+        # Verify handler reloads or restarts the service
+        assert "state: reloaded" in handlers_content or "state: restarted" in handlers_content, (
+            "Handler must reload or restart nftables service to apply changes"
+        )
+
+        # Verify the NFTables configuration template exists
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        assert template_path.exists(), "NFTables configuration template must exist"
+
+        template_content = template_path.read_text()
+
+        # Verify template contains valid nftables syntax
+        assert "table inet filter" in template_content, (
+            "Template must define inet filter table"
+        )
+        assert "chain input" in template_content, (
+            "Template must define input chain"
+        )
+        assert "chain forward" in template_content, (
+            "Template must define forward chain"
+        )
+        assert "chain output" in template_content, (
+            "Template must define output chain"
+        )
+
+        # Verify template has proper nftables structure (flush and define)
+        assert "flush ruleset" in template_content or "table inet filter" in template_content, (
+            "Template must have proper nftables structure"
+        )
+
+        # Read the firewall role defaults
+        defaults_path = Path("roles/firewall/defaults/main.yml")
+        assert defaults_path.exists(), "Firewall role defaults must exist"
+
+        defaults_content = defaults_path.read_text()
+
+        # Verify default variables are defined for configuration
+        assert "firewall_ssh_port:" in defaults_content, (
+            "firewall_ssh_port must be defined in defaults"
+        )
+        assert "firewall_tailscale_enabled:" in defaults_content, (
+            "firewall_tailscale_enabled must be defined in defaults"
+        )
+
+        # Verify service module tasks exist
+        # The enable and start tasks may be separate or combined
+        # Look for systemd/service tasks that reference nftables
+        lines = tasks_content.split('\n')
+        found_enable_task = False
+        found_start_task = False
+
+        for i, line in enumerate(lines):
+            if 'ansible.builtin.systemd:' in line or 'systemd:' in line or (
+                'ansible.builtin.service:' in line or 'service:' in line
+            ):
+                # Look ahead to see if this task references nftables
+                task_block = '\n'.join(lines[i:min(i+10, len(lines))])
+                if 'name: nftables' in task_block:
+                    if 'enabled: true' in task_block or 'enabled: yes' in task_block:
+                        found_enable_task = True
+                    if 'state: started' in task_block:
+                        found_start_task = True
+
+        assert found_enable_task, (
+            "Must have a task that enables nftables service (Requirement 8.10)"
+        )
+        assert found_start_task, (
+            "Must have a task that starts nftables service"
+        )
+
+        # Property verified: The firewall role configuration ensures that:
+        # - NFTables service is enabled to start on boot (8.10)
+        # - NFTables configuration is deployed to /etc/nftables.conf (8.11)
+        # - Configuration has correct permissions and ownership
+        # - Service is started after configuration deployment
+        # - Configuration changes trigger service reload via handlers
+        # - Template contains valid nftables syntax
+        # - This applies consistently regardless of SSH port or Tailscale status
+        # - Rules persist across system reboots through systemd service

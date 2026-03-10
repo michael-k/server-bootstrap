@@ -139,7 +139,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 19: NFTables SSH Access Control**
     - **Validates: Requirements 8.1-8.8**
   
-  - [ ]* 8.4 Write property test for service persistence
+  - [x] 8.4 Write property test for service persistence
     - **Property 21: NFTables Service Persistence**
     - **Validates: Requirements 8.10, 8.11**
 
