@@ -21,5 +21,6 @@
         "git status --short",
         "git add .",
         "uv run ansible-playbook --syntax-check playbooks/site.yml"
-    ]
+    ],
+    "python-envs.workspaceSearchPaths": ["./**/.venv"]
 }
