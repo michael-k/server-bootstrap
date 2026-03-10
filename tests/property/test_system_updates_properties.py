@@ -7,6 +7,7 @@ and reboot notification across all valid configurations.
 
 from pathlib import Path
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -27,6 +28,8 @@ def valid_upgrade_type(draw):
 class TestSystemUpdatesProperties:
     """Property-based tests for system package updates."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         cache_valid_time=valid_cache_valid_time(),
@@ -234,6 +237,8 @@ class TestSystemUpdatesProperties:
 class TestSystemUpdatesIdempotencyProperties:
     """Property-based tests for system updates idempotency."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=50)
     @given(
         cache_valid_time=valid_cache_valid_time(),
@@ -279,6 +284,8 @@ class TestSystemUpdatesIdempotencyProperties:
 class TestSystemUpdatesNonInteractiveProperties:
     """Property-based tests for non-interactive system updates."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=50)
     @given(
         upgrade_type=valid_upgrade_type(),

@@ -8,6 +8,7 @@ across all valid configurations.
 
 from pathlib import Path
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -42,6 +43,8 @@ def valid_timeout_seconds(draw):
 class TestSSHHardeningProperties:
     """Property-based tests for SSH daemon hardening configuration."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         manual_user=valid_username(),
@@ -318,6 +321,8 @@ class TestSSHHardeningProperties:
 class TestSSHSessionSecurityProperties:
     """Property-based tests for SSH session security configuration."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         max_auth_tries=st.integers(min_value=1, max_value=10),
@@ -464,6 +469,8 @@ class TestSSHSessionSecurityProperties:
 class TestSSHPortConfigurationProperties:
     """Property-based tests for SSH port configuration."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         ssh_port=valid_ssh_port(),
@@ -531,6 +538,8 @@ class TestSSHPortConfigurationProperties:
 class TestSSHAccessRestrictionProperties:
     """Property-based tests for SSH user access restriction."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         manual_user=valid_username(),

@@ -24,19 +24,19 @@ verify:
 
 test:
 	@echo "Running all tests..."
-	uv run pytest tests/
+	uv run pytest
 
 test-unit:
 	@echo "Running unit tests..."
-	uv run pytest tests/unit/
+	uv run pytest -m unit
 
 test-property:
 	@echo "Running property-based tests..."
-	uv run pytest tests/property/
+	uv run pytest -m property
 
 test-integration:
 	@echo "Running integration tests..."
-	uv run pytest tests/integration/
+	uv run pytest -m integration
 
 python-lint:
 	@echo "Checking Python code with ruff..."

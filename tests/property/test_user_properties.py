@@ -33,6 +33,8 @@ def valid_username(draw):
 class TestUserCreationProperties:
     """Property-based tests for user account creation."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         manual_user=valid_username(),
@@ -109,6 +111,8 @@ class TestUserCreationProperties:
 class TestSSHKeyDeploymentProperties:
     """Property-based tests for SSH key deployment and permissions."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         manual_user=valid_username(),
@@ -261,6 +265,8 @@ class TestUserCreationIntegration:
 class TestSudoConfigurationProperties:
     """Property-based tests for sudo privilege configuration."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         manual_user=valid_username(),

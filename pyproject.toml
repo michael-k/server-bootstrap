@@ -34,7 +34,10 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
+    "unit: marks tests as unit tests (fast, no external dependencies)",
+    "property: marks tests as property-based tests using Hypothesis",
     "integration: marks tests as integration tests (require actual system/VM)",
+    "slow: marks tests as slow-running",
 ]
 
 

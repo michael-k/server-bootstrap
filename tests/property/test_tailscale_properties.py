@@ -8,6 +8,7 @@ across all valid configurations.
 
 from pathlib import Path
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -57,6 +58,8 @@ def valid_interface_name(draw):
 class TestTailscaleInstallationProperties:
     """Property-based tests for Tailscale installation and configuration."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         control_server=valid_control_server_url(),
@@ -259,6 +262,8 @@ class TestTailscaleInstallationProperties:
 class TestTailscaleConnectivityVerificationProperties:
     """Property-based tests for Tailscale connectivity verification."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=100)
     @given(
         interface_name=valid_interface_name(),
@@ -416,6 +421,8 @@ class TestTailscaleConnectivityVerificationProperties:
 class TestTailscaleConditionalExecutionProperties:
     """Property-based tests for Tailscale conditional execution."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=50)
     @given(
         enabled=st.booleans(),
@@ -496,6 +503,8 @@ class TestTailscaleConditionalExecutionProperties:
 class TestTailscaleRepositoryConfigurationProperties:
     """Property-based tests for Tailscale repository configuration."""
 
+    @pytest.mark.property
+    @pytest.mark.unit
     @settings(max_examples=50)
     @given(
         distribution_release=st.sampled_from(["bookworm", "bullseye", "buster"]),
