@@ -201,20 +201,31 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 28: Journald Persistent Logging Configuration**
     - **Validates: Requirements 11.1, 11.2, 11.3**
 
-- [ ] 12. Implement time_sync role
-  - [ ] 12.1 Create time_sync role structure
-    - Define default variables for NTP servers and service choice
+- [ ] 12. Implement system_config role
+  - [ ] 12.1 Create system_config role structure
+    - Define default variables for hostname, NTP servers, and time sync service choice
     - Create templates for chrony.conf and timesyncd.conf
-    - _Requirements: 12.2_
+    - _Requirements: 6.1, 6.2, 6.3, 12.2_
   
-  - [ ] 12.2 Implement time synchronization configuration
+  - [ ] 12.2 Implement hostname configuration
+    - Set hostname using hostname module when variable is defined
+    - Persist hostname across reboots
+    - Skip when hostname variable is empty or undefined
+    - _Requirements: 6.1, 6.2, 6.3_
+  
+  - [ ] 12.3 Implement time synchronization configuration
     - Install and configure chrony or systemd-timesyncd
     - Configure NTP server list
     - Enable and start time sync service
     - Verify synchronization status after service start
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
   
-  - [ ]* 12.3 Write property test for time sync configuration
+  - [ ]* 12.4 Write property test for hostname configuration
+    - **Property 14: Hostname Configuration Persistence**
+    - **Property 15: Hostname Configuration Skip**
+    - **Validates: Requirements 6.1, 6.2, 6.3**
+  
+  - [ ]* 12.5 Write property test for time sync configuration
     - **Property 29: Time Synchronization Service Configuration**
     - **Validates: Requirements 12.1-12.5**
 
@@ -244,46 +255,33 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 32: Swap Configuration Skip**
     - **Validates: Requirements 13.1-13.17**
 
-- [ ] 14. Implement hostname configuration
-  - [ ] 14.1 Add hostname configuration to main playbook
-    - Set hostname using hostname module when variable is defined
-    - Persist hostname across reboots
-    - Skip when hostname variable is empty or undefined
-    - _Requirements: 6.1, 6.2, 6.3_
-  
-  - [ ]* 14.2 Write property test for hostname configuration
-    - **Property 14: Hostname Configuration Persistence**
-    - **Property 15: Hostname Configuration Skip**
-    - **Validates: Requirements 6.1, 6.2, 6.3**
-
-- [ ] 15. Checkpoint - Verify all roles implemented
+- [ ] 14. Checkpoint - Verify all roles implemented
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Create main playbook orchestration
-  - [ ] 16.1 Create site.yml main playbook
+- [ ] 15. Create main playbook orchestration
+  - [ ] 15.1 Create site.yml main playbook
     - Define play targeting all hosts with root user
-    - Include all roles in logical order: system_updates, users, ssh_hardening, tailscale, firewall, emergency_access, fail2ban, logging, time_sync, swap
+    - Include all roles in logical order: system_updates, users, ssh_hardening, tailscale, firewall, emergency_access, fail2ban, logging, system_config, swap
     - Add pre-flight checks for required variables and Debian stable
-    - Add hostname configuration task
     - _Requirements: All requirements (orchestration)_
   
-  - [ ] 16.2 Create example inventory files
+  - [ ] 15.2 Create example inventory files
     - Create inventory/production.example with host examples
     - Create inventory/group_vars/all.yml.example with all configurable variables
     - Document variable purposes and defaults
     - _Requirements: 16.5_
   
-  - [ ] 16.3 Create Ansible Vault example
+  - [ ] 15.3 Create Ansible Vault example
     - Create vault.yml.example with secret variable templates
     - Document vault encryption and usage
     - _Requirements: 16.10_
   
-  - [ ]* 16.4 Write property test for playbook idempotency
+  - [ ]* 15.4 Write property test for playbook idempotency
     - **Property 33: Playbook Idempotency**
     - **Validates: Requirements 15.3, 15.4, 15.5**
 
-- [ ] 17. Implement verification test suite
-  - [ ] 17.1 Create tests/verify_bootstrap.yml playbook
+- [ ] 16. Implement verification test suite
+  - [ ] 16.1 Create tests/verify_bootstrap.yml playbook
     - Implement 44 verification tasks from Requirement 14
     - Verify user accounts, UIDs, sudo configuration
     - Verify SSH configuration, algorithms, service state
@@ -295,23 +293,23 @@ The implementation follows a logical progression: project structure → core rol
     - Verify emergency script deployment (conditional)
     - _Requirements: 14.1-14.44_
   
-  - [ ] 17.2 Add verification test execution to Makefile
+  - [ ] 16.2 Add verification test execution to Makefile
     - Add 'make verify' target to run verification playbook
     - _Requirements: 16.2, 16.12_
   
-  - [ ]* 17.3 Write property test for configuration verification
+  - [ ]* 16.3 Write property test for configuration verification
     - **Property 34: Configuration Verification Round-Trip**
     - **Validates: Requirements 14.1-14.44**
 
-- [ ] 18. Implement property-based test suite
-  - [ ] 18.1 Create tests/property/ directory structure
+- [ ] 17. Implement property-based test suite
+  - [ ] 17.1 Create tests/property/ directory structure
     - Create test_idempotency_properties.py
     - Create test_configuration_properties.py
     - Create test_service_properties.py
     - Configure pytest with hypothesis settings (min 100 examples)
     - _Requirements: Testing strategy from design_
   
-  - [ ] 18.2 Implement property tests for user management
+  - [ ] 17.2 Implement property tests for user management
     - Property 1: User creation with fixed UIDs
     - Property 2: SSH key deployment and permissions
     - Property 3: Sudo privilege configuration
@@ -319,7 +317,7 @@ The implementation follows a logical progression: project structure → core rol
     - Use hypothesis strategies for username generation
     - _Requirements: 1.1-1.8, 2.1-2.8_
   
-  - [ ] 18.3 Implement property tests for SSH hardening
+  - [ ] 17.3 Implement property tests for SSH hardening
     - Property 5: SSH daemon hardening configuration
     - Property 6: SSH access restriction
     - Property 7: SSH port configuration
@@ -327,7 +325,7 @@ The implementation follows a logical progression: project structure → core rol
     - Use hypothesis strategies for port numbers and timeouts
     - _Requirements: 3.1-3.18_
   
-  - [ ] 18.4 Implement property tests for Tailscale and firewall
+  - [ ] 17.4 Implement property tests for Tailscale and firewall
     - Property 10: Tailscale installation and configuration
     - Property 11: Tailscale conditional execution
     - Property 12: SSH interface restriction with safety check
@@ -335,7 +333,7 @@ The implementation follows a logical progression: project structure → core rol
     - Property 17-21: NFTables configuration properties
     - _Requirements: 4.1-4.6, 5.1-5.3, 8.1-8.11_
   
-  - [ ] 18.5 Implement property tests for emergency access
+  - [ ] 17.5 Implement property tests for emergency access
     - Property 22: Emergency script deployment
     - Property 23: Emergency script unrestrict operation
     - Property 24: Emergency script restore operation
@@ -343,14 +341,14 @@ The implementation follows a logical progression: project structure → core rol
     - Property 26: Emergency script idempotency
     - _Requirements: 9.1-9.8_
   
-  - [ ] 18.6 Implement property tests for system services
+  - [ ] 17.6 Implement property tests for system services
     - Property 27: Fail2ban installation and configuration
     - Property 28: Journald persistent logging configuration
     - Property 29: Time synchronization service configuration
     - Property 30-32: Swap configuration properties
     - _Requirements: 10.1-10.7, 11.1-11.4, 12.1-12.5, 13.1-13.17_
   
-  - [ ] 18.7 Implement property tests for playbook behavior
+  - [ ] 17.7 Implement property tests for playbook behavior
     - Property 9: Service restart on configuration change
     - Property 14-15: Hostname configuration properties
     - Property 16: System package updates
@@ -358,54 +356,54 @@ The implementation follows a logical progression: project structure → core rol
     - Property 34: Configuration verification round-trip
     - _Requirements: 6.1-6.3, 7.1-7.4, 15.3-15.5, 14.1-14.44_
 
-- [ ] 19. Implement unit test suite
-  - [ ] 19.1 Create tests/unit/ directory structure
+- [ ] 18. Implement unit test suite
+  - [ ] 18.1 Create tests/unit/ directory structure
     - Create test files for each role
     - Configure pytest for unit test execution
     - _Requirements: Testing strategy from design_
   
-  - [ ] 19.2 Write unit tests for user management
+  - [ ] 18.2 Write unit tests for user management
     - Test specific username creation
     - Test SSH key deployment with specific key content
     - Test sudo configuration file content
     - Test authorized_keys permissions
     - _Requirements: 1.1-1.8, 2.1-2.8_
   
-  - [ ] 19.3 Write unit tests for SSH hardening
+  - [ ] 18.3 Write unit tests for SSH hardening
     - Test specific SSHD configuration directives
     - Test algorithm restriction lists
     - Test AllowUsers directive with specific users
     - Test service restart handler
     - _Requirements: 3.1-3.18_
   
-  - [ ] 19.4 Write unit tests for Tailscale
+  - [ ] 18.4 Write unit tests for Tailscale
     - Test installation when enabled
     - Test skip when disabled
     - Test connectivity verification logic
     - _Requirements: 4.1-4.6, 5.1-5.3_
   
-  - [ ] 19.5 Write unit tests for firewall
+  - [ ] 18.5 Write unit tests for firewall
     - Test NFTables rule structure
     - Test IPv4 and IPv6 rule parity
     - Test conditional SSH access rules
     - Test default policies
     - _Requirements: 8.1-8.11_
   
-  - [ ] 19.6 Write unit tests for emergency script
+  - [ ] 18.6 Write unit tests for emergency script
     - Test script generation with specific variables
     - Test unrestrict mode sed commands
     - Test restore mode sed commands
     - Test service restart commands
     - _Requirements: 9.1-9.8_
   
-  - [ ] 19.7 Write unit tests for system services
+  - [ ] 18.7 Write unit tests for system services
     - Test fail2ban jail configuration
     - Test journald configuration values
     - Test time sync service selection
     - Test swap priority values
     - _Requirements: 10.1-10.7, 11.1-11.4, 12.1-12.5, 13.1-13.17_
   
-  - [ ] 19.8 Write integration tests
+  - [ ] 18.8 Write integration tests
     - Test full bootstrap execution on test VM
     - Test playbook on fresh system (password auth)
     - Test playbook on fresh system (SSH key auth)
@@ -413,11 +411,11 @@ The implementation follows a logical progression: project structure → core rol
     - Test emergency script end-to-end functionality
     - _Requirements: 15.1, 15.2, 15.3_
 
-- [ ] 20. Checkpoint - Verify all tests implemented and passing
+- [ ] 19. Checkpoint - Verify all tests implemented and passing
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 21. Documentation and final integration
-  - [ ] 21.1 Complete README.md
+- [ ] 20. Documentation and final integration
+  - [ ] 20.1 Complete README.md
     - Document all configurable variables with descriptions and defaults
     - Document prerequisites (uv, Ansible, SSH keys)
     - Document Vault setup and secret management
@@ -427,21 +425,21 @@ The implementation follows a logical progression: project structure → core rol
     - Add troubleshooting section
     - _Requirements: 16.5, 16.6, 16.7, 16.8, 16.9, 16.10, 16.11, 16.12_
   
-  - [ ] 21.2 Add inline documentation
+  - [ ] 20.2 Add inline documentation
     - Add comments to all Ansible tasks explaining purpose
     - Add comments to templates explaining configuration choices
     - Add docstrings to all Python test functions
     - Add comments to emergency script explaining operations
     - _Requirements: Documentation best practices_
   
-  - [ ] 21.3 Create example configurations
+  - [ ] 20.3 Create example configurations
     - Create example inventory for single VPS
     - Create example inventory for multiple VPS
     - Create example group_vars with common configurations
     - Create example vault.yml with all required secrets
     - _Requirements: 16.5, 16.10_
 
-- [ ] 22. Final checkpoint - Complete system verification
+- [ ] 21. Final checkpoint - Complete system verification
   - Run full test suite (unit + property + integration)
   - Run verification playbook against test environment
   - Verify all 44 verification tests pass
