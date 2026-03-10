@@ -1,3 +1,10 @@
 ---
 # Firewall Role - Handlers
-# This file will be populated in task 8.2
+
+# Handler to reload NFTables rules after configuration changes
+# (Requirement 8.10)
+- name: Reload nftables
+  ansible.builtin.systemd:
+    name: nftables
+    state: reloaded
+  become: true

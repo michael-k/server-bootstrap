@@ -123,7 +123,7 @@ The implementation follows a logical progression: project structure → core rol
     - Create nftables.conf.j2 template
     - _Requirements: 8.1, 8.2_
   
-  - [ ] 8.2 Implement NFTables configuration
+  - [x] 8.2 Implement NFTables configuration
     - Configure dual-stack rules (IPv4 and IPv6)
     - Set default policies to drop for input and forward chains
     - Allow established/related connections and loopback traffic
