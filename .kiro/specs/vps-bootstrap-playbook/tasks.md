@@ -235,7 +235,7 @@ The implementation follows a logical progression: project structure → core rol
     - Add conditional logic for zram and disk swap
     - _Requirements: 13.1, 13.2, 13.10_
   
-  - [ ] 13.2 Implement zram swap configuration
+  - [x] 13.2 Implement zram swap configuration
     - Install zram-tools or configure via systemd
     - Create zram device with specified size
     - Configure lz4 compression algorithm

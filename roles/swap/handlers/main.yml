@@ -1,0 +1,7 @@
+---
+# Handlers for swap role
+
+- name: Restart zramswap service
+  ansible.builtin.systemd:
+    name: zramswap
+    state: restarted

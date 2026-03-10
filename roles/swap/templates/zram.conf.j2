@@ -1,0 +1,24 @@
+# Zram swap configuration
+# Managed by Ansible - do not edit manually
+
+# Percentage of RAM to use for zram (e.g., 50 for 50%)
+# Or absolute size in MB (e.g., 2048 for 2GB)
+{% if zram_size.endswith('%') %}
+PERCENTAGE={{ zram_size.rstrip('%') }}
+{% else %}
+# Convert size specification to MB
+{% if zram_size.endswith('G') or zram_size.endswith('g') %}
+SIZE={{ (zram_size.rstrip('Gg') | int) * 1024 }}
+{% elif zram_size.endswith('M') or zram_size.endswith('m') %}
+SIZE={{ zram_size.rstrip('Mm') | int }}
+{% else %}
+# Default to percentage if format is unclear
+PERCENTAGE=50
+{% endif %}
+{% endif %}
+
+# Compression algorithm (lz4 is fast and efficient)
+ALGO=lz4
+
+# Swap priority (higher than disk swap)
+PRIORITY={{ zram_swap_priority }}
