@@ -39,6 +39,11 @@
   changed_when: false
   when: time_sync_service == "chrony"
 
+- name: Display chrony synchronization status
+  ansible.builtin.debug:
+    msg: "Chrony synchronization status: {{ chrony_status.stdout_lines }}"
+  when: time_sync_service == "chrony"
+
 - name: Stop and disable chrony when using systemd-timesyncd
   ansible.builtin.systemd:
     name: chrony
@@ -68,4 +73,9 @@
   ansible.builtin.command: timedatectl timesync-status
   register: timesyncd_status
   changed_when: false
+  when: time_sync_service == "timesyncd"
+
+- name: Display systemd-timesyncd synchronization status
+  ansible.builtin.debug:
+    msg: "Systemd-timesyncd synchronization status: {{ timesyncd_status.stdout_lines }}"
   when: time_sync_service == "timesyncd"
