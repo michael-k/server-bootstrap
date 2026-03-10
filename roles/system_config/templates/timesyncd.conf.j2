@@ -1,0 +1,16 @@
+# systemd-timesyncd configuration for VPS Bootstrap Playbook
+# This file is managed by Ansible - manual changes will be overwritten
+
+[Time]
+# NTP servers
+NTP={{ ntp_servers | join(' ') }}
+
+# Fallback NTP servers (used if NTP servers are not reachable)
+#FallbackNTP=
+
+# Maximum acceptable root distance in seconds
+#RootDistanceMaxSec=5
+
+# Minimum/maximum poll intervals
+#PollIntervalMinSec=32
+#PollIntervalMaxSec=2048

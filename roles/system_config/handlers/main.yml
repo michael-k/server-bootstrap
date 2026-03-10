@@ -1,0 +1,14 @@
+---
+# Handlers for system_config role
+
+- name: Restart chrony
+  ansible.builtin.systemd:
+    name: chrony
+    state: restarted
+  when: time_sync_service == "chrony"
+
+- name: Restart systemd-timesyncd
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    state: restarted
+  when: time_sync_service == "timesyncd"

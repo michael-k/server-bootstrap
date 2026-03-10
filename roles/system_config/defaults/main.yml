@@ -1,0 +1,17 @@
+---
+# Default variables for system_config role
+
+# Hostname configuration
+# Set to empty string or leave undefined to skip hostname configuration
+system_hostname: ""
+
+# Time synchronization service choice
+# Options: "chrony" or "timesyncd"
+time_sync_service: "chrony"
+
+# NTP servers for time synchronization
+ntp_servers:
+  - "0.debian.pool.ntp.org"
+  - "1.debian.pool.ntp.org"
+  - "2.debian.pool.ntp.org"
+  - "3.debian.pool.ntp.org"
