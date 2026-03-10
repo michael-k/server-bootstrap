@@ -114,7 +114,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 13: SSH Interface Configuration Based on VPN Status**
     - **Validates: Requirements 5.1, 5.2, 5.3**
 
-- [ ] 7. Checkpoint - Verify core access configuration
+- [x] 7. Checkpoint - Verify core access configuration
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement firewall role
