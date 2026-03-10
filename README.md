@@ -8,21 +8,15 @@ An Ansible playbook that prepares a fresh VPS for regular Ansible management. Th
 
 Before running this playbook, ensure you have:
 
-1. **Python 3.11 or higher** installed on your local machine
+1. **Python 3.14 or higher** installed on your local machine, optionally via uv
 2. **uv** package manager installed ([installation instructions](https://github.com/astral-sh/uv))
 3. **SSH access to the target VPS** as root (password or SSH key)
-4. **Fresh VPS running Debian stable** (tested on Debian 12)
+4. **Fresh VPS running Debian stable** (tested on Debian 13)
 5. **SSH key pairs generated** for manual and Ansible users (see below)
 
 ### Installing uv
 
-```bash
-# On macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Or with pip
-pip install uv
-```
+See https://docs.astral.sh/uv/getting-started/installation/.
 
 ## Generating SSH Key Pairs
 

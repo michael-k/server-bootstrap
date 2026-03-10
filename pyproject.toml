@@ -2,27 +2,69 @@
 name = "vps-bootstrap-playbook"
 version = "0.1.0"
 description = "Ansible playbook for bootstrapping fresh VPS servers with hardened security configuration"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
-    "ansible-core>=2.16.0",
-    "pytest>=8.0.0",
-    "hypothesis>=6.98.0",
+    "ansible-core>=2.20.3",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest-ansible>=24.1.0",
+  {include-group = "lint"},
+  {include-group = "test"}
+]
+lint = [
+  "ruff>=0.15.2",
+  "ansible-lint>=26.1.1",
+]
+test = [
+    "hypothesis>=6.151.9",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "pytest-ansible>=26.2.0",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+
+[tool.hypothesis]
+max_examples = 100
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = []
 
-[tool.hypothesis]
-max_examples = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert in tests
+
+
+[tool.uv]
+default-groups = ["dev"]
+environments = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+
+[[tool.uv.index]]
+name = "PyPI"
+url = "https://pypi.org/simple"
+default = true
