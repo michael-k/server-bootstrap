@@ -230,7 +230,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Validates: Requirements 12.1-12.5**
 
 - [ ] 13. Implement swap role
-  - [ ] 13.1 Create swap role structure
+  - [x] 13.1 Create swap role structure
     - Define default variables for zram enable, zram size, disk swap size
     - Add conditional logic for zram and disk swap
     - _Requirements: 13.1, 13.2, 13.10_

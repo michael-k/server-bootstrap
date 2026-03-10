@@ -1,0 +1,10 @@
+---
+# Main tasks for swap role
+
+- name: Include zram swap configuration
+  ansible.builtin.include_tasks: zram.yml
+  when: zram_enabled | bool
+
+- name: Include disk swap configuration
+  ansible.builtin.include_tasks: disk_swap.yml
+  when: disk_swap_size | length > 0

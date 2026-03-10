@@ -1,0 +1,13 @@
+---
+# Default variables for swap role
+
+# Zram configuration
+zram_enabled: false
+zram_size: "50%" # Size as percentage of RAM (e.g., "50%") or absolute size (e.g., "2G")
+
+# Disk swap configuration
+disk_swap_size: "" # Disk swap size (e.g., "2G", empty string to disable)
+
+# Swap priorities
+zram_swap_priority: 100 # Higher priority (accessed first)
+disk_swap_priority: 10 # Lower priority (accessed second)
