@@ -1,0 +1,76 @@
+---
+# Tailscale installation and configuration tasks
+# These tasks only execute when tailscale_enabled is true
+
+# Requirement 4.1: Install Tailscale packages from official repository
+
+- name: Add Tailscale GPG key
+  ansible.builtin.get_url:
+    url: "{{ tailscale_repo_key_url }}"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: "0644"
+  tags:
+    - tailscale
+    - packages
+
+- name: Add Tailscale repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] {{ tailscale_repo_url }} {{ ansible_distribution_release }} main"
+    state: present
+    filename: tailscale
+  tags:
+    - tailscale
+    - packages
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  tags:
+    - tailscale
+    - packages
+
+- name: Install Tailscale package
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+  tags:
+    - tailscale
+    - packages
+
+# Requirement 4.2, 4.3: Authenticate with Headscale using pre-auth key
+
+- name: Authenticate Tailscale with Headscale control server
+  ansible.builtin.command:
+    cmd: >
+      tailscale up
+      --login-server={{ tailscale_control_server }}
+      --authkey={{ tailscale_pre_auth_key }}
+      --accept-routes
+      --accept-dns=false
+    creates: /var/lib/tailscale/tailscaled.state
+  register: tailscale_auth
+  changed_when: tailscale_auth.rc == 0
+  tags:
+    - tailscale
+    - configuration
+
+# Requirement 4.4: Enable Tailscale service to start on boot
+
+- name: Enable Tailscale service
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+  tags:
+    - tailscale
+    - service
+
+# Requirement 4.5: Start Tailscale service
+
+- name: Start Tailscale service
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: started
+  tags:
+    - tailscale
+    - service

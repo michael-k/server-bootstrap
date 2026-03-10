@@ -1,0 +1,7 @@
+---
+# Handlers for tailscale role
+# Currently no handlers needed, but file included for consistency
+
+# Future handlers could include:
+# - Restart tailscaled service
+# - Reload tailscale configuration
