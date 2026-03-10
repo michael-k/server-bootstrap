@@ -220,7 +220,7 @@ The implementation follows a logical progression: project structure → core rol
     - Verify synchronization status after service start
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
   
-  - [ ] 12.4 Write property test for hostname configuration
+  - [-] 12.4 Write property test for hostname configuration
     - **Property 14: Hostname Configuration Persistence**
     - **Property 15: Hostname Configuration Skip**
     - **Validates: Requirements 6.1, 6.2, 6.3**
