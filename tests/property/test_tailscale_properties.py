@@ -483,13 +483,23 @@ class TestTailscaleConditionalExecutionProperties:
         if emergency_access_tasks_path.exists():
             emergency_access_content = emergency_access_tasks_path.read_text()
 
-            # Verify emergency script deployment is conditional on tailscale_enabled
-            assert "when: tailscale_enabled | bool" in emergency_access_content or (
-                "tailscale_enabled" in emergency_access_content
-            ), (
-                "Emergency script deployment must be conditional on tailscale_enabled "
+            # Verify emergency script deployment is conditional
+            # The role uses emergency_access_enabled which defaults to tailscale_enabled
+            assert "when: emergency_access_enabled | bool" in emergency_access_content, (
+                "Emergency script deployment must be conditional on emergency_access_enabled "
                 "(Requirement 9.8)"
             )
+
+            # Verify the defaults file links emergency_access_enabled to tailscale_enabled
+            emergency_defaults_path = Path("roles/emergency_access/defaults/main.yml")
+            if emergency_defaults_path.exists():
+                emergency_defaults_content = emergency_defaults_path.read_text()
+                assert "emergency_access_enabled:" in emergency_defaults_content, (
+                    "emergency_access_enabled must be defined in defaults"
+                )
+                assert "tailscale_enabled" in emergency_defaults_content, (
+                    "emergency_access_enabled must reference tailscale_enabled (Requirement 9.8)"
+                )
 
         # Property verified: The Tailscale role configuration ensures that:
         # - All Tailscale installation tasks are conditional on tailscale_enabled (4.6)

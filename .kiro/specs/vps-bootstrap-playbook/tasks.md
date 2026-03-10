@@ -157,7 +157,7 @@ The implementation follows a logical progression: project structure → core rol
     - Implement idempotency checks
     - _Requirements: 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
   
-  - [ ]* 9.3 Write property test for emergency script operations
+  - [x] 9.3 Write property test for emergency script operations
     - **Property 23: Emergency Script Unrestrict Operation**
     - **Property 24: Emergency Script Restore Operation**
     - **Property 25: Emergency Script Round-Trip Restoration**
