@@ -1,0 +1,3 @@
+---
+# Main tasks file for users role
+# Creates manual access user and Ansible automation user with appropriate configurations

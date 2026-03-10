@@ -1,0 +1,22 @@
+---
+# Default variables for users role
+# These can be overridden in inventory or playbook variables
+
+# Manual Access User Configuration (uid 1000)
+# Human administrator account with password and SSH key authentication
+manual_user_name: "admin"
+manual_user_uid: 1000
+manual_user_ssh_key_file: "~/.ssh/id_ed25519_admin.pub"
+manual_user_shell: "/bin/bash"
+manual_user_groups: []
+
+# Ansible User Configuration (uid 1999)
+# Automation account with SSH key-only authentication
+ansible_user_name: "ansible"
+ansible_user_uid: 1999
+ansible_user_ssh_key_file: "~/.ssh/id_ed25519_ansible.pub"
+ansible_user_shell: "/bin/bash"
+ansible_user_groups: []
+
+# SSH authorized_keys file permissions
+authorized_keys_mode: "0600"
