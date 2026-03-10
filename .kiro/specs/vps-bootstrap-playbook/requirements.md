@@ -19,6 +19,12 @@ The VPS Bootstrap Playbook is an Ansible playbook that prepares a fresh VPS for 
 - **Vault**: Ansible Vault for encrypted secret storage
 - **Pre_Auth_Key**: A pre-authentication key stored in Vault, used to register the node with the Control_Server
 - **Test_Suite**: Automated tests that verify the bootstrap configuration
+- **Fail2ban**: Intrusion prevention software that monitors log files and bans IPs with repeated failed login attempts
+- **Journald**: The systemd journal service for system logging
+- **Time_Sync_Service**: Network time synchronization service (chrony or systemd-timesyncd)
+- **Swap_File**: A file-based swap space for virtual memory
+- **Zram**: A compressed RAM block device that provides compressed swap in memory
+- **Zram_Device**: The block device created by zram (typically /dev/zram0)
 
 ## Requirements
 
@@ -154,7 +160,68 @@ The VPS Bootstrap Playbook is an Ansible playbook that prepares a fresh VPS for 
 7. THE Emergency_Script SHALL be idempotent (safe to re-run in either mode)
 8. WHERE Tailscale is disabled, THE Bootstrap_Playbook SHALL skip Emergency_Script deployment
 
-### Requirement 10: Configuration Testing
+### Requirement 10: Intrusion Prevention
+
+**User Story:** As a security administrator, I want fail2ban configured to block repeated failed login attempts, so that the server is protected from brute-force attacks.
+
+#### Acceptance Criteria
+
+1. THE Bootstrap_Playbook SHALL install fail2ban from the Debian repository
+2. THE Bootstrap_Playbook SHALL configure fail2ban to monitor SSHD logs
+3. THE Bootstrap_Playbook SHALL configure fail2ban to ban IPs after a configurable number of failed SSH authentication attempts
+4. THE Bootstrap_Playbook SHALL configure fail2ban ban duration as a configurable variable
+5. THE Bootstrap_Playbook SHALL configure fail2ban to work with NFTables
+6. THE Bootstrap_Playbook SHALL enable the fail2ban service to start on boot
+7. THE Bootstrap_Playbook SHALL start the fail2ban service
+
+### Requirement 11: System Logging Configuration
+
+**User Story:** As a system administrator, I want journald configured with appropriate retention settings, so that system logs are available for troubleshooting.
+
+#### Acceptance Criteria
+
+1. THE Bootstrap_Playbook SHALL configure journald to persist logs to disk
+2. THE Bootstrap_Playbook SHALL configure journald maximum disk usage as a configurable variable with a reasonable default
+3. THE Bootstrap_Playbook SHALL configure journald log retention time as a configurable variable with a reasonable default
+4. THE Bootstrap_Playbook SHALL restart the journald service after configuration changes
+
+### Requirement 12: Time Synchronization
+
+**User Story:** As a system administrator, I want time synchronization configured, so that system time is accurate for logs, certificates, and distributed systems.
+
+#### Acceptance Criteria
+
+1. THE Bootstrap_Playbook SHALL install and configure a Time_Sync_Service
+2. THE Bootstrap_Playbook SHALL configure the Time_Sync_Service with reliable NTP servers
+3. THE Bootstrap_Playbook SHALL enable the Time_Sync_Service to start on boot
+4. THE Bootstrap_Playbook SHALL start the Time_Sync_Service
+5. THE Bootstrap_Playbook SHALL verify time synchronization is active after service start
+
+### Requirement 13: Swap Configuration
+
+**User Story:** As a system administrator, I want swap space configured with optional compression, so that the system can handle memory pressure efficiently without crashing.
+
+#### Acceptance Criteria
+
+1. THE Bootstrap_Playbook SHALL accept zram enablement as an optional configurable variable
+2. THE Bootstrap_Playbook SHALL accept zram size as an optional configurable variable (as percentage of RAM or absolute size)
+3. WHERE zram is enabled, THE Bootstrap_Playbook SHALL install zram-tools or configure zram via systemd
+4. WHERE zram is enabled, THE Bootstrap_Playbook SHALL create a Zram_Device with the specified size
+5. WHERE zram is enabled, THE Bootstrap_Playbook SHALL configure the Zram_Device to use lz4 compression algorithm
+6. WHERE zram is enabled, THE Bootstrap_Playbook SHALL format the Zram_Device as swap space
+7. WHERE zram is enabled, THE Bootstrap_Playbook SHALL enable the Zram_Device as swap
+8. WHERE zram is enabled, THE Bootstrap_Playbook SHALL configure the Zram_Device to initialize on boot
+9. WHERE zram is enabled, THE Bootstrap_Playbook SHALL set swap priority for the Zram_Device higher than disk swap
+10. THE Bootstrap_Playbook SHALL accept disk swap size as an optional configurable variable
+11. WHERE disk swap size is configured, THE Bootstrap_Playbook SHALL create a Swap_File at /swapfile with the specified size
+12. WHERE disk swap size is configured, THE Bootstrap_Playbook SHALL set appropriate permissions on the Swap_File (0600)
+13. WHERE disk swap size is configured, THE Bootstrap_Playbook SHALL format the Swap_File as swap space
+14. WHERE disk swap size is configured, THE Bootstrap_Playbook SHALL enable the Swap_File
+15. WHERE disk swap size is configured, THE Bootstrap_Playbook SHALL add the Swap_File to /etc/fstab for persistence across reboots
+16. WHERE disk swap size is configured AND zram is enabled, THE Bootstrap_Playbook SHALL set swap priority for the Swap_File lower than the Zram_Device
+17. WHERE neither zram nor disk swap is configured, THE Bootstrap_Playbook SHALL skip swap configuration
+
+### Requirement 14: Configuration Testing
 
 **User Story:** As a system administrator, I want automated tests to verify the bootstrap configuration, so that I can confirm the server is properly configured.
 
@@ -189,9 +256,23 @@ The VPS Bootstrap Playbook is an Ansible playbook that prepares a fresh VPS for 
 27. THE Test_Suite SHALL verify NFTables allows loopback traffic
 28. THE Test_Suite SHALL verify only the configured SSH port is accessible through the firewall
 29. THE Test_Suite SHALL verify the system hostname matches the configured value when hostname is set
-30. THE Test_Suite SHALL report all verification results clearly with pass/fail status
+30. THE Test_Suite SHALL verify fail2ban service is active
+31. THE Test_Suite SHALL verify fail2ban service is enabled to start on boot
+32. THE Test_Suite SHALL verify fail2ban is monitoring SSHD
+33. THE Test_Suite SHALL verify journald is configured to persist logs to disk
+34. THE Test_Suite SHALL verify the Time_Sync_Service is active
+35. THE Test_Suite SHALL verify the Time_Sync_Service is enabled to start on boot
+36. THE Test_Suite SHALL verify time synchronization status is active
+37. WHERE zram is enabled, THE Test_Suite SHALL verify the Zram_Device exists
+38. WHERE zram is enabled, THE Test_Suite SHALL verify the Zram_Device is active as swap space
+39. WHERE zram is enabled, THE Test_Suite SHALL verify the Zram_Device compression algorithm is lz4
+40. WHERE zram is enabled, THE Test_Suite SHALL verify the Zram_Device has higher swap priority than disk swap
+41. WHERE disk swap is configured, THE Test_Suite SHALL verify the Swap_File exists at /swapfile
+42. WHERE disk swap is configured, THE Test_Suite SHALL verify the Swap_File is active as swap space
+43. WHERE disk swap is configured, THE Test_Suite SHALL verify the Swap_File is in /etc/fstab
+44. THE Test_Suite SHALL report all verification results clearly with pass/fail status
 
-### Requirement 11: Idempotency
+### Requirement 15: Idempotency
 
 **User Story:** As a system administrator, I want the playbook to be idempotent, so that running it multiple times produces consistent results without errors.
 
@@ -203,7 +284,7 @@ The VPS Bootstrap Playbook is an Ansible playbook that prepares a fresh VPS for 
 4. WHEN the Bootstrap_Playbook executes against an already-configured server, THE Bootstrap_Playbook SHALL report no changes for already-configured items
 5. WHEN the Bootstrap_Playbook executes against an already-configured server, THE Bootstrap_Playbook SHALL apply only configuration changes that differ from the current state
 
-### Requirement 12: Documentation
+### Requirement 16: Documentation
 
 **User Story:** As a developer, I want the project structured with modern Python tooling, so that dependencies and execution are managed consistently.
 
