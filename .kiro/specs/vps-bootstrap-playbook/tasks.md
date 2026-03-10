@@ -249,7 +249,7 @@ The implementation follows a logical progression: project structure → core rol
     - Add to /etc/fstab for persistence
     - _Requirements: 13.11, 13.12, 13.13, 13.14, 13.15, 13.16_
   
-  - [ ]* 13.4 Write property test for swap configuration
+  - [x] 13.4 Write property test for swap configuration
     - **Property 30: Zram Swap Configuration**
     - **Property 31: Disk Swap Configuration**
     - **Property 32: Swap Configuration Skip**
