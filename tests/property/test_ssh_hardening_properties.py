@@ -84,45 +84,93 @@ class TestSSHHardeningProperties:
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
+        template_lines = template_content.split('\n')
+
+        # Helper function to check for uncommented directive
+        def has_uncommented_directive(directive: str) -> bool:
+            """Check if directive exists and is not commented out."""
+            for line in template_lines:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    continue  # Skip commented lines
+                if directive in stripped:
+                    return True
+            return False
 
         # Verify Requirement 3.1: Password authentication disabled
-        assert "PasswordAuthentication no" in template_content, (
-            "Password authentication must be disabled globally"
+        assert has_uncommented_directive("PasswordAuthentication no"), (
+            "Password authentication must be disabled globally (uncommented)"
+        )
+        assert not has_uncommented_directive("PasswordAuthentication yes"), (
+            "Password authentication must NOT be enabled"
         )
 
         # Verify Requirement 3.2: Root login disabled
-        assert "PermitRootLogin no" in template_content, (
-            "Root login must be disabled"
+        assert has_uncommented_directive("PermitRootLogin no"), (
+            "Root login must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("PermitRootLogin yes"), (
+            "Root login must NOT be enabled"
+        )
+        assert not has_uncommented_directive("PermitRootLogin without-password"), (
+            "Root login must NOT be enabled (even without-password)"
+        )
+        assert not has_uncommented_directive("PermitRootLogin prohibit-password"), (
+            "Root login must NOT be enabled (even prohibit-password)"
         )
 
         # Verify Requirement 3.14: Public key authentication enabled
-        assert "PubkeyAuthentication yes" in template_content, (
-            "Public key authentication must be enabled"
+        assert has_uncommented_directive("PubkeyAuthentication yes"), (
+            "Public key authentication must be enabled (uncommented)"
+        )
+        assert not has_uncommented_directive("PubkeyAuthentication no"), (
+            "Public key authentication must NOT be disabled"
         )
 
         # Verify Requirement 3.18: Empty passwords disabled
-        assert "PermitEmptyPasswords no" in template_content, (
-            "Empty passwords must be disabled"
+        assert has_uncommented_directive("PermitEmptyPasswords no"), (
+            "Empty passwords must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("PermitEmptyPasswords yes"), (
+            "Empty passwords must NOT be enabled"
         )
 
         # Verify Requirement 3.6: X11 forwarding disabled
-        assert "X11Forwarding no" in template_content, (
-            "X11 forwarding must be disabled"
+        assert has_uncommented_directive("X11Forwarding no"), (
+            "X11 forwarding must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("X11Forwarding yes"), (
+            "X11 forwarding must NOT be enabled"
         )
 
         # Verify Requirement 3.7: TCP forwarding disabled
-        assert "AllowTcpForwarding no" in template_content, (
-            "TCP forwarding must be disabled"
+        assert has_uncommented_directive("AllowTcpForwarding no"), (
+            "TCP forwarding must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("AllowTcpForwarding yes"), (
+            "TCP forwarding must NOT be enabled"
         )
 
         # Verify Requirement 3.8: Agent forwarding disabled
-        assert "AllowAgentForwarding no" in template_content, (
-            "Agent forwarding must be disabled"
+        assert has_uncommented_directive("AllowAgentForwarding no"), (
+            "Agent forwarding must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("AllowAgentForwarding yes"), (
+            "Agent forwarding must NOT be enabled"
         )
 
         # Verify Requirement 3.9: Tunneling disabled
-        assert "PermitTunnel no" in template_content, (
-            "Tunneling must be disabled"
+        assert has_uncommented_directive("PermitTunnel no"), (
+            "Tunneling must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("PermitTunnel yes"), (
+            "Tunneling must NOT be enabled"
+        )
+        assert not has_uncommented_directive("PermitTunnel point-to-point"), (
+            "Tunneling must NOT be enabled (even point-to-point)"
+        )
+        assert not has_uncommented_directive("PermitTunnel ethernet"), (
+            "Tunneling must NOT be enabled (even ethernet)"
         )
 
         # Read the defaults to verify cryptographic algorithm restrictions
@@ -171,35 +219,41 @@ class TestSSHHardeningProperties:
             "MACs must include hmac-sha2-256-etm@openssh.com (ETM)"
         )
 
-        # Verify the template uses the algorithm variables
-        assert "KexAlgorithms {{ ssh_kex_algorithms | join(',') }}" in template_content, (
-            "Template must use ssh_kex_algorithms variable"
+        # Verify the template uses the algorithm variables (uncommented)
+        assert has_uncommented_directive("KexAlgorithms {{ ssh_kex_algorithms | join(',') }}"), (
+            "Template must use ssh_kex_algorithms variable (uncommented)"
         )
-        assert "Ciphers {{ ssh_ciphers | join(',') }}" in template_content, (
-            "Template must use ssh_ciphers variable"
+        assert has_uncommented_directive("Ciphers {{ ssh_ciphers | join(',') }}"), (
+            "Template must use ssh_ciphers variable (uncommented)"
         )
-        assert "MACs {{ ssh_macs | join(',') }}" in template_content, (
-            "Template must use ssh_macs variable"
-        )
-
-        # Verify the template uses the port variable
-        assert "Port {{ ssh_port }}" in template_content, (
-            "Template must use ssh_port variable"
+        assert has_uncommented_directive("MACs {{ ssh_macs | join(',') }}"), (
+            "Template must use ssh_macs variable (uncommented)"
         )
 
-        # Verify the template uses the allowed users variable
-        assert "AllowUsers {{ ssh_allowed_users | join(' ') }}" in template_content, (
-            "Template must use ssh_allowed_users variable"
+        # Verify the template uses the port variable (uncommented)
+        assert has_uncommented_directive("Port {{ ssh_port }}"), (
+            "Template must use ssh_port variable (uncommented)"
         )
 
-        # Verify additional security settings are present
-        assert "StrictModes yes" in template_content, (
-            "StrictModes must be enabled for additional security"
+        # Verify the template uses the allowed users variable (uncommented)
+        assert has_uncommented_directive("AllowUsers {{ ssh_allowed_users | join(' ') }}"), (
+            "Template must use ssh_allowed_users variable (uncommented)"
+        )
+
+        # Verify additional security settings are present (uncommented)
+        assert has_uncommented_directive("StrictModes yes"), (
+            "StrictModes must be enabled for additional security (uncommented)"
+        )
+        assert not has_uncommented_directive("StrictModes no"), (
+            "StrictModes must NOT be disabled"
         )
 
         # Verify ChallengeResponseAuthentication is disabled (prevents keyboard-interactive auth)
-        assert "ChallengeResponseAuthentication no" in template_content, (
-            "ChallengeResponseAuthentication must be disabled"
+        assert has_uncommented_directive("ChallengeResponseAuthentication no"), (
+            "ChallengeResponseAuthentication must be disabled (uncommented)"
+        )
+        assert not has_uncommented_directive("ChallengeResponseAuthentication yes"), (
+            "ChallengeResponseAuthentication must NOT be enabled"
         )
 
         # Read the tasks to verify configuration deployment
@@ -297,25 +351,37 @@ class TestSSHSessionSecurityProperties:
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
+        template_lines = template_content.split('\n')
+
+        # Helper function to check for uncommented directive
+        def has_uncommented_directive(directive: str) -> bool:
+            """Check if directive exists and is not commented out."""
+            for line in template_lines:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    continue  # Skip commented lines
+                if directive in stripped:
+                    return True
+            return False
 
         # Verify Requirement 3.15: MaxAuthTries is configured
-        assert "MaxAuthTries {{ ssh_max_auth_tries }}" in template_content, (
-            "MaxAuthTries must be configured using ssh_max_auth_tries variable"
+        assert has_uncommented_directive("MaxAuthTries {{ ssh_max_auth_tries }}"), (
+            "MaxAuthTries must be configured using ssh_max_auth_tries variable (uncommented)"
         )
 
         # Verify Requirement 3.16: LoginGraceTime is configured
-        assert "LoginGraceTime {{ ssh_login_grace_time }}" in template_content, (
-            "LoginGraceTime must be configured using ssh_login_grace_time variable"
+        assert has_uncommented_directive("LoginGraceTime {{ ssh_login_grace_time }}"), (
+            "LoginGraceTime must be configured using ssh_login_grace_time variable (uncommented)"
         )
 
         # Verify Requirement 3.17: ClientAliveInterval is configured
-        assert "ClientAliveInterval {{ ssh_client_alive_interval }}" in template_content, (
-            "ClientAliveInterval must be configured using ssh_client_alive_interval variable"
+        assert has_uncommented_directive("ClientAliveInterval {{ ssh_client_alive_interval }}"), (
+            "ClientAliveInterval must be configured using ssh_client_alive_interval variable (uncommented)"
         )
 
         # Verify Requirement 3.17: ClientAliveCountMax is configured
-        assert "ClientAliveCountMax {{ ssh_client_alive_count_max }}" in template_content, (
-            "ClientAliveCountMax must be configured using ssh_client_alive_count_max variable"
+        assert has_uncommented_directive("ClientAliveCountMax {{ ssh_client_alive_count_max }}"), (
+            "ClientAliveCountMax must be configured using ssh_client_alive_count_max variable (uncommented)"
         )
 
         # Read the defaults to verify reasonable default values
@@ -419,10 +485,22 @@ class TestSSHPortConfigurationProperties:
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
+        template_lines = template_content.split('\n')
+
+        # Helper function to check for uncommented directive
+        def has_uncommented_directive(directive: str) -> bool:
+            """Check if directive exists and is not commented out."""
+            for line in template_lines:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    continue  # Skip commented lines
+                if directive in stripped:
+                    return True
+            return False
 
         # Verify Requirement 3.12: Port is configured using variable
-        assert "Port {{ ssh_port }}" in template_content, (
-            "SSH port must be configured using ssh_port variable"
+        assert has_uncommented_directive("Port {{ ssh_port }}"), (
+            "SSH port must be configured using ssh_port variable (uncommented)"
         )
 
         # Read the defaults to verify default port value
@@ -482,10 +560,22 @@ class TestSSHAccessRestrictionProperties:
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
+        template_lines = template_content.split('\n')
+
+        # Helper function to check for uncommented directive
+        def has_uncommented_directive(directive: str) -> bool:
+            """Check if directive exists and is not commented out."""
+            for line in template_lines:
+                stripped = line.strip()
+                if stripped.startswith('#'):
+                    continue  # Skip commented lines
+                if directive in stripped:
+                    return True
+            return False
 
         # Verify Requirement 3.10: AllowUsers directive is configured
-        assert "AllowUsers {{ ssh_allowed_users | join(' ') }}" in template_content, (
-            "AllowUsers directive must be configured using ssh_allowed_users variable"
+        assert has_uncommented_directive("AllowUsers {{ ssh_allowed_users | join(' ') }}"), (
+            "AllowUsers directive must be configured using ssh_allowed_users variable (uncommented)"
         )
 
         # Read the defaults to verify allowed users configuration
