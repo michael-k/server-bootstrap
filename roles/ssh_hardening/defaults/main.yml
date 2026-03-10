@@ -1,0 +1,43 @@
+---
+# SSH Hardening Role - Default Variables
+
+# SSH port configuration (Requirement 3.11)
+ssh_port: 22
+
+# SSH session security configuration (Requirements 3.15, 3.16, 3.17)
+ssh_max_auth_tries: 3
+ssh_login_grace_time: "30s"
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# SSH algorithm restrictions (Requirements 3.3, 3.4, 3.5)
+# Modern elliptic curve key exchange algorithms only
+ssh_kex_algorithms:
+  - curve25519-sha256
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group16-sha512
+  - diffie-hellman-group18-sha512
+
+# Authenticated encryption (AEAD) ciphers only
+ssh_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+
+# Encrypt-Then-MAC variants only
+ssh_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+
+# User access restriction (Requirement 3.10)
+# These should be overridden with actual usernames from inventory
+ssh_allowed_users:
+  - "{{ manual_user_name }}"
+  - "{{ ansible_user_name }}"
+
+# Interface restriction (Requirements 5.2, 5.3)
+# When Tailscale is enabled, SSH listens only on Tailscale interface
+# When disabled, SSH listens on all interfaces
+ssh_listen_addresses:
+  - "{{ tailscale_ip if tailscale_enabled else '0.0.0.0' }}"
+  - "{{ tailscale_ipv6 if tailscale_enabled else '::' }}"

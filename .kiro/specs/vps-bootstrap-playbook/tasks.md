@@ -44,7 +44,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Validates: Requirements 1.4, 2.3**
 
 - [ ] 3. Implement ssh_hardening role
-  - [ ] 3.1 Create ssh_hardening role structure
+  - [x] 3.1 Create ssh_hardening role structure
     - Define default variables for SSH port, timeouts, algorithm restrictions
     - Create sshd_config.j2 template with hardened settings
     - _Requirements: 3.11, 3.15, 3.16, 3.17_
