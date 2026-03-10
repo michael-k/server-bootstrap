@@ -43,7 +43,7 @@ The implementation follows a logical progression: project structure → core rol
     - **Property 3: Sudo Privilege Configuration**
     - **Validates: Requirements 1.4, 2.3**
 
-- [ ] 3. Implement ssh_hardening role
+- [x] 3. Implement ssh_hardening role
   - [x] 3.1 Create ssh_hardening role structure
     - Define default variables for SSH port, timeouts, algorithm restrictions
     - Create sshd_config.j2 template with hardened settings
