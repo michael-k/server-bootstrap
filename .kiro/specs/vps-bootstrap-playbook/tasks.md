@@ -31,7 +31,7 @@ The implementation follows a logical progression: project structure → core rol
     - Deploy SSH public keys to authorized_keys with mode 0600
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.7, 2.8_
   
-  - [ ]* 2.4 Write property test for user creation
+  - [x] 2.4 Write property test for user creation
     - **Property 1: User Account Creation with Fixed UIDs**
     - **Validates: Requirements 1.1, 1.2, 2.1, 2.2**
   
