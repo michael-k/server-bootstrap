@@ -1,3 +1,59 @@
 ---
 # Fail2ban Role - Main Tasks
-# This file will be populated in task 10.2
+# Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7
+
+- name: Install fail2ban package
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+    update_cache: true
+  tags:
+    - fail2ban
+    - security
+  # Requirement 10.1: Install fail2ban from Debian repository
+
+- name: Ensure fail2ban configuration directory exists
+  ansible.builtin.file:
+    path: /etc/fail2ban
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  tags:
+    - fail2ban
+    - security
+
+- name: Deploy fail2ban jail configuration
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart fail2ban
+  tags:
+    - fail2ban
+    - security
+  # Requirements:
+  # 10.2: Configure fail2ban to monitor SSHD logs
+  # 10.3: Configure max_retry and find_time
+  # 10.4: Configure ban_time
+  # 10.5: Configure NFTables integration via banaction
+
+- name: Enable fail2ban service
+  ansible.builtin.systemd:
+    name: fail2ban
+    enabled: true
+  tags:
+    - fail2ban
+    - security
+  # Requirement 10.6: Enable fail2ban service to start on boot
+
+- name: Start fail2ban service
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+  tags:
+    - fail2ban
+    - security
+  # Requirement 10.7: Start fail2ban service
