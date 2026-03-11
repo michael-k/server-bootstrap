@@ -19,3 +19,10 @@ firewall_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
 # WireGuard port for Tailscale VPN traffic (Requirement 8.9)
 # Tailscale uses UDP port 41641 by default
 firewall_wireguard_port: 41641
+
+# Port knocking configuration (active only when Tailscale is disabled)
+# When enabled, SSH is hidden behind a knock sequence
+firewall_port_knocking_enabled: "{{ port_knocking_enabled | default(true) }}"
+firewall_port_knocking_sequence: "{{ port_knocking_sequence | default([7000, 8500, 9100]) }}"
+firewall_port_knocking_timeout: "{{ port_knocking_timeout | default(30) }}"
+firewall_port_knocking_stage_timeout: "{{ port_knocking_stage_timeout | default(5) }}"
