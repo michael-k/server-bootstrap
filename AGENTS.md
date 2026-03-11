@@ -2,6 +2,17 @@
 
 This document contains instructions for AI agents working on this project.
 
+## Project Documentation
+
+All project specifications are located in `.kiro/specs/vps-bootstrap-playbook/`:
+
+- **[prompt.md](.kiro/specs/vps-bootstrap-playbook/prompt.md)** - Original project prompt and goals
+- **[requirements.md](.kiro/specs/vps-bootstrap-playbook/requirements.md)** - Complete requirements with user stories and acceptance criteria
+- **[design.md](.kiro/specs/vps-bootstrap-playbook/design.md)** - Technical architecture, component design, and data models
+- **[tasks.md](.kiro/specs/vps-bootstrap-playbook/tasks.md)** - Implementation task breakdown with status tracking
+
+Only read these files if you're looking for specific information.  They are very long and information heavy.
+
 ## Command Execution Rules
 
 ### CRITICAL: Always Prefer `make` Targets
@@ -167,7 +178,7 @@ grep pattern file.txt
 
 ## Summary
 
-**Golden Rules**: 
+**Golden Rules**:
 1. **ALWAYS prefer `make` targets when they exist** - they provide consistency and simplicity
 2. **NEVER use `pytest` or `ruff` directly** - always use `make test*` and `make python-lint*`
 3. **NEVER use `ansible-lint` directly** - always use `make ansible-lint*`
