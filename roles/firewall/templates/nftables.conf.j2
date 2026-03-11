@@ -12,6 +12,16 @@ flush ruleset
 
 # Define table for both IPv4 and IPv6 (inet family)
 table inet filter {
+{% if not (firewall_tailscale_enabled | bool) and (firewall_port_knocking_enabled | bool) %}
+    # Port knocking sets — track knock sequence progress per source IP
+    # Sets must be at table level (outside chains) per NFTables syntax
+{% for af, addr_type in [('4', 'ipv4_addr'), ('6', 'ipv6_addr')] %}
+    set knock{{ af }}_stage1 { type {{ addr_type }}; flags timeout; timeout {{ firewall_port_knocking_stage_timeout }}s; }
+    set knock{{ af }}_stage2 { type {{ addr_type }}; flags timeout; timeout {{ firewall_port_knocking_stage_timeout }}s; }
+    set knock{{ af }}_passed { type {{ addr_type }}; flags timeout; timeout {{ firewall_port_knocking_timeout }}s; }
+{% endfor %}
+
+{% endif %}
     # Input chain - handles incoming traffic
     # Default policy: drop (Requirement 8.5)
     chain input {
@@ -30,19 +40,36 @@ table inet filter {
         ip protocol icmp accept
         ip6 nexthdr icmpv6 accept
 
-{% if firewall_tailscale_enabled %}
+{% if firewall_tailscale_enabled | bool %}
         # Tailscale VPN is enabled - restrict SSH to Tailscale interface only
         # (Requirements 8.7, 8.9)
-        
+
         # Allow SSH only from Tailscale interface
         iifname "{{ firewall_tailscale_interface }}" tcp dport {{ firewall_ssh_port }} accept
-        
+
         # Allow Tailscale WireGuard traffic (UDP port {{ firewall_wireguard_port }})
         # Required for Tailscale VPN to function
         udp dport {{ firewall_wireguard_port }} accept
+{% elif firewall_port_knocking_enabled | bool %}
+        # Port knocking is enabled - SSH only after correct knock sequence
+        # Knock sequence: {{ firewall_port_knocking_sequence | join(' -> ') }}
+{% for af, saddr in [('4', 'ip saddr'), ('6', 'ip6 saddr')] %}
+
+        # IPv{{ af }} knock sequence
+        tcp dport {{ firewall_port_knocking_sequence[0] }} add @knock{{ af }}_stage1 { {{ saddr }} }
+        tcp dport {{ firewall_port_knocking_sequence[1] }} {{ saddr }} @knock{{ af }}_stage1 add @knock{{ af }}_stage2 { {{ saddr }} }
+        tcp dport {{ firewall_port_knocking_sequence[2] }} {{ saddr }} @knock{{ af }}_stage2 add @knock{{ af }}_passed { {{ saddr }} }
+{% endfor %}
+
+        # Drop knock port packets after set processing
+        tcp dport { {{ firewall_port_knocking_sequence | join(', ') }} } drop
+
+        # SSH access (only for IPs that completed knock sequence)
+        tcp dport {{ firewall_ssh_port }} ip saddr @knock4_passed accept
+        tcp dport {{ firewall_ssh_port }} ip6 saddr @knock6_passed accept
 {% else %}
-        # Tailscale VPN is disabled - allow SSH from all interfaces
-        # (Requirement 8.8)
+        # Tailscale VPN is disabled, port knocking is disabled
+        # Allow SSH from all interfaces (Requirement 8.8)
         tcp dport {{ firewall_ssh_port }} accept
 {% endif %}
 
@@ -55,7 +82,7 @@ table inet filter {
     # Default policy: drop (Requirement 8.6)
     chain forward {
         type filter hook forward priority 0; policy drop;
-        
+
         # No forwarding rules needed for this configuration
         # All forwarding is blocked by default
     }
