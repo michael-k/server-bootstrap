@@ -265,7 +265,7 @@ The implementation follows a logical progression: project structure → core rol
     - Add pre-flight checks for required variables and Debian stable
     - _Requirements: All requirements (orchestration)_
   
-  - [ ] 15.2 Create example inventory files
+  - [x] 15.2 Create example inventory files
     - Create inventory/production.example with host examples
     - Create inventory/group_vars/all.yml.example with all configurable variables
     - Document variable purposes and defaults

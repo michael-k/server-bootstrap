@@ -1,0 +1,205 @@
+---
+# Group Variables - All Hosts
+# Copy this file to inventory/group_vars/all.yml and customize for your environment
+#
+# This file contains all configurable variables for the VPS Bootstrap Playbook.
+# Variables marked as REQUIRED must be set. Variables marked as OPTIONAL have
+# sensible defaults and can be omitted or customized as needed.
+
+# ==============================================================================
+# USER CONFIGURATION (REQUIRED)
+# ==============================================================================
+
+# Manual Access User Configuration
+# This user account is for human administrator access with sudo privileges
+manual_user_name: "admin"
+# Password must be a hashed password from vault (use mkpasswd or Python crypt)
+manual_user_password: "{{ vault_manual_user_password }}"
+# Path to SSH public key file on the Ansible controller
+manual_user_ssh_key_file: "~/.ssh/id_ed25519_admin.pub"
+
+# Ansible Automation User Configuration
+# This user account is for automated Ansible management with passwordless sudo
+ansible_user_name: "ansible"
+# Path to SSH public key file on the Ansible controller
+ansible_user_ssh_key_file: "~/.ssh/id_ed25519_ansible.pub"
+
+# ==============================================================================
+# SSH HARDENING CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# SSH listening port
+# Default: 22
+# Purpose: Change if you want SSH on a non-standard port
+ssh_port: 22
+
+# Maximum authentication attempts before disconnecting
+# Default: 3
+# Purpose: Limit brute-force attack attempts
+ssh_max_auth_tries: 3
+
+# Time allowed for successful authentication
+# Default: "30s"
+# Purpose: Reduce exposure window for authentication attempts
+ssh_login_grace_time: "30s"
+
+# Interval between keepalive messages (seconds)
+# Default: 300 (5 minutes)
+# Purpose: Detect and close dead connections
+ssh_client_alive_interval: 300
+
+# Number of keepalive messages before disconnect
+# Default: 2
+# Purpose: Allow temporary network interruptions before closing connection
+ssh_client_alive_count_max: 2
+
+# ==============================================================================
+# TAILSCALE VPN CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# Enable Tailscale VPN integration
+# Default: false
+# Purpose: When enabled, SSH access will be restricted to the Tailscale interface
+#          and an emergency access script will be deployed to /root/
+tailscale_enabled: false
+
+# Headscale control server URL (required if tailscale_enabled is true)
+# Purpose: Self-hosted Tailscale control server for VPN coordination
+# Example: "https://headscale.example.com"
+# tailscale_control_server: ""
+
+# Tailscale pre-authentication key (required if tailscale_enabled is true)
+# Purpose: Authenticate the VPS with Headscale without manual approval
+# Store in vault: vault_tailscale_pre_auth_key
+# tailscale_pre_auth_key: "{{ vault_tailscale_pre_auth_key }}"
+
+# Tailscale network interface name
+# Default: "tailscale0"
+# Purpose: Interface name for SSH restriction and firewall rules
+# tailscale_interface: "tailscale0"
+
+# ==============================================================================
+# FIREWALL CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# Firewall rules are automatically derived from other configuration variables:
+# - SSH port from ssh_port
+# - Tailscale interface from tailscale_interface (when tailscale_enabled is true)
+# - SSH access restriction based on tailscale_enabled flag
+#
+# No additional firewall-specific variables are required.
+
+# ==============================================================================
+# FAIL2BAN INTRUSION PREVENTION (OPTIONAL)
+# ==============================================================================
+
+# Maximum failed authentication attempts before banning an IP
+# Default: 5
+# Purpose: Balance between security and legitimate user mistakes
+fail2ban_max_retry: 5
+
+# Duration to ban an IP address
+# Default: "10m"
+# Purpose: Temporary ban to deter automated attacks
+# Format: time with unit (s=seconds, m=minutes, h=hours, d=days)
+fail2ban_ban_time: "10m"
+
+# Time window for counting failed attempts
+# Default: "10m"
+# Purpose: Failed attempts within this window count toward max_retry
+# Format: time with unit (s=seconds, m=minutes, h=hours, d=days)
+fail2ban_find_time: "10m"
+
+# ==============================================================================
+# SYSTEM LOGGING CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# Maximum disk space for journal logs
+# Default: "500M"
+# Purpose: Prevent logs from consuming excessive disk space
+# Format: size with unit (K, M, G)
+journald_max_disk_usage: "500M"
+
+# Maximum time to retain journal logs
+# Default: "1month"
+# Purpose: Balance between log availability and disk usage
+# Format: time with unit (day, week, month, year)
+journald_max_retention_time: "1month"
+
+# ==============================================================================
+# TIME SYNCHRONIZATION CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# Time synchronization service to use
+# Default: "chrony"
+# Options: "chrony" (recommended, more accurate) or "timesyncd" (simpler)
+# Purpose: Ensure accurate system time for logs, certificates, and distributed systems
+time_sync_service: "chrony"
+
+# NTP servers for time synchronization
+# Default: Debian pool NTP servers
+# Purpose: Reliable time sources for synchronization
+ntp_servers:
+  - "0.debian.pool.ntp.org"
+  - "1.debian.pool.ntp.org"
+  - "2.debian.pool.ntp.org"
+  - "3.debian.pool.ntp.org"
+
+# ==============================================================================
+# SWAP CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# Enable zram compressed swap in memory
+# Default: false
+# Purpose: Provide fast compressed swap space in RAM
+# Recommended: Enable for VPS with limited RAM (< 2GB)
+zram_enabled: false
+
+# Zram device size (required if zram_enabled is true)
+# Format: Percentage of RAM (e.g., "50%") or absolute size (e.g., "2G")
+# Purpose: Allocate memory for compressed swap
+# Recommended: 50% of RAM for systems with < 2GB RAM
+# zram_size: "50%"
+
+# Disk swap file size
+# Default: "" (disabled)
+# Format: Size with unit (e.g., "2G", "4G") or empty string to disable
+# Purpose: Provide traditional disk-based swap space
+# Recommended: 1-2x RAM for systems with < 2GB RAM, or empty for larger systems
+disk_swap_size: ""
+
+# Swap Priority Notes:
+# - Zram swap (if enabled): priority 100 (faster, accessed first)
+# - Disk swap (if enabled): priority 10 (slower, accessed second)
+# - Both can be enabled simultaneously for layered swap strategy
+
+# ==============================================================================
+# HOSTNAME CONFIGURATION (OPTIONAL)
+# ==============================================================================
+
+# System hostname
+# Default: "" (skip hostname configuration)
+# Purpose: Set a meaningful hostname for the VPS
+# Example: "vps-prod-01" or "web-server-01"
+# Leave empty to keep the existing hostname
+system_hostname: ""
+
+# ==============================================================================
+# SYSTEM UPDATES CONFIGURATION
+# ==============================================================================
+
+# System updates are always performed (apt update && apt upgrade)
+# No configuration variables are required
+# The playbook will notify if a reboot is required after updates
+
+# ==============================================================================
+# EMERGENCY ACCESS CONFIGURATION
+# ==============================================================================
+
+# Emergency access script is automatically deployed when tailscale_enabled is true
+# No additional configuration variables are required
+# The script will be available at /root/emergency-ssh-access.sh on the target VPS
+#
+# Usage:
+#   /root/emergency-ssh-access.sh           # Unrestrict SSH (allow from all interfaces)
+#   /root/emergency-ssh-access.sh --restore # Restore SSH restriction (Tailscale only)

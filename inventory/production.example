@@ -1,0 +1,34 @@
+---
+# Production Inventory Example
+# Copy this file to production and customize for your production VPS servers
+#
+# Usage:
+#   ansible-playbook -i inventory/production site.yml --ask-vault-pass
+
+all:
+  hosts:
+    # Single VPS example
+    vps-prod-01:
+      ansible_host: 203.0.113.10
+      ansible_user: root
+      # Use SSH key for initial connection (recommended)
+      ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+      # Or use password from vault (less secure)
+      # ansible_ssh_pass: "{{ vault_root_password }}"
+    
+    # Multiple VPS example
+    # vps-prod-02:
+    #   ansible_host: 203.0.113.11
+    #   ansible_user: root
+    #   ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+    # 
+    # vps-prod-03:
+    #   ansible_host: 203.0.113.12
+    #   ansible_user: root
+    #   ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+
+  # Variables can be defined here or in group_vars/all.yml
+  # See inventory/group_vars/all.yml.example for all available options
+  vars:
+    # Load encrypted secrets from vault
+    vault_file: "{{ playbook_dir }}/inventory/vault.yml"
