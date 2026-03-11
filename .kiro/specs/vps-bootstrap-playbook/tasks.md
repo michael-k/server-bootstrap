@@ -309,7 +309,7 @@ The implementation follows a logical progression: project structure → core rol
     - Configure pytest with hypothesis settings (min 100 examples)
     - _Requirements: Testing strategy from design_
   
-  - [ ] 17.2 Implement property tests for user management
+  - [x] 17.2 Implement property tests for user management
     - Property 1: User creation with fixed UIDs
     - Property 2: SSH key deployment and permissions
     - Property 3: Sudo privilege configuration
