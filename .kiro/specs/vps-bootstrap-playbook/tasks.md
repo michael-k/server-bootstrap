@@ -415,7 +415,7 @@ The implementation follows a logical progression: project structure → core rol
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 20. Documentation and final integration
-  - [ ] 20.1 Complete README.md
+  - [x] 20.1 Complete README.md
     - Document all configurable variables with descriptions and defaults
     - Document prerequisites (uv, Ansible, SSH keys)
     - Document Vault setup and secret management
