@@ -333,7 +333,7 @@ The implementation follows a logical progression: project structure → core rol
     - Property 17-21: NFTables configuration properties
     - _Requirements: 4.1-4.6, 5.1-5.3, 8.1-8.11_
   
-  - [ ] 17.5 Implement property tests for emergency access
+  - [x] 17.5 Implement property tests for emergency access
     - Property 22: Emergency script deployment
     - Property 23: Emergency script unrestrict operation
     - Property 24: Emergency script restore operation
