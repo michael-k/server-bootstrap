@@ -356,54 +356,54 @@ The implementation follows a logical progression: project structure → core rol
     - Property 34: Configuration verification round-trip
     - _Requirements: 6.1-6.3, 7.1-7.4, 15.3-15.5, 14.1-14.44_
 
-- [ ] 18. Implement unit test suite
-  - [ ] 18.1 Create tests/unit/ directory structure
+- [-] 18. Implement unit test suite
+  - [x] 18.1 Create tests/unit/ directory structure
     - Create test files for each role
     - Configure pytest for unit test execution
     - _Requirements: Testing strategy from design_
   
-  - [ ] 18.2 Write unit tests for user management
+  - [~] 18.2 Write unit tests for user management
     - Test specific username creation
     - Test SSH key deployment with specific key content
     - Test sudo configuration file content
     - Test authorized_keys permissions
     - _Requirements: 1.1-1.8, 2.1-2.8_
   
-  - [ ] 18.3 Write unit tests for SSH hardening
+  - [~] 18.3 Write unit tests for SSH hardening
     - Test specific SSHD configuration directives
     - Test algorithm restriction lists
     - Test AllowUsers directive with specific users
     - Test service restart handler
     - _Requirements: 3.1-3.18_
   
-  - [ ] 18.4 Write unit tests for Tailscale
+  - [~] 18.4 Write unit tests for Tailscale
     - Test installation when enabled
     - Test skip when disabled
     - Test connectivity verification logic
     - _Requirements: 4.1-4.6, 5.1-5.3_
   
-  - [ ] 18.5 Write unit tests for firewall
+  - [~] 18.5 Write unit tests for firewall
     - Test NFTables rule structure
     - Test IPv4 and IPv6 rule parity
     - Test conditional SSH access rules
     - Test default policies
     - _Requirements: 8.1-8.11_
   
-  - [ ] 18.6 Write unit tests for emergency script
+  - [~] 18.6 Write unit tests for emergency script
     - Test script generation with specific variables
     - Test unrestrict mode sed commands
     - Test restore mode sed commands
     - Test service restart commands
     - _Requirements: 9.1-9.8_
   
-  - [ ] 18.7 Write unit tests for system services
+  - [~] 18.7 Write unit tests for system services
     - Test fail2ban jail configuration
     - Test journald configuration values
     - Test time sync service selection
     - Test swap priority values
     - _Requirements: 10.1-10.7, 11.1-11.4, 12.1-12.5, 13.1-13.17_
   
-  - [ ] 18.8 Write integration tests
+  - [~] 18.8 Write integration tests
     - Test full bootstrap execution on test VM
     - Test playbook on fresh system (password auth)
     - Test playbook on fresh system (SSH key auth)
