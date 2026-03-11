@@ -13,6 +13,7 @@
         "make python-lint",
         "make python-lint 2>&1",
         "make python-lint-fix",
+        "make test",
         "make test-integration",
         "make test-property",
         "make test-unit",

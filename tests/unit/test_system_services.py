@@ -245,7 +245,9 @@ class TestTimeSyncServiceSelection:
     def test_chrony_has_all_four_servers(self, ntp_servers):
         """Req 12.2: chrony.conf must include all configured NTP servers."""
         config = self.render_chrony(ntp_servers)
-        assert config.count("pool ") == 4
+        # Count actual pool directives (lines starting with "pool ")
+        pool_count = sum(1 for line in config.split('\n') if line.strip().startswith('pool '))
+        assert pool_count == 4
 
     def test_chrony_custom_servers(self):
         """Req 12.2: Custom NTP servers are rendered in chrony.conf."""
