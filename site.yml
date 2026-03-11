@@ -96,45 +96,49 @@
 
   # Roles execute in logical order to build up the secure configuration
   roles:
-    # 1. Update system packages first to ensure security patches are applied
+    # Update system packages first to ensure security patches are applied
     - role: system_updates
       tags: ["system_updates", "updates"]
 
-    # 2. Configure hostname and time synchronization
+    # Harden filesystem mount options (noexec,nosuid,nodev on tmp directories)
+    - role: filesystem_hardening
+      tags: ["filesystem_hardening", "filesystem", "hardening", "security"]
+
+    # Configure hostname and time synchronization
     - role: system_config
       tags: ["system_config", "hostname", "time"]
 
-    # 3. Create user accounts for future access
+    # Create user accounts for future access
     - role: users
       tags: ["users", "access"]
 
-    # 4. Harden SSH configuration (but don't restrict interface yet)
+    # Harden SSH configuration (but don't restrict interface yet)
     - role: ssh_hardening
       tags: ["ssh", "hardening", "access"]
 
-    # 5. Install and configure Tailscale VPN (if enabled)
+    # Install and configure Tailscale VPN (if enabled)
     - role: tailscale
       tags: ["tailscale", "vpn", "network"]
       when: tailscale_enabled | default(false) | bool
 
-    # 6. Configure firewall rules based on Tailscale status
+    # Configure firewall rules based on Tailscale status
     - role: firewall
       tags: ["firewall", "network", "security"]
 
-    # 7. Deploy emergency access script (if Tailscale enabled)
+    # Deploy emergency access script (if Tailscale enabled)
     - role: emergency_access
       tags: ["emergency", "access"]
       when: tailscale_enabled | default(false) | bool
 
-    # 8. Configure intrusion prevention
+    # Configure intrusion prevention
     - role: fail2ban
       tags: ["fail2ban", "security"]
 
-    # 9. Configure system logging
+    # Configure system logging
     - role: logging
       tags: ["logging", "journald"]
 
-    # 10. Configure swap space (if enabled)
+    # Configure swap space (if enabled)
     - role: swap
       tags: ["swap", "memory"]
       when: (zram_enabled | default(false) | bool) or (disk_swap_size | default('') | length > 0)
