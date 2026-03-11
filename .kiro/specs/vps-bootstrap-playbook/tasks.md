@@ -403,7 +403,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test swap priority values
     - _Requirements: 10.1-10.7, 11.1-11.4, 12.1-12.5, 13.1-13.17_
   
-  - [~] 18.8 Write integration tests
+  - [x] 18.8 Write integration tests
     - Test full bootstrap execution on test VM
     - Test playbook on fresh system (password auth)
     - Test playbook on fresh system (SSH key auth)
