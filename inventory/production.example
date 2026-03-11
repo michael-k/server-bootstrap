@@ -6,8 +6,10 @@
 #   ansible-playbook -i inventory/production site.yml --ask-vault-pass
 
 all:
+  # ==============================================================================
+  # SIMPLE EXAMPLE: Single VPS or ungrouped hosts
+  # ==============================================================================
   hosts:
-    # Single VPS example
     vps-prod-01:
       ansible_host: 203.0.113.10
       ansible_user: root
@@ -15,20 +17,53 @@ all:
       ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
       # Or use password from vault (less secure)
       # ansible_ssh_pass: "{{ vault_root_password }}"
-    
-    # Multiple VPS example
-    # vps-prod-02:
-    #   ansible_host: 203.0.113.11
-    #   ansible_user: root
-    #   ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
-    # 
-    # vps-prod-03:
-    #   ansible_host: 203.0.113.12
-    #   ansible_user: root
-    #   ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
 
-  # Variables can be defined here or in group_vars/all.yml
+  # ==============================================================================
+  # ADVANCED EXAMPLE: Multiple VPS organized into groups
+  # ==============================================================================
+  # Uncomment and customize this section if you want to organize hosts into groups
+  # and apply different configurations to different groups
+  #
+  # children:
+  #   webservers:
+  #     hosts:
+  #       web-01:
+  #         ansible_host: 203.0.113.20
+  #         ansible_user: root
+  #         ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+  #       web-02:
+  #         ansible_host: 203.0.113.21
+  #         ansible_user: root
+  #         ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+  #   
+  #   databases:
+  #     hosts:
+  #       db-01:
+  #         ansible_host: 203.0.113.30
+  #         ansible_user: root
+  #         ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+  #   
+  #   monitoring:
+  #     hosts:
+  #       monitor-01:
+  #         ansible_host: 203.0.113.40
+  #         ansible_user: root
+  #         ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+
+  # ==============================================================================
+  # VARIABLE CONFIGURATION
+  # ==============================================================================
+  # Variables can be defined here or in group_vars/ and host_vars/ directories
+  # 
+  # Recommended structure:
+  #   inventory/group_vars/all.yml          - Variables for all hosts
+  #   inventory/group_vars/webservers.yml   - Variables for webservers group only
+  #   inventory/host_vars/web-01.yml        - Variables for web-01 host only
+  #
   # See inventory/group_vars/all.yml.example for all available options
+  # See inventory/group_vars/webservers.yml.example for group-specific example
+  # See inventory/host_vars/vps-prod-01.yml.example for host-specific example
+  
   vars:
     # Load encrypted secrets from vault
     vault_file: "{{ playbook_dir }}/inventory/vault.yml"

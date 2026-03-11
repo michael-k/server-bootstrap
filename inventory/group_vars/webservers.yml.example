@@ -1,0 +1,59 @@
+---
+# Group Variables - Webservers Group
+# Copy this file to inventory/group_vars/webservers.yml to apply these settings
+# to all hosts in the 'webservers' group
+#
+# This example shows how to override variables for a specific group of servers.
+# Variables defined here take precedence over all.yml for hosts in this group.
+
+# ==============================================================================
+# GROUP-SPECIFIC CONFIGURATION
+# ==============================================================================
+
+# Example: Web servers might need different swap configuration
+zram_enabled: true
+zram_size: "1G"
+disk_swap_size: "4G"
+
+# Example: Web servers might use a different hostname pattern
+# (Individual hostnames would typically be set in host_vars/ instead)
+# system_hostname: "web-{{ inventory_hostname }}"
+
+# Example: Web servers might have stricter SSH settings
+ssh_max_auth_tries: 2
+ssh_login_grace_time: "20s"
+
+# Example: Web servers might need more aggressive fail2ban settings
+fail2ban_max_retry: 3
+fail2ban_ban_time: "1h"
+fail2ban_find_time: "10m"
+
+# Example: Web servers might need more log retention
+journald_max_disk_usage: "1G"
+journald_max_retention_time: "2month"
+
+# ==============================================================================
+# USAGE EXAMPLE
+# ==============================================================================
+#
+# In your inventory file (e.g., inventory/production):
+#
+# all:
+#   children:
+#     webservers:
+#       hosts:
+#         web-01:
+#           ansible_host: 203.0.113.10
+#         web-02:
+#           ansible_host: 203.0.113.11
+#     
+#     databases:
+#       hosts:
+#         db-01:
+#           ansible_host: 203.0.113.20
+#
+# Then create:
+# - inventory/group_vars/all.yml (applies to all hosts)
+# - inventory/group_vars/webservers.yml (applies only to web-01, web-02)
+# - inventory/group_vars/databases.yml (applies only to db-01)
+# - inventory/host_vars/web-01.yml (applies only to web-01, highest precedence)
