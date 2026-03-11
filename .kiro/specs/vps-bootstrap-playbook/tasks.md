@@ -341,7 +341,7 @@ The implementation follows a logical progression: project structure → core rol
     - Property 26: Emergency script idempotency
     - _Requirements: 9.1-9.8_
   
-  - [ ] 17.6 Implement property tests for system services
+  - [x] 17.6 Implement property tests for system services
     - Property 27: Fail2ban installation and configuration
     - Property 28: Journald persistent logging configuration
     - Property 29: Time synchronization service configuration
