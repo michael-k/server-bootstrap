@@ -369,7 +369,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test authorized_keys permissions
     - _Requirements: 1.1-1.8, 2.1-2.8_
   
-  - [~] 18.3 Write unit tests for SSH hardening
+  - [x] 18.3 Write unit tests for SSH hardening
     - Test specific SSHD configuration directives
     - Test algorithm restriction lists
     - Test AllowUsers directive with specific users
