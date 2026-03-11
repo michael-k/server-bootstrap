@@ -95,26 +95,66 @@ all:
 
 ### Secrets Management with Ansible Vault
 
-Sensitive data should be stored in an encrypted Vault file. Create `inventory/vault.yml`:
+Sensitive data should be stored in encrypted Vault files. The playbook uses a two-tier vault structure:
+
+#### 1. Group-Level Vault (Shared Secrets)
+
+Create `inventory/group_vars/vault.yml` for secrets shared across all hosts:
 
 ```yaml
-# Encrypt this file with: ansible-vault encrypt inventory/vault.yml
-vault_root_password: "your-root-password"
+# Shared secrets - same on all servers
 vault_manual_user_password: "$6$rounds=656000$..."  # Use mkpasswd --method=sha-512
+```
+
+```bash
+# Create from template
+cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
+
+# Edit with your secrets
+nano inventory/group_vars/vault.yml
+
+# Encrypt the file
+uv run ansible-vault encrypt inventory/group_vars/vault.yml
+```
+
+#### 2. Host-Level Vault (Per-Host Secrets)
+
+Create `inventory/host_vars/<hostname>/vault.yml` for secrets unique to each host:
+
+```yaml
+# Per-host secrets - different for each server
+vault_root_password: "your-root-password"
 vault_tailscale_pre_auth_key: "tskey-auth-xxxxx"  # If using Tailscale
 ```
 
-Encrypt the vault file:
-
 ```bash
-uv run ansible-vault encrypt inventory/vault.yml
+# Create directory and vault for each host
+mkdir -p inventory/host_vars/vps-prod-01
+cp inventory/host_vars/vault.yml.example inventory/host_vars/vps-prod-01/vault.yml
+
+# Edit with host-specific secrets
+nano inventory/host_vars/vps-prod-01/vault.yml
+
+# Encrypt the file
+uv run ansible-vault encrypt inventory/host_vars/vps-prod-01/vault.yml
 ```
 
-To edit the vault file later:
+#### Editing Encrypted Vaults
 
 ```bash
-uv run ansible-vault edit inventory/vault.yml
+# Edit group-level vault
+uv run ansible-vault edit inventory/group_vars/vault.yml
+
+# Edit host-level vault
+uv run ansible-vault edit inventory/host_vars/vps-prod-01/vault.yml
 ```
+
+#### Why Two Vault Files?
+
+- **Group vault**: Credentials that should be the same on all servers (e.g., admin user password)
+- **Host vault**: Credentials unique to each server (e.g., root password, Tailscale pre-auth keys)
+
+This structure prevents accidentally reusing secrets that should be unique per host.
 
 ### Variable Documentation
 

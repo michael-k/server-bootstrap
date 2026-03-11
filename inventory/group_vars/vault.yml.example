@@ -1,0 +1,109 @@
+---
+# ============================================================================
+# Group-Level Vault - Shared Secrets Across All Hosts
+# ============================================================================
+#
+# This file contains secrets that are SHARED across all hosts in your inventory.
+# These are typically credentials that should be the same on every server.
+#
+# SETUP INSTRUCTIONS:
+# -------------------
+# 1. Copy this file to create your actual vault:
+#    cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
+#
+# 2. Edit the vault file with your actual secrets:
+#    - Replace all placeholder values with real credentials
+#    - Remove any variables you don't need
+#
+# 3. Encrypt the vault file:
+#    uv run ansible-vault encrypt inventory/group_vars/vault.yml
+#    (You'll be prompted to create a vault password)
+#
+# 4. To edit the encrypted vault later:
+#    uv run ansible-vault edit inventory/group_vars/vault.yml
+#
+# 5. To view the encrypted vault without editing:
+#    uv run ansible-vault view inventory/group_vars/vault.yml
+#
+# 6. To change the vault password:
+#    uv run ansible-vault rekey inventory/group_vars/vault.yml
+#
+# USING THE VAULT:
+# ----------------
+# When running the playbook, provide the vault password:
+#   make bootstrap  (will prompt for vault password)
+#   
+# Or use a password file:
+#   echo "your-vault-password" > .vault-pass
+#   chmod 600 .vault-pass
+#   uv run ansible-playbook -i inventory/hosts.yml playbook.yml --vault-password-file .vault-pass
+#   
+# IMPORTANT: Add .vault-pass to .gitignore if using a password file!
+#
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Manual Access User Password (SHARED)
+# ----------------------------------------------------------------------------
+# Hashed password for the manual access user (human administrator account).
+# This user will have uid 1000 and sudo privileges with password requirement.
+#
+# IMPORTANT: This must be a HASHED password, not plaintext!
+#
+# This password is typically the SAME across all servers so administrators
+# can use the same credentials everywhere. If you need different passwords
+# per server, move this to host_vars/vault.yml instead.
+# ----------------------------------------------------------------------------
+
+# Generate a hashed password using one of these methods:
+#
+# Method 1 - Using mkpasswd (recommended):
+#   mkpasswd --method=sha-512
+#   (You'll be prompted to enter your password)
+#
+# Method 2 - Using Python:
+#   python3 -c 'import crypt; print(crypt.crypt("your-password", crypt.mksalt(crypt.METHOD_SHA512)))'
+#
+# Method 3 - Using Ansible:
+#   uv run ansible localhost -m debug -a "msg={{ 'your-password' | password_hash('sha512') }}"
+#
+# The output will look like: $6$rounds=656000$randomsalt$longhashstring
+vault_manual_user_password: "$6$rounds=656000$YourSaltHere$YourHashedPasswordHere"
+
+
+# ----------------------------------------------------------------------------
+# Additional Shared Secrets (OPTIONAL)
+# ----------------------------------------------------------------------------
+# Add any additional secrets that should be shared across all hosts.
+# Examples:
+# ----------------------------------------------------------------------------
+
+# Example: Shared API keys for monitoring services
+# vault_monitoring_api_key: "your-shared-api-key-here"
+
+# Example: Shared database credentials for application servers
+# vault_app_db_password: "your-shared-db-password-here"
+
+# Example: Shared SSL certificate private keys
+# vault_ssl_private_key: |
+#   -----BEGIN PRIVATE KEY-----
+#   Your private key content here
+#   -----END PRIVATE KEY-----
+
+
+# ============================================================================
+# SECURITY BEST PRACTICES
+# ============================================================================
+#
+# 1. NEVER commit vault.yml unencrypted to version control
+# 2. Use strong, unique passwords for all credentials
+# 3. Rotate vault passwords and secrets regularly
+# 4. Use different vault passwords for different environments (dev/staging/prod)
+# 5. Store vault passwords in a secure password manager
+# 6. Limit access to vault passwords to authorized personnel only
+# 7. Use pre-commit hooks to prevent accidental commits of unencrypted vaults
+# 8. Consider using ansible-vault encrypt_string for individual secrets
+# 9. Audit vault access and changes regularly
+# 10. Back up encrypted vaults and vault passwords separately
+#
+# ============================================================================

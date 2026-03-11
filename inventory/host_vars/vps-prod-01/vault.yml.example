@@ -1,0 +1,140 @@
+---
+# ============================================================================
+# Host-Level Vault - Per-Host Secrets
+# ============================================================================
+#
+# This file contains secrets that are UNIQUE to each individual host.
+# These are typically credentials that differ between servers.
+#
+# IMPORTANT: This is a TEMPLATE. You need to create a separate vault file
+# for EACH host in your inventory.
+#
+# SETUP INSTRUCTIONS:
+# -------------------
+# 1. For each host in your inventory, create a host-specific vault file:
+#    cp inventory/host_vars/vault.yml.example inventory/host_vars/<hostname>/vault.yml
+#
+#    Example for host "vps-prod-01":
+#    mkdir -p inventory/host_vars/vps-prod-01
+#    cp inventory/host_vars/vault.yml.example inventory/host_vars/vps-prod-01/vault.yml
+#
+# 2. Edit each host's vault file with that host's specific secrets:
+#    - Each server needs its own root password
+#    - Each server needs its own Tailscale pre-auth key
+#    - Remove any variables you don't need
+#
+# 3. Encrypt each host's vault file:
+#    uv run ansible-vault encrypt inventory/host_vars/vps-prod-01/vault.yml
+#    uv run ansible-vault encrypt inventory/host_vars/vps-prod-02/vault.yml
+#    (You can use the same vault password for all hosts or different ones)
+#
+# 4. To edit a host's encrypted vault later:
+#    uv run ansible-vault edit inventory/host_vars/vps-prod-01/vault.yml
+#
+# DIRECTORY STRUCTURE EXAMPLE:
+# ----------------------------
+# inventory/
+# ├── group_vars/
+# │   ├── all.yml              # Shared configuration
+# │   └── vault.yml            # Shared secrets (encrypted)
+# └── host_vars/
+#     ├── vps-prod-01/
+#     │   ├── vars.yml         # Host-specific configuration (optional)
+#     │   └── vault.yml        # Host-specific secrets (encrypted)
+#     └── vps-prod-02/
+#         ├── vars.yml         # Host-specific configuration (optional)
+#         └── vault.yml        # Host-specific secrets (encrypted)
+#
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Root Access Credentials (PER-HOST)
+# ----------------------------------------------------------------------------
+# Used for initial connection to the fresh VPS before user accounts are created.
+# Only required if connecting with password authentication (not SSH key).
+#
+# SECURITY NOTE: After bootstrap completes, root login is disabled via SSH.
+#
+# Each server typically has a DIFFERENT root password, so this must be
+# configured per-host.
+# ----------------------------------------------------------------------------
+
+# Root password for initial connection (if using password auth instead of SSH key)
+# If you have SSH key access to root, you can omit this variable
+vault_root_password: "your-root-password-here"
+
+
+# ----------------------------------------------------------------------------
+# Tailscale VPN Configuration (PER-HOST)
+# ----------------------------------------------------------------------------
+# Only required if you're enabling Tailscale VPN (tailscale_enabled: true).
+# If not using Tailscale, you can omit this section entirely.
+#
+# Each server needs its OWN pre-auth key to register with Headscale.
+# NEVER reuse pre-auth keys across multiple servers!
+# ----------------------------------------------------------------------------
+
+# Pre-authentication key from your Headscale control server
+# 
+# Generate a UNIQUE key for THIS HOST from your Headscale instance:
+#   headscale preauthkeys create --user your-user --reusable=false --expiration 24h
+#
+# The key format is: tskey-auth-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#
+# SECURITY NOTES:
+# - Each server MUST have its own unique pre-auth key
+# - Pre-auth keys should be single-use (--reusable=false)
+# - Pre-auth keys should have short expiration times (24h is reasonable)
+# - Never reuse pre-auth keys across multiple servers
+# - Rotate keys regularly
+vault_tailscale_pre_auth_key: "tskey-auth-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+
+# ----------------------------------------------------------------------------
+# Additional Host-Specific Secrets (OPTIONAL)
+# ----------------------------------------------------------------------------
+# Add any additional secrets that are unique to this specific host.
+# Examples:
+# ----------------------------------------------------------------------------
+
+# Example: Host-specific API keys
+# vault_host_api_key: "unique-api-key-for-this-host"
+
+# Example: Host-specific database passwords
+# vault_host_db_password: "unique-db-password-for-this-host"
+
+# Example: Host-specific backup credentials
+# vault_backup_encryption_key: "unique-backup-key-for-this-host"
+
+
+# ============================================================================
+# VARIABLE PRECEDENCE
+# ============================================================================
+#
+# Ansible loads variables in this order (lowest to highest precedence):
+# 1. Role defaults (roles/*/defaults/main.yml)
+# 2. inventory/group_vars/all.yml
+# 3. inventory/group_vars/vault.yml          ← Shared secrets
+# 4. inventory/group_vars/<group>.yml
+# 5. inventory/host_vars/<hostname>/vars.yml
+# 6. inventory/host_vars/<hostname>/vault.yml ← THIS FILE (highest precedence)
+#
+# Variables in this file will override the same variables defined anywhere else.
+#
+# ============================================================================
+# SECURITY BEST PRACTICES
+# ============================================================================
+#
+# 1. NEVER commit vault.yml unencrypted to version control
+# 2. Each host MUST have its own unique root password
+# 3. Each host MUST have its own unique Tailscale pre-auth key
+# 4. Use strong, unique passwords for all credentials
+# 5. Rotate vault passwords and secrets regularly
+# 6. Use different vault passwords for different environments (dev/staging/prod)
+# 7. Store vault passwords in a secure password manager
+# 8. Limit access to vault passwords to authorized personnel only
+# 9. Use pre-commit hooks to prevent accidental commits of unencrypted vaults
+# 10. Audit vault access and changes regularly
+# 11. Back up encrypted vaults and vault passwords separately
+#
+# ============================================================================

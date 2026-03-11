@@ -271,7 +271,7 @@ The implementation follows a logical progression: project structure → core rol
     - Document variable purposes and defaults
     - _Requirements: 16.5_
   
-  - [ ] 15.3 Create Ansible Vault example
+  - [x] 15.3 Create Ansible Vault example
     - Create vault.yml.example with secret variable templates
     - Document vault encryption and usage
     - _Requirements: 16.10_

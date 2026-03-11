@@ -1,11 +1,23 @@
 ---
+# ============================================================================
 # Host Variables - vps-prod-01
-# Copy this file to inventory/host_vars/vps-prod-01.yml to apply these settings
-# to a specific host only
+# ============================================================================
+#
+# This file contains NON-SECRET configuration that is UNIQUE to this host.
+# For secrets, use vault.yml in the same directory.
+#
+# SETUP INSTRUCTIONS:
+# -------------------
+# 1. Copy this file to create your actual host vars:
+#    cp inventory/host_vars/vps-prod-01/vars.yml.example inventory/host_vars/vps-prod-01/vars.yml
+#
+# 2. Edit the file with your host-specific configuration
 #
 # This example shows how to override variables for a single host.
-# Variables defined here have the HIGHEST precedence and override both
+# Variables defined here have HIGH precedence and override both
 # group_vars/all.yml and group_vars/<group>.yml
+#
+# ============================================================================
 
 # ==============================================================================
 # HOST-SPECIFIC CONFIGURATION
@@ -39,10 +51,11 @@ ntp_servers:
 # 1. Role defaults (roles/*/defaults/main.yml)
 # 2. inventory/group_vars/all.yml
 # 3. inventory/group_vars/<group>.yml
-# 4. inventory/host_vars/<hostname>.yml  ← THIS FILE (highest precedence)
+# 4. inventory/host_vars/<hostname>/vars.yml      ← THIS FILE
+# 5. inventory/host_vars/<hostname>/vault.yml     ← Highest precedence (secrets)
 #
 # Variables defined in this file will override the same variables defined
-# anywhere else in the inventory.
+# in group_vars, but will be overridden by variables in vault.yml.
 #
 # ==============================================================================
 # USAGE EXAMPLE
@@ -50,16 +63,21 @@ ntp_servers:
 #
 # Directory structure:
 #   inventory/
-#   ├── production                          # Inventory file with host definitions
-#   ├── vault.yml                          # Encrypted secrets
+#   ├── production.example                 # Inventory file with host definitions
+#   ├── vault.yml.example                  # Encrypted shared secrets
 #   ├── group_vars/
-#   │   ├── all.yml                        # Variables for all hosts
+#   │   ├── all.yml.example                # Variables for all hosts
 #   │   └── webservers.yml                 # Variables for webservers group
 #   └── host_vars/
-#       ├── vps-prod-01.yml                # Variables for vps-prod-01 only
-#       └── vps-prod-02.yml                # Variables for vps-prod-02 only
+#       ├── vps-prod-01/
+#       │   ├── vars.yml                   # Host-specific configuration
+#       │   └── vault.yml                  # Host-specific secrets (encrypted)
+#       └── vps-prod-02/
+#           ├── vars.yml                   # Host-specific configuration
+#           └── vault.yml                  # Host-specific secrets (encrypted)
 #
 # This allows you to:
 # - Set common defaults in group_vars/all.yml
 # - Override for specific groups in group_vars/<group>.yml
-# - Override for specific hosts in host_vars/<hostname>.yml
+# - Override for specific hosts in host_vars/<hostname>/vars.yml
+# - Store host-specific secrets in host_vars/<hostname>/vault.yml
