@@ -396,7 +396,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test service restart commands
     - _Requirements: 9.1-9.8_
   
-  - [~] 18.7 Write unit tests for system services
+  - [x] 18.7 Write unit tests for system services
     - Test fail2ban jail configuration
     - Test journald configuration values
     - Test time sync service selection
