@@ -3,6 +3,15 @@
 # Implements NFTables firewall configuration with dual-stack support
 # Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.10, 8.11
 
+# Validate port knocking sequence length when active
+- name: Verify port knocking sequence has exactly 3 ports
+  ansible.builtin.assert:
+    that:
+      - firewall_port_knocking_sequence | length == 3
+    fail_msg: "Port knocking sequence must contain exactly 3 ports, got {{ firewall_port_knocking_sequence | length }}"
+    success_msg: "Port knocking sequence has 3 ports"
+  when: not (firewall_tailscale_enabled | bool) and (firewall_port_knocking_enabled | bool)
+
 - name: Install nftables package
   ansible.builtin.apt:
     name: nftables
