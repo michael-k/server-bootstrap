@@ -8,3 +8,67 @@
 #   /tmp     - bind-mount onto itself with restricted options (no RAM cost)
 #   /dev/shm - drop-in override on existing tmpfs mount
 #   /var/tmp - bind-mount to /tmp (inherits restrictions)
+
+# Deploy /tmp bind-mount unit
+- name: Deploy hardened /tmp mount unit
+  ansible.builtin.template:
+    src: tmp.mount.j2
+    dest: /etc/systemd/system/tmp.mount
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+
+# Create drop-in directory for /dev/shm override
+- name: Ensure /dev/shm drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/dev-shm.mount.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# Deploy /dev/shm drop-in override
+- name: Deploy hardened /dev/shm mount override
+  ansible.builtin.template:
+    src: dev-shm.mount.conf.j2
+    dest: /etc/systemd/system/dev-shm.mount.d/hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+  register: shm_override
+
+# Deploy /var/tmp bind-mount unit
+- name: Deploy hardened /var/tmp mount unit
+  ansible.builtin.template:
+    src: var-tmp.mount.j2
+    dest: /etc/systemd/system/var-tmp.mount
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+
+# Flush handlers to ensure daemon-reload runs before enabling mounts
+- name: Flush handlers to reload systemd if unit files changed
+  ansible.builtin.meta: flush_handlers
+
+# Enable and start /tmp bind-mount
+- name: Enable and start hardened /tmp mount
+  ansible.builtin.systemd:
+    name: tmp.mount
+    enabled: true
+    state: started
+
+# Remount /dev/shm if drop-in override changed
+- name: Remount /dev/shm with hardened options
+  ansible.builtin.command: mount -o remount /dev/shm
+  when: shm_override.changed
+  changed_when: true
+
+# Enable and start /var/tmp bind-mount (depends on tmp.mount via unit file)
+- name: Enable and start hardened /var/tmp mount
+  ansible.builtin.systemd:
+    name: var-tmp.mount
+    enabled: true
+    state: started
