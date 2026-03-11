@@ -389,7 +389,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test default policies
     - _Requirements: 8.1-8.11_
   
-  - [~] 18.6 Write unit tests for emergency script
+  - [x] 18.6 Write unit tests for emergency script
     - Test script generation with specific variables
     - Test unrestrict mode sed commands
     - Test restore mode sed commands
