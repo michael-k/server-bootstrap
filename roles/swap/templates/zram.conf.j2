@@ -1,8 +1,16 @@
-# Zram swap configuration
+# Zram Swap Configuration
 # Managed by Ansible - do not edit manually
+#
+# Zram creates a compressed block device in RAM that can be used as swap space.
+# This provides faster swap performance than disk-based swap with the trade-off
+# of using some RAM for compression overhead.
+#
+# Requirements: 13.4, 13.5, 13.9
 
-# Percentage of RAM to use for zram (e.g., 50 for 50%)
-# Or absolute size in MB (e.g., 2048 for 2GB)
+# Requirement 13.4: Zram device size specification
+# Can be specified as:
+#   - Percentage of RAM (e.g., 50 for 50% of total RAM)
+#   - Absolute size in MB (e.g., 2048 for 2GB)
 {% if zram_size.endswith('%') %}
 PERCENTAGE={{ zram_size.rstrip('%') }}
 {% else %}
@@ -17,8 +25,12 @@ PERCENTAGE=50
 {% endif %}
 {% endif %}
 
-# Compression algorithm (lz4 is fast and efficient)
+# Requirement 13.5: Compression algorithm
+# lz4 is chosen for its excellent balance of speed and compression ratio
+# Other options: lzo, zstd (but lz4 is fastest)
 ALGO=lz4
 
-# Swap priority (higher than disk swap)
+# Requirement 13.9: Swap priority
+# Higher priority than disk swap (100 vs 10) ensures zram is used first
+# Zram is faster than disk swap, so it should be preferred
 PRIORITY={{ zram_swap_priority }}

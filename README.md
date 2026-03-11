@@ -99,7 +99,7 @@ ssh admin@your-vps-ip
 
 ## Emergency Access
 
-If Tailscale is enabled and you lose VPN connectivity, use the emergency script via console access:
+If Tailscale is enabled and you lose VPN connectivity, use the emergency script via console access to make SSH available via the public internet:
 
 ```bash
 # Unrestrict SSH (allow from all interfaces)

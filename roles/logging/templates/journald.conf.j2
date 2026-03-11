@@ -1,18 +1,31 @@
+# Journald Configuration
 # Managed by Ansible - DO NOT EDIT MANUALLY
-# journald configuration for persistent logging
+#
+# This configuration enables persistent logging with configurable retention settings.
+# Journald is the systemd logging service that collects logs from all system services.
+#
+# Requirements: 11.1, 11.2, 11.3
 
 [Journal]
-# Store logs persistently on disk
+# Requirement 11.1: Store logs persistently on disk
+# Persistent storage ensures logs survive system reboots
+# Logs are stored in /var/log/journal/
 Storage=persistent
 
-# Maximum disk space that may be used by journal files
+# Requirement 11.2: Maximum disk space that may be used by journal files
+# This prevents journal logs from consuming excessive disk space
+# Format: K, M, G, T for kilobytes, megabytes, gigabytes, terabytes
 SystemMaxUse={{ journald_max_disk_usage }}
 
-# Maximum time to store journal entries
+# Requirement 11.3: Maximum time to store journal entries
+# Older entries are automatically deleted after this period
+# Format: s, min, h, days, weeks, months, years
 MaxRetentionSec={{ journald_max_retention_time }}
 
-# Compress journal files
+# Compress journal files to save disk space
+# Uses XZ compression by default
 Compress=yes
 
 # Forward to syslog (disabled, using journald directly)
+# Modern systems use journald as the primary logging system
 ForwardToSyslog=no

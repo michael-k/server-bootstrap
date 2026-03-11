@@ -1,16 +1,27 @@
-# systemd-timesyncd configuration for VPS Bootstrap Playbook
+# systemd-timesyncd Configuration for Time Synchronization
 # This file is managed by Ansible - manual changes will be overwritten
+#
+# systemd-timesyncd is a lightweight SNTP client that is part of systemd.
+# It's simpler than chrony but sufficient for most use cases where high
+# accuracy is not critical.
+#
+# Requirements: 12.1, 12.2
 
 [Time]
-# NTP servers
+# Requirement 12.2: Configure reliable NTP servers
+# Space-separated list of NTP servers to use for time synchronization
 NTP={{ ntp_servers | join(' ') }}
 
-# Fallback NTP servers (used if NTP servers are not reachable)
+# Fallback NTP servers (used if primary NTP servers are not reachable)
+# Uncomment and configure if you want fallback servers
 #FallbackNTP=
 
 # Maximum acceptable root distance in seconds
+# This limits how far the time source can be from a stratum 1 server
 #RootDistanceMaxSec=5
 
 # Minimum/maximum poll intervals
+# These control how often timesyncd contacts NTP servers
+# Default values are usually appropriate
 #PollIntervalMinSec=32
 #PollIntervalMaxSec=2048

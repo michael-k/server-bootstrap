@@ -1,7 +1,12 @@
 ---
 # Zram swap configuration tasks
 # Requirements: 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9
+#
+# Zram creates a compressed block device in RAM that can be used as swap space.
+# This provides faster swap performance than disk-based swap with the trade-off
+# of using some RAM for compression overhead.
 
+# Requirement 13.3: Install zram-tools or configure via systemd
 - name: Install zram-tools package
   ansible.builtin.apt:
     name: zram-tools
@@ -9,6 +14,9 @@
     update_cache: true
   register: zram_tools_installed
 
+# Requirement 13.4: Create zram device with specified size
+# Requirement 13.5: Configure lz4 compression algorithm
+# Requirement 13.9: Set swap priority higher than disk swap (priority 100)
 - name: Create zram configuration file
   ansible.builtin.template:
     src: zram.conf.j2
@@ -18,23 +26,31 @@
     mode: "0644"
   notify: Restart zramswap service
 
+# Requirement 13.8: Configure zram device to initialize on boot
 - name: Enable zramswap service
   ansible.builtin.systemd:
     name: zramswap
     enabled: true
     state: started
 
+# Wait for the zram device to be created by the service
+# The device should appear at /dev/zram0
 - name: Wait for zram device to be created
   ansible.builtin.wait_for:
     path: /dev/zram0
     timeout: 10
 
+# Requirement 13.7: Enable zram device as swap
+# Verify that the zram device is active and being used as swap space
 - name: Verify zram device is active as swap
   ansible.builtin.command: swapon --show --noheadings
   register: swap_status
   changed_when: false
   failed_when: "'/dev/zram0' not in swap_status.stdout"
 
+# Requirement 13.5: Verify lz4 compression algorithm is configured
+# The compression algorithm is shown in /sys/block/zram0/comp_algorithm
+# The active algorithm is shown in square brackets: [lz4]
 - name: Get zram compression algorithm
   ansible.builtin.command: cat /sys/block/zram0/comp_algorithm
   register: zram_comp_algo

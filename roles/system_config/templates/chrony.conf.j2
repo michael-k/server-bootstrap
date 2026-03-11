@@ -1,23 +1,36 @@
-# Chrony configuration for VPS Bootstrap Playbook
+# Chrony Configuration for Time Synchronization
 # This file is managed by Ansible - manual changes will be overwritten
+#
+# Chrony is a versatile NTP client and server with better performance
+# than traditional ntpd, especially for systems that are frequently suspended
+# or have intermittent network connectivity.
+#
+# Requirements: 12.1, 12.2
 
-# NTP servers
+# Requirement 12.2: Configure reliable NTP servers
+# The 'pool' directive uses multiple servers from the pool for redundancy
+# The 'iburst' option speeds up initial synchronization
 {% for server in ntp_servers %}
 pool {{ server }} iburst
 {% endfor %}
 
 # Record the rate at which the system clock gains/losses time
+# This file stores the drift rate to improve accuracy after restarts
 driftfile /var/lib/chrony/drift
 
 # Allow the system clock to be stepped in the first three updates
 # if its offset is larger than 1 second
+# This ensures quick synchronization on first boot or after long downtime
 makestep 1.0 3
 
 # Enable kernel synchronization of the real-time clock (RTC)
+# This keeps the hardware clock in sync with the system clock
 rtcsync
 
 # Specify directory for log files
+# Logs can be useful for troubleshooting time synchronization issues
 logdir /var/log/chrony
 
 # Select which information is logged
+# Uncomment to enable detailed logging:
 #log measurements statistics tracking
