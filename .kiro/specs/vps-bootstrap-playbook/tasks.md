@@ -325,7 +325,7 @@ The implementation follows a logical progression: project structure → core rol
     - Use hypothesis strategies for port numbers and timeouts
     - _Requirements: 3.1-3.18_
   
-  - [ ] 17.4 Implement property tests for Tailscale and firewall
+  - [x] 17.4 Implement property tests for Tailscale and firewall
     - Property 10: Tailscale installation and configuration
     - Property 11: Tailscale conditional execution
     - Property 12: SSH interface restriction with safety check
