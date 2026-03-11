@@ -382,7 +382,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test connectivity verification logic
     - _Requirements: 4.1-4.6, 5.1-5.3_
   
-  - [~] 18.5 Write unit tests for firewall
+  - [x] 18.5 Write unit tests for firewall
     - Test NFTables rule structure
     - Test IPv4 and IPv6 rule parity
     - Test conditional SSH access rules
