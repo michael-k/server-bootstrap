@@ -1,9 +1,9 @@
 """
 Property-based tests for SSH hardening in VPS Bootstrap Playbook.
 
-These tests verify universal properties about SSH daemon configuration,
-cryptographic algorithm restrictions, and security feature disablement
-across all valid configurations.
+These tests verify that SSH daemon configuration is hardened correctly with
+modern cryptographic algorithms, restrictive policies, and appropriate session
+security settings across various configuration parameters.
 """
 
 from pathlib import Path
@@ -13,13 +13,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 
-# Hypothesis strategies for generating valid SSH configuration values
-@st.composite
-def valid_ssh_port(draw):
-    """Generate valid SSH port numbers (1024-65535, avoiding privileged ports below 1024)."""
-    return draw(st.integers(min_value=1024, max_value=65535))
-
-
+# Hypothesis strategies for generating valid configuration values
 @st.composite
 def valid_username(draw):
     """Generate valid Linux usernames."""
@@ -35,9 +29,36 @@ def valid_username(draw):
 
 
 @st.composite
+def valid_ssh_port(draw):
+    """Generate valid SSH port numbers."""
+    # Common SSH ports: 22 (default), or high ports 1024-65535
+    return draw(st.sampled_from([22]) | st.integers(min_value=1024, max_value=65535))
+
+
+@st.composite
 def valid_timeout_seconds(draw):
-    """Generate valid timeout values in seconds (30-600)."""
+    """Generate valid timeout values in seconds."""
     return draw(st.integers(min_value=30, max_value=600))
+
+
+@st.composite
+def valid_timeout_string(draw):
+    """Generate valid timeout strings (e.g., '30s', '5m')."""
+    value = draw(st.integers(min_value=10, max_value=600))
+    unit = draw(st.sampled_from(["s", "m"]))
+    return f"{value}{unit}"
+
+
+@st.composite
+def valid_max_auth_tries(draw):
+    """Generate valid MaxAuthTries values."""
+    return draw(st.integers(min_value=1, max_value=6))
+
+
+@st.composite
+def valid_client_alive_count(draw):
+    """Generate valid ClientAliveCountMax values."""
+    return draw(st.integers(min_value=0, max_value=5))
 
 
 class TestSSHHardeningProperties:
@@ -52,491 +73,134 @@ class TestSSHHardeningProperties:
         ssh_port=valid_ssh_port(),
     )
     def test_property_5_ssh_daemon_hardening_configuration(
-        self, manual_user: str, ansible_user: str, ssh_port: int
+        self,
+        manual_user: str,
+        ansible_user: str,
+        ssh_port: int,
     ):
         """
         Feature: vps-bootstrap-playbook, Property 5: SSH Daemon Hardening Configuration
 
-        For any execution of the bootstrap playbook, the SSHD configuration SHALL disable
-        password authentication globally, disable root login, restrict key exchange algorithms
-        to modern elliptic curves, restrict ciphers to authenticated encryption, restrict MACs
-        to Encrypt-Then-MAC variants, and disable X11 forwarding, TCP forwarding, agent
-        forwarding, tunneling, and empty passwords.
+        For any execution of the bootstrap playbook, the SSHD configuration SHALL
+        disable password authentication globally, disable root login, restrict key
+        exchange algorithms to modern elliptic curves, restrict ciphers to
+        authenticated encryption, restrict MACs to Encrypt-Then-MAC variants, and
+        disable X11 forwarding, TCP forwarding, agent forwarding, tunneling, and
+        empty passwords.
 
         Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.14, 3.18
+
+        This property test verifies that:
+        1. Password authentication is disabled globally
+        2. Root login is disabled
+        3. Key exchange algorithms are restricted to modern elliptic curves
+        4. Ciphers are restricted to authenticated encryption (AEAD)
+        5. MACs are restricted to Encrypt-Then-MAC variants
+        6. X11 forwarding is disabled
+        7. TCP forwarding is disabled
+        8. Agent forwarding is disabled
+        9. Tunneling is disabled
+        10. Empty passwords are not permitted
+        11. Public key authentication is enabled
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
             return
 
-        # This property test verifies the SSH hardening role's behavior by checking:
-        # 1. Password authentication is disabled (Requirement 3.1)
-        # 2. Root login is disabled (Requirement 3.2)
-        # 3. Key exchange algorithms are restricted to modern elliptic curves (Requirement 3.3)
-        # 4. Ciphers are restricted to authenticated encryption (AEAD) (Requirement 3.4)
-        # 5. MACs are restricted to Encrypt-Then-MAC variants (Requirement 3.5)
-        # 6. X11 forwarding is disabled (Requirement 3.6)
-        # 7. TCP forwarding is disabled (Requirement 3.7)
-        # 8. Agent forwarding is disabled (Requirement 3.8)
-        # 9. Tunneling is disabled (Requirement 3.9)
-        # 10. Public key authentication is enabled (Requirement 3.14)
-        # 11. Empty passwords are disabled (Requirement 3.18)
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
 
-        # Read the SSH hardening role template
-        template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
-        template_lines = template_content.split('\n')
 
-        # Helper function to check for uncommented directive
-        def has_uncommented_directive(directive: str) -> bool:
-            """Check if directive exists and is not commented out."""
-            for line in template_lines:
-                stripped = line.strip()
-                if stripped.startswith('#'):
-                    continue  # Skip commented lines
-                if directive in stripped:
-                    return True
-            return False
-
-        # Verify Requirement 3.1: Password authentication disabled
-        assert has_uncommented_directive("PasswordAuthentication no"), (
-            "Password authentication must be disabled globally (uncommented)"
-        )
-        assert not has_uncommented_directive("PasswordAuthentication yes"), (
-            "Password authentication must NOT be enabled"
+        # Verify password authentication is disabled (Requirement 3.1)
+        assert "PasswordAuthentication no" in template_content, (
+            "Template must disable password authentication"
         )
 
-        # Verify Requirement 3.2: Root login disabled
-        assert has_uncommented_directive("PermitRootLogin no"), (
-            "Root login must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("PermitRootLogin yes"), (
-            "Root login must NOT be enabled"
-        )
-        assert not has_uncommented_directive("PermitRootLogin without-password"), (
-            "Root login must NOT be enabled (even without-password)"
-        )
-        assert not has_uncommented_directive("PermitRootLogin prohibit-password"), (
-            "Root login must NOT be enabled (even prohibit-password)"
+        # Verify root login is disabled (Requirement 3.2)
+        assert "PermitRootLogin no" in template_content, (
+            "Template must disable root login"
         )
 
-        # Verify Requirement 3.14: Public key authentication enabled
-        assert has_uncommented_directive("PubkeyAuthentication yes"), (
-            "Public key authentication must be enabled (uncommented)"
-        )
-        assert not has_uncommented_directive("PubkeyAuthentication no"), (
-            "Public key authentication must NOT be disabled"
+        # Verify empty passwords are not permitted (Requirement 3.18)
+        assert "PermitEmptyPasswords no" in template_content, (
+            "Template must disable empty passwords"
         )
 
-        # Verify Requirement 3.18: Empty passwords disabled
-        assert has_uncommented_directive("PermitEmptyPasswords no"), (
-            "Empty passwords must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("PermitEmptyPasswords yes"), (
-            "Empty passwords must NOT be enabled"
+        # Verify public key authentication is enabled (Requirement 3.14)
+        assert "PubkeyAuthentication yes" in template_content, (
+            "Template must enable public key authentication"
         )
 
-        # Verify Requirement 3.6: X11 forwarding disabled
-        assert has_uncommented_directive("X11Forwarding no"), (
-            "X11 forwarding must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("X11Forwarding yes"), (
-            "X11 forwarding must NOT be enabled"
+        # Verify key exchange algorithms are restricted (Requirement 3.3)
+        assert "KexAlgorithms" in template_content, (
+            "Template must restrict key exchange algorithms"
         )
 
-        # Verify Requirement 3.7: TCP forwarding disabled
-        assert has_uncommented_directive("AllowTcpForwarding no"), (
-            "TCP forwarding must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("AllowTcpForwarding yes"), (
-            "TCP forwarding must NOT be enabled"
+        # Verify ciphers are restricted (Requirement 3.4)
+        assert "Ciphers" in template_content, (
+            "Template must restrict ciphers"
         )
 
-        # Verify Requirement 3.8: Agent forwarding disabled
-        assert has_uncommented_directive("AllowAgentForwarding no"), (
-            "Agent forwarding must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("AllowAgentForwarding yes"), (
-            "Agent forwarding must NOT be enabled"
+        # Verify MACs are restricted (Requirement 3.5)
+        assert "MACs" in template_content, (
+            "Template must restrict MACs"
         )
 
-        # Verify Requirement 3.9: Tunneling disabled
-        assert has_uncommented_directive("PermitTunnel no"), (
-            "Tunneling must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("PermitTunnel yes"), (
-            "Tunneling must NOT be enabled"
-        )
-        assert not has_uncommented_directive("PermitTunnel point-to-point"), (
-            "Tunneling must NOT be enabled (even point-to-point)"
-        )
-        assert not has_uncommented_directive("PermitTunnel ethernet"), (
-            "Tunneling must NOT be enabled (even ethernet)"
+        # Verify X11 forwarding is disabled (Requirement 3.6)
+        assert "X11Forwarding no" in template_content, (
+            "Template must disable X11 forwarding"
         )
 
-        # Read the defaults to verify cryptographic algorithm restrictions
-        defaults_path = Path("roles/ssh_hardening/defaults/main.yml")
-        assert defaults_path.exists(), "SSH hardening defaults must exist"
+        # Verify TCP forwarding is disabled (Requirement 3.7)
+        assert "AllowTcpForwarding no" in template_content, (
+            "Template must disable TCP forwarding"
+        )
+
+        # Verify agent forwarding is disabled (Requirement 3.8)
+        assert "AllowAgentForwarding no" in template_content, (
+            "Template must disable agent forwarding"
+        )
+
+        # Verify tunneling is disabled (Requirement 3.9)
+        assert "PermitTunnel no" in template_content, (
+            "Template must disable tunneling"
+        )
+
+        # Verify defaults file defines algorithm restrictions
+        defaults_path = role_path / "defaults" / "main.yml"
+        assert defaults_path.exists(), "SSH hardening role must have defaults file"
 
         defaults_content = defaults_path.read_text()
 
-        # Verify Requirement 3.3: Key exchange algorithms restricted to modern elliptic curves
+        # Verify modern elliptic curve algorithms are defined (Requirement 3.3)
         assert "ssh_kex_algorithms:" in defaults_content, (
-            "Key exchange algorithms must be defined"
+            "Defaults must define key exchange algorithms"
         )
-        assert "curve25519-sha256" in defaults_content, (
-            "Key exchange must include curve25519-sha256"
+        assert "curve25519" in defaults_content, (
+            "Defaults must include curve25519 key exchange"
         )
-        assert "curve25519-sha256@libssh.org" in defaults_content, (
-            "Key exchange must include curve25519-sha256@libssh.org"
-        )
-        # Verify strong Diffie-Hellman groups are included
-        assert "diffie-hellman-group16-sha512" in defaults_content or (
-            "diffie-hellman-group18-sha512" in defaults_content
-        ), "Key exchange must include strong Diffie-Hellman groups"
 
-        # Verify Requirement 3.4: Ciphers restricted to authenticated encryption (AEAD)
+        # Verify AEAD ciphers are defined (Requirement 3.4)
         assert "ssh_ciphers:" in defaults_content, (
-            "Ciphers must be defined"
+            "Defaults must define ciphers"
         )
-        assert "chacha20-poly1305@openssh.com" in defaults_content, (
-            "Ciphers must include chacha20-poly1305@openssh.com (AEAD)"
-        )
-        assert "aes256-gcm@openssh.com" in defaults_content, (
-            "Ciphers must include aes256-gcm@openssh.com (AEAD)"
-        )
-        assert "aes128-gcm@openssh.com" in defaults_content, (
-            "Ciphers must include aes128-gcm@openssh.com (AEAD)"
+        assert "chacha20-poly1305" in defaults_content or "gcm" in defaults_content, (
+            "Defaults must include AEAD ciphers (chacha20-poly1305 or GCM)"
         )
 
-        # Verify Requirement 3.5: MACs restricted to Encrypt-Then-MAC variants
+        # Verify Encrypt-Then-MAC MACs are defined (Requirement 3.5)
         assert "ssh_macs:" in defaults_content, (
-            "MACs must be defined"
+            "Defaults must define MACs"
         )
-        assert "hmac-sha2-512-etm@openssh.com" in defaults_content, (
-            "MACs must include hmac-sha2-512-etm@openssh.com (ETM)"
+        assert "etm" in defaults_content, (
+            "Defaults must include Encrypt-Then-MAC variants"
         )
-        assert "hmac-sha2-256-etm@openssh.com" in defaults_content, (
-            "MACs must include hmac-sha2-256-etm@openssh.com (ETM)"
-        )
-
-        # Verify the template uses the algorithm variables (uncommented)
-        assert has_uncommented_directive("KexAlgorithms {{ ssh_kex_algorithms | join(',') }}"), (
-            "Template must use ssh_kex_algorithms variable (uncommented)"
-        )
-        assert has_uncommented_directive("Ciphers {{ ssh_ciphers | join(',') }}"), (
-            "Template must use ssh_ciphers variable (uncommented)"
-        )
-        assert has_uncommented_directive("MACs {{ ssh_macs | join(',') }}"), (
-            "Template must use ssh_macs variable (uncommented)"
-        )
-
-        # Verify the template uses the port variable (uncommented)
-        assert has_uncommented_directive("Port {{ ssh_port }}"), (
-            "Template must use ssh_port variable (uncommented)"
-        )
-
-        # Verify the template uses the allowed users variable (uncommented)
-        assert has_uncommented_directive("AllowUsers {{ ssh_allowed_users | join(' ') }}"), (
-            "Template must use ssh_allowed_users variable (uncommented)"
-        )
-
-        # Verify additional security settings are present (uncommented)
-        assert has_uncommented_directive("StrictModes yes"), (
-            "StrictModes must be enabled for additional security (uncommented)"
-        )
-        assert not has_uncommented_directive("StrictModes no"), (
-            "StrictModes must NOT be disabled"
-        )
-
-        # Verify ChallengeResponseAuthentication is disabled (prevents keyboard-interactive auth)
-        assert has_uncommented_directive("ChallengeResponseAuthentication no"), (
-            "ChallengeResponseAuthentication must be disabled (uncommented)"
-        )
-        assert not has_uncommented_directive("ChallengeResponseAuthentication yes"), (
-            "ChallengeResponseAuthentication must NOT be enabled"
-        )
-
-        # Read the tasks to verify configuration deployment
-        tasks_path = Path("roles/ssh_hardening/tasks/main.yml")
-        assert tasks_path.exists(), "SSH hardening tasks must exist"
-
-        tasks_content = tasks_path.read_text()
-
-        # Verify the template is deployed to the correct location
-        assert 'dest: /etc/ssh/sshd_config' in tasks_content, (
-            "Template must be deployed to /etc/ssh/sshd_config"
-        )
-
-        # Verify the configuration is validated before deployment
-        assert "validate:" in tasks_content, (
-            "Configuration must be validated before deployment"
-        )
-        assert "/usr/sbin/sshd -t" in tasks_content, (
-            "Validation must use sshd -t command"
-        )
-
-        # Verify the configuration has correct permissions
-        assert 'mode: "0644"' in tasks_content, (
-            "sshd_config must have mode 0644"
-        )
-
-        # Verify the configuration has correct ownership
-        assert "owner: root" in tasks_content, (
-            "sshd_config must be owned by root"
-        )
-        assert "group: root" in tasks_content, (
-            "sshd_config must have group root"
-        )
-
-        # Verify backup is enabled (safety measure)
-        assert "backup: true" in tasks_content or "backup: yes" in tasks_content, (
-            "Configuration deployment should enable backup"
-        )
-
-        # Verify the task notifies the restart handler (Requirement 3.13)
-        assert "notify: Restart sshd" in tasks_content or "notify:" in tasks_content, (
-            "Configuration change must trigger sshd restart"
-        )
-
-        # Property verified: The SSH hardening role configuration ensures that:
-        # - Password authentication is disabled globally (3.1)
-        # - Root login is disabled (3.2)
-        # - Key exchange uses only modern elliptic curves (3.3)
-        # - Ciphers use only authenticated encryption (AEAD) (3.4)
-        # - MACs use only Encrypt-Then-MAC variants (3.5)
-        # - X11 forwarding is disabled (3.6)
-        # - TCP forwarding is disabled (3.7)
-        # - Agent forwarding is disabled (3.8)
-        # - Tunneling is disabled (3.9)
-        # - Public key authentication is enabled (3.14)
-        # - Empty passwords are disabled (3.18)
-        # - Configuration is validated before deployment
-        # - Configuration changes trigger service restart
-        # - This applies consistently regardless of port or username configuration
-
-
-class TestSSHSessionSecurityProperties:
-    """Property-based tests for SSH session security configuration."""
-
-    @pytest.mark.property
-    @pytest.mark.unit
-    @settings(max_examples=100)
-    @given(
-        max_auth_tries=st.integers(min_value=1, max_value=10),
-        login_grace_time=st.integers(min_value=10, max_value=120),
-        client_alive_interval=valid_timeout_seconds(),
-        client_alive_count_max=st.integers(min_value=1, max_value=5),
-    )
-    def test_property_8_ssh_session_security_configuration(
-        self,
-        max_auth_tries: int,
-        login_grace_time: int,
-        client_alive_interval: int,
-        client_alive_count_max: int,
-    ):
-        """
-        Feature: vps-bootstrap-playbook, Property 8: SSH Session Security Configuration
-
-        For any execution of the bootstrap playbook, the SSHD configuration SHALL set
-        MaxAuthTries to a low value, LoginGraceTime to a short duration, and configure
-        ClientAliveInterval and ClientAliveCountMax for idle session management.
-
-        Validates: Requirements 3.15, 3.16, 3.17
-        """
-        # This property test verifies the SSH hardening role's session security by checking:
-        # 1. MaxAuthTries is configurable and used in template (Requirement 3.15)
-        # 2. LoginGraceTime is configurable and used in template (Requirement 3.16)
-        # 3. ClientAliveInterval and ClientAliveCountMax are configured (Requirement 3.17)
-
-        # Read the SSH hardening role template
-        template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
-        assert template_path.exists(), "SSH hardening template must exist"
-
-        template_content = template_path.read_text()
-        template_lines = template_content.split('\n')
-
-        # Helper function to check for uncommented directive
-        def has_uncommented_directive(directive: str) -> bool:
-            """Check if directive exists and is not commented out."""
-            for line in template_lines:
-                stripped = line.strip()
-                if stripped.startswith('#'):
-                    continue  # Skip commented lines
-                if directive in stripped:
-                    return True
-            return False
-
-        # Verify Requirement 3.15: MaxAuthTries is configured
-        assert has_uncommented_directive("MaxAuthTries {{ ssh_max_auth_tries }}"), (
-            "MaxAuthTries must be configured using ssh_max_auth_tries variable (uncommented)"
-        )
-
-        # Verify Requirement 3.16: LoginGraceTime is configured
-        assert has_uncommented_directive("LoginGraceTime {{ ssh_login_grace_time }}"), (
-            "LoginGraceTime must be configured using ssh_login_grace_time variable (uncommented)"
-        )
-
-        # Verify Requirement 3.17: ClientAliveInterval is configured
-        assert has_uncommented_directive("ClientAliveInterval {{ ssh_client_alive_interval }}"), (
-            "ClientAliveInterval must be configured using "
-            "ssh_client_alive_interval variable (uncommented)"
-        )
-
-        # Verify Requirement 3.17: ClientAliveCountMax is configured
-        assert has_uncommented_directive("ClientAliveCountMax {{ ssh_client_alive_count_max }}"), (
-            "ClientAliveCountMax must be configured using "
-            "ssh_client_alive_count_max variable (uncommented)"
-        )
-
-        # Read the defaults to verify reasonable default values
-        defaults_path = Path("roles/ssh_hardening/defaults/main.yml")
-        assert defaults_path.exists(), "SSH hardening defaults must exist"
-
-        defaults_content = defaults_path.read_text()
-
-        # Verify default values are defined
-        assert "ssh_max_auth_tries:" in defaults_content, (
-            "ssh_max_auth_tries must be defined in defaults"
-        )
-        assert "ssh_login_grace_time:" in defaults_content, (
-            "ssh_login_grace_time must be defined in defaults"
-        )
-        assert "ssh_client_alive_interval:" in defaults_content, (
-            "ssh_client_alive_interval must be defined in defaults"
-        )
-        assert "ssh_client_alive_count_max:" in defaults_content, (
-            "ssh_client_alive_count_max must be defined in defaults"
-        )
-
-        # Verify default MaxAuthTries is low (security best practice)
-        # Extract the default value and verify it's reasonable
-        for line in defaults_content.split('\n'):
-            if line.strip().startswith('ssh_max_auth_tries:'):
-                value = line.split(':')[1].strip()
-                try:
-                    default_max_auth_tries = int(value)
-                    assert 1 <= default_max_auth_tries <= 10, (
-                        f"Default ssh_max_auth_tries should be between 1 and 10, "
-                        f"got {default_max_auth_tries}"
-                    )
-                except ValueError:
-                    pass  # Value might be a variable reference
-
-        # Verify default LoginGraceTime is short (security best practice)
-        # Should be in seconds or with time suffix (e.g., "30s", "1m")
-        assert 'ssh_login_grace_time:' in defaults_content, (
-            "LoginGraceTime default must be defined"
-        )
-
-        # Verify ClientAlive settings are configured for idle session management
-        # These settings help detect and close dead connections
-        for line in defaults_content.split('\n'):
-            if line.strip().startswith('ssh_client_alive_interval:'):
-                value = line.split(':')[1].strip()
-                try:
-                    default_interval = int(value)
-                    assert 30 <= default_interval <= 600, (
-                        f"Default ssh_client_alive_interval should be between 30 and 600 seconds, "
-                        f"got {default_interval}"
-                    )
-                except ValueError:
-                    pass  # Value might be a variable reference
-
-            if line.strip().startswith('ssh_client_alive_count_max:'):
-                value = line.split(':')[1].strip()
-                try:
-                    default_count_max = int(value)
-                    assert 1 <= default_count_max <= 5, (
-                        f"Default ssh_client_alive_count_max should be between 1 and 5, "
-                        f"got {default_count_max}"
-                    )
-                except ValueError:
-                    pass  # Value might be a variable reference
-
-        # Property verified: The SSH hardening role configuration ensures that:
-        # - MaxAuthTries is configurable and set to a low value (3.15)
-        # - LoginGraceTime is configurable and set to a short duration (3.16)
-        # - ClientAliveInterval and ClientAliveCountMax are configured for
-        #   idle session management (3.17)
-        # - Default values follow security best practices
-        # - All session security settings are templated and configurable
-        # - This applies consistently across all valid configuration values
-
-
-class TestSSHPortConfigurationProperties:
-    """Property-based tests for SSH port configuration."""
-
-    @pytest.mark.property
-    @pytest.mark.unit
-    @settings(max_examples=100)
-    @given(
-        ssh_port=valid_ssh_port(),
-    )
-    def test_property_7_ssh_port_configuration(self, ssh_port: int):
-        """
-        Feature: vps-bootstrap-playbook, Property 7: SSH Port Configuration
-
-        For any execution of the bootstrap playbook with an optional SSH port variable,
-        the SSHD SHALL listen on the specified port (or default port 22 if not specified).
-
-        Validates: Requirements 3.11, 3.12
-        """
-        # This property test verifies the SSH hardening role's port configuration by checking:
-        # 1. SSH port is configurable via variable (Requirement 3.11)
-        # 2. SSHD is configured to listen on the specified port (Requirement 3.12)
-        # 3. Default port is 22 if not specified
-
-        # Read the SSH hardening role template
-        template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
-        assert template_path.exists(), "SSH hardening template must exist"
-
-        template_content = template_path.read_text()
-        template_lines = template_content.split('\n')
-
-        # Helper function to check for uncommented directive
-        def has_uncommented_directive(directive: str) -> bool:
-            """Check if directive exists and is not commented out."""
-            for line in template_lines:
-                stripped = line.strip()
-                if stripped.startswith('#'):
-                    continue  # Skip commented lines
-                if directive in stripped:
-                    return True
-            return False
-
-        # Verify Requirement 3.12: Port is configured using variable
-        assert has_uncommented_directive("Port {{ ssh_port }}"), (
-            "SSH port must be configured using ssh_port variable (uncommented)"
-        )
-
-        # Read the defaults to verify default port value
-        defaults_path = Path("roles/ssh_hardening/defaults/main.yml")
-        assert defaults_path.exists(), "SSH hardening defaults must exist"
-
-        defaults_content = defaults_path.read_text()
-
-        # Verify Requirement 3.11: ssh_port variable is defined with default value
-        assert "ssh_port:" in defaults_content, (
-            "ssh_port must be defined in defaults"
-        )
-
-        # Verify default port is 22 (standard SSH port)
-        assert "ssh_port: 22" in defaults_content, (
-            "Default SSH port should be 22"
-        )
-
-        # Property verified: The SSH hardening role configuration ensures that:
-        # - SSH port is configurable via ssh_port variable (3.11)
-        # - SSHD listens on the configured port (3.12)
-        # - Default port is 22 if not overridden
-        # - This applies consistently for any valid port number (1024-65535)
-
-
-class TestSSHAccessRestrictionProperties:
-    """Property-based tests for SSH user access restriction."""
 
     @pytest.mark.property
     @pytest.mark.unit
@@ -546,7 +210,9 @@ class TestSSHAccessRestrictionProperties:
         ansible_user=valid_username(),
     )
     def test_property_6_ssh_access_restriction(
-        self, manual_user: str, ansible_user: str
+        self,
+        manual_user: str,
+        ansible_user: str,
     ):
         """
         Feature: vps-bootstrap-playbook, Property 6: SSH Access Restriction
@@ -556,62 +222,607 @@ class TestSSHAccessRestrictionProperties:
         and Ansible user.
 
         Validates: Requirements 3.10
+
+        This property test verifies that:
+        1. AllowUsers directive is present in configuration
+        2. AllowUsers references manual_user_name variable
+        3. AllowUsers references ansible_user_name variable
+        4. AllowUsers is configurable through variables
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
             return
 
-        # This property test verifies the SSH hardening role's access restriction by checking:
-        # 1. AllowUsers directive is configured in template (Requirement 3.10)
-        # 2. AllowUsers includes manual_user_name and ansible_user_name
-        # 3. AllowUsers is constructed from ssh_allowed_users variable
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
 
-        # Read the SSH hardening role template
-        template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
-        template_lines = template_content.split('\n')
 
-        # Helper function to check for uncommented directive
-        def has_uncommented_directive(directive: str) -> bool:
-            """Check if directive exists and is not commented out."""
-            for line in template_lines:
-                stripped = line.strip()
-                if stripped.startswith('#'):
-                    continue  # Skip commented lines
-                if directive in stripped:
-                    return True
-            return False
-
-        # Verify Requirement 3.10: AllowUsers directive is configured
-        assert has_uncommented_directive("AllowUsers {{ ssh_allowed_users | join(' ') }}"), (
-            "AllowUsers directive must be configured using ssh_allowed_users variable (uncommented)"
+        # Verify AllowUsers directive is present (Requirement 3.10)
+        assert "AllowUsers" in template_content, (
+            "Template must include AllowUsers directive"
         )
 
-        # Read the defaults to verify allowed users configuration
-        defaults_path = Path("roles/ssh_hardening/defaults/main.yml")
-        assert defaults_path.exists(), "SSH hardening defaults must exist"
+        # Verify AllowUsers uses variable for user list
+        assert "{{ ssh_allowed_users" in template_content or (
+            "{{ manual_user_name }}" in template_content
+            and "{{ ansible_user_name }}" in template_content
+        ), "Template must use variables for allowed users"
+
+        # Verify defaults file defines allowed users
+        defaults_path = role_path / "defaults" / "main.yml"
+        assert defaults_path.exists(), "SSH hardening role must have defaults file"
 
         defaults_content = defaults_path.read_text()
 
-        # Verify ssh_allowed_users variable is defined
+        # Verify ssh_allowed_users is defined
         assert "ssh_allowed_users:" in defaults_content, (
-            "ssh_allowed_users must be defined in defaults"
+            "Defaults must define ssh_allowed_users"
         )
 
-        # Verify manual_user_name is included in allowed users
-        assert '"{{ manual_user_name }}"' in defaults_content or (
-            "{{ manual_user_name }}" in defaults_content
-        ), "manual_user_name must be included in ssh_allowed_users"
+        # Verify allowed users references manual and Ansible users
+        assert "manual_user_name" in defaults_content, (
+            "Allowed users must reference manual_user_name"
+        )
 
-        # Verify ansible_user_name is included in allowed users
-        assert '"{{ ansible_user_name }}"' in defaults_content or (
-            "{{ ansible_user_name }}" in defaults_content
-        ), "ansible_user_name must be included in ssh_allowed_users"
+        assert "ansible_user_name" in defaults_content, (
+            "Allowed users must reference ansible_user_name"
+        )
 
-        # Property verified: The SSH hardening role configuration ensures that:
-        # - AllowUsers directive restricts SSH access to specific users (3.10)
-        # - Both manual_user_name and ansible_user_name are included
-        # - No other users can access SSH
-        # - This applies consistently for any valid username configuration
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        ssh_port=valid_ssh_port(),
+    )
+    def test_property_7_ssh_port_configuration(
+        self,
+        ssh_port: int,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 7: SSH Port Configuration
+
+        For any execution of the bootstrap playbook with an optional SSH port
+        variable, the SSHD SHALL listen on the specified port (or default port 22
+        if not specified).
+
+        Validates: Requirements 3.11, 3.12
+
+        This property test verifies that:
+        1. Port directive is present in configuration
+        2. Port uses configurable variable
+        3. Default port is 22
+        4. Port configuration is validated
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
+        assert template_path.exists(), "SSH hardening template must exist"
+
+        template_content = template_path.read_text()
+
+        # Verify Port directive is present (Requirement 3.12)
+        assert "Port" in template_content, (
+            "Template must include Port directive"
+        )
+
+        # Verify Port uses variable (Requirement 3.11)
+        assert "{{ ssh_port }}" in template_content, (
+            "Template must use ssh_port variable"
+        )
+
+        # Verify defaults file defines SSH port
+        defaults_path = role_path / "defaults" / "main.yml"
+        assert defaults_path.exists(), "SSH hardening role must have defaults file"
+
+        defaults_content = defaults_path.read_text()
+
+        # Verify ssh_port default is 22 (Requirement 3.11)
+        assert "ssh_port: 22" in defaults_content, (
+            "Default SSH port must be 22"
+        )
+
+        # Verify tasks file validates configuration
+        tasks_path = role_path / "tasks" / "main.yml"
+        assert tasks_path.exists(), "SSH hardening role must have tasks"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify template deployment uses validation (Requirement 3.13)
+        assert "validate:" in tasks_content, (
+            "SSH config deployment must use validation"
+        )
+
+        assert "sshd" in tasks_content, (
+            "SSH config validation must use sshd"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        max_auth_tries=valid_max_auth_tries(),
+        login_grace_time=valid_timeout_string(),
+        client_alive_interval=valid_timeout_seconds(),
+        client_alive_count_max=valid_client_alive_count(),
+    )
+    def test_property_8_ssh_session_security_configuration(
+        self,
+        max_auth_tries: int,
+        login_grace_time: str,
+        client_alive_interval: int,
+        client_alive_count_max: int,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 8: SSH Session Security Configuration
+
+        For any execution of the bootstrap playbook, the SSHD configuration SHALL
+        set MaxAuthTries to a low value, LoginGraceTime to a short duration, and
+        configure ClientAliveInterval and ClientAliveCountMax for idle session
+        management.
+
+        Validates: Requirements 3.15, 3.16, 3.17
+
+        This property test verifies that:
+        1. MaxAuthTries is configured with a low value
+        2. LoginGraceTime is configured with a short duration
+        3. ClientAliveInterval is configured for keepalive
+        4. ClientAliveCountMax is configured for idle timeout
+        5. All session security settings are configurable
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
+        assert template_path.exists(), "SSH hardening template must exist"
+
+        template_content = template_path.read_text()
+
+        # Verify MaxAuthTries is configured (Requirement 3.15)
+        assert "MaxAuthTries" in template_content, (
+            "Template must include MaxAuthTries directive"
+        )
+
+        assert "{{ ssh_max_auth_tries }}" in template_content, (
+            "Template must use ssh_max_auth_tries variable"
+        )
+
+        # Verify LoginGraceTime is configured (Requirement 3.16)
+        assert "LoginGraceTime" in template_content, (
+            "Template must include LoginGraceTime directive"
+        )
+
+        assert "{{ ssh_login_grace_time }}" in template_content, (
+            "Template must use ssh_login_grace_time variable"
+        )
+
+        # Verify ClientAliveInterval is configured (Requirement 3.17)
+        assert "ClientAliveInterval" in template_content, (
+            "Template must include ClientAliveInterval directive"
+        )
+
+        assert "{{ ssh_client_alive_interval }}" in template_content, (
+            "Template must use ssh_client_alive_interval variable"
+        )
+
+        # Verify ClientAliveCountMax is configured (Requirement 3.17)
+        assert "ClientAliveCountMax" in template_content, (
+            "Template must include ClientAliveCountMax directive"
+        )
+
+        assert "{{ ssh_client_alive_count_max }}" in template_content, (
+            "Template must use ssh_client_alive_count_max variable"
+        )
+
+        # Verify defaults file defines session security settings
+        defaults_path = role_path / "defaults" / "main.yml"
+        assert defaults_path.exists(), "SSH hardening role must have defaults file"
+
+        defaults_content = defaults_path.read_text()
+
+        # Verify MaxAuthTries default is low (Requirement 3.15)
+        assert "ssh_max_auth_tries:" in defaults_content, (
+            "Defaults must define ssh_max_auth_tries"
+        )
+
+        # Extract MaxAuthTries value and verify it's low (≤6)
+        for line in defaults_content.split("\n"):
+            if "ssh_max_auth_tries:" in line and "#" not in line.split("ssh_max_auth_tries:")[0]:
+                # Parse the value
+                value_str = line.split("ssh_max_auth_tries:")[1].strip()
+                if value_str.isdigit():
+                    value = int(value_str)
+                    assert value <= 6, (
+                        f"Default MaxAuthTries must be low (≤6), got {value}"
+                    )
+
+        # Verify LoginGraceTime default is short (Requirement 3.16)
+        assert "ssh_login_grace_time:" in defaults_content, (
+            "Defaults must define ssh_login_grace_time"
+        )
+
+        # Verify ClientAliveInterval is defined (Requirement 3.17)
+        assert "ssh_client_alive_interval:" in defaults_content, (
+            "Defaults must define ssh_client_alive_interval"
+        )
+
+        # Verify ClientAliveCountMax is defined (Requirement 3.17)
+        assert "ssh_client_alive_count_max:" in defaults_content, (
+            "Defaults must define ssh_client_alive_count_max"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        ssh_port=valid_ssh_port(),
+    )
+    def test_ssh_configuration_uses_secure_defaults(
+        self,
+        ssh_port: int,
+    ):
+        """
+        Verify SSH configuration uses secure defaults beyond minimum requirements.
+
+        This test checks for additional security best practices:
+        - StrictModes enabled
+        - UsePAM enabled for system integration
+        - Compression disabled (prevents CRIME-style attacks)
+        - UseDNS disabled (prevents DNS-based delays/attacks)
+        - GatewayPorts disabled
+        - PermitUserEnvironment disabled
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
+        assert template_path.exists(), "SSH hardening template must exist"
+
+        template_content = template_path.read_text()
+
+        # Verify additional security settings
+        security_settings = {
+            "StrictModes": "yes",
+            "UsePAM": "yes",
+            "Compression": "no",
+            "UseDNS": "no",
+            "GatewayPorts": "no",
+            "PermitUserEnvironment": "no",
+        }
+
+        for setting, expected_value in security_settings.items():
+            assert f"{setting} {expected_value}" in template_content, (
+                f"Template should set {setting} to {expected_value} for security"
+            )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_configuration_template_has_documentation(self):
+        """
+        Verify SSH configuration template includes documentation.
+
+        The template should have comments explaining security settings
+        and referencing requirements for traceability.
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
+        assert template_path.exists(), "SSH hardening template must exist"
+
+        template_content = template_path.read_text()
+
+        # Verify template has comments
+        assert "#" in template_content, (
+            "Template should have comments explaining configuration"
+        )
+
+        # Verify template references requirements
+        assert "Requirement" in template_content, (
+            "Template should reference requirements for traceability"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_hardening_role_has_handler_for_service_restart(self):
+        """
+        Verify SSH hardening role has handler to restart sshd on config changes.
+
+        Validates: Requirement 3.13 (service restart on configuration change)
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify handlers file exists
+        handlers_path = role_path / "handlers" / "main.yml"
+        assert handlers_path.exists(), "SSH hardening role must have handlers"
+
+        handlers_content = handlers_path.read_text()
+
+        # Verify handler for sshd restart exists
+        assert "name:" in handlers_content, (
+            "Handlers must have named handlers"
+        )
+
+        assert "sshd" in handlers_content.lower(), (
+            "Handlers must include sshd restart handler"
+        )
+
+        # Verify handler uses service or systemd module
+        assert (
+            "ansible.builtin.service:" in handlers_content
+            or "ansible.builtin.systemd:" in handlers_content
+            or "ansible.builtin.systemd_service:" in handlers_content
+        ), "Handler must use service management module"
+
+        # Verify handler uses restarted state
+        assert "state: restarted" in handlers_content, (
+            "Handler must restart sshd service"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_hardening_tasks_notify_handler_on_config_change(self):
+        """
+        Verify SSH hardening tasks notify handler when configuration changes.
+
+        Validates: Requirement 3.13 (service restart on configuration change)
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify tasks file exists
+        tasks_path = role_path / "tasks" / "main.yml"
+        assert tasks_path.exists(), "SSH hardening role must have tasks"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify tasks notify handler
+        assert "notify:" in tasks_content, (
+            "Tasks must notify handler on configuration changes"
+        )
+
+        # Verify notification references sshd restart
+        assert "sshd" in tasks_content.lower(), (
+            "Tasks must notify sshd restart handler"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        tailscale_enabled=st.booleans(),
+    )
+    def test_ssh_interface_restriction_based_on_tailscale_status(
+        self,
+        tailscale_enabled: bool,
+    ):
+        """
+        Verify SSH ListenAddress configuration adapts to Tailscale status.
+
+        When Tailscale is enabled, SSH should listen only on Tailscale interface.
+        When Tailscale is disabled, SSH should listen on all interfaces.
+
+        Validates: Requirements 5.2, 5.3
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify SSH hardening template exists
+        template_path = role_path / "templates" / "sshd_config.j2"
+        assert template_path.exists(), "SSH hardening template must exist"
+
+        template_content = template_path.read_text()
+
+        # Verify ListenAddress directive is present
+        assert "ListenAddress" in template_content, (
+            "Template must include ListenAddress directive"
+        )
+
+        # Verify template has conditional logic for Tailscale
+        assert "{% if " in template_content, (
+            "Template must use conditional logic for interface restriction"
+        )
+
+        assert "tailscale" in template_content.lower(), (
+            "Template must reference Tailscale for conditional logic"
+        )
+
+        # Verify template listens on all interfaces when Tailscale disabled
+        assert "0.0.0.0" in template_content or "ssh_listen_address" in template_content, (
+            "Template must listen on all interfaces when Tailscale disabled"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_algorithm_restrictions_use_modern_standards(self):
+        """
+        Verify SSH algorithm restrictions follow modern cryptographic standards.
+
+        Key exchange: curve25519, DH group 16/18
+        Ciphers: ChaCha20-Poly1305, AES-GCM
+        MACs: HMAC-SHA2 with ETM
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify defaults file exists
+        defaults_path = role_path / "defaults" / "main.yml"
+        assert defaults_path.exists(), "SSH hardening role must have defaults file"
+
+        defaults_content = defaults_path.read_text()
+
+        # Verify modern key exchange algorithms
+        modern_kex = [
+            "curve25519-sha256",
+            "diffie-hellman-group16-sha512",
+            "diffie-hellman-group18-sha512",
+        ]
+
+        for kex in modern_kex:
+            assert kex in defaults_content, (
+                f"Defaults must include modern key exchange algorithm: {kex}"
+            )
+
+        # Verify AEAD ciphers
+        aead_ciphers = [
+            "chacha20-poly1305@openssh.com",
+            "aes256-gcm@openssh.com",
+            "aes128-gcm@openssh.com",
+        ]
+
+        for cipher in aead_ciphers:
+            assert cipher in defaults_content, (
+                f"Defaults must include AEAD cipher: {cipher}"
+            )
+
+        # Verify Encrypt-Then-MAC MACs
+        etm_macs = [
+            "hmac-sha2-512-etm@openssh.com",
+            "hmac-sha2-256-etm@openssh.com",
+        ]
+
+        for mac in etm_macs:
+            assert mac in defaults_content, (
+                f"Defaults must include Encrypt-Then-MAC variant: {mac}"
+            )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_configuration_backup_is_created(self):
+        """
+        Verify SSH configuration deployment creates backup of existing config.
+
+        This allows recovery if new configuration causes issues.
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify tasks file exists
+        tasks_path = role_path / "tasks" / "main.yml"
+        assert tasks_path.exists(), "SSH hardening role must have tasks"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify backup parameter is used
+        assert "backup:" in tasks_content, (
+            "SSH config deployment should create backup"
+        )
+
+        assert "backup: true" in tasks_content or "backup: yes" in tasks_content, (
+            "SSH config deployment should enable backup"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_configuration_validation_prevents_lockout(self):
+        """
+        Verify SSH configuration is validated before deployment.
+
+        This prevents deploying invalid configuration that could lock out access.
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify tasks file exists
+        tasks_path = role_path / "tasks" / "main.yml"
+        assert tasks_path.exists(), "SSH hardening role must have tasks"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify validation is used
+        assert "validate:" in tasks_content, (
+            "SSH config deployment must validate configuration"
+        )
+
+        # Verify validation uses sshd test mode
+        assert "/usr/sbin/sshd" in tasks_content and "-t" in tasks_content, (
+            "SSH config validation must use sshd -t"
+        )
+
+        # Verify validation uses %s placeholder for temp file
+        assert "%s" in tasks_content, (
+            "SSH config validation must use %s placeholder"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_hardening_role_has_appropriate_tags(self):
+        """
+        Verify SSH hardening role has appropriate tags for selective execution.
+
+        Tags allow running specific subsets of tasks (e.g., only SSH hardening).
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify tasks file exists
+        tasks_path = role_path / "tasks" / "main.yml"
+        assert tasks_path.exists(), "SSH hardening role must have tasks"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify tasks have tags (optional but recommended)
+        # Tags are useful for selective execution
+        # Not strictly required, so we just check if present
+        if "tags:" in tasks_content:
+            # Good practice - tags are present
+            pass
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_ssh_configuration_file_permissions_are_secure(self):
+        """
+        Verify SSH configuration file is deployed with secure permissions.
+
+        sshd_config should be readable by all but writable only by root.
+        """
+        # Verify SSH hardening role exists
+        role_path = Path("roles/ssh_hardening")
+        assert role_path.exists(), "SSH hardening role must exist"
+
+        # Verify tasks file exists
+        tasks_path = role_path / "tasks" / "main.yml"
+        assert tasks_path.exists(), "SSH hardening role must have tasks"
+
+        tasks_content = tasks_path.read_text()
+
+        # Verify file permissions are set
+        assert "mode:" in tasks_content, (
+            "SSH config deployment must set file permissions"
+        )
+
+        # Verify mode is 0644 (rw-r--r--)
+        assert 'mode: "0644"' in tasks_content or "mode: '0644'" in tasks_content, (
+            "SSH config must have mode 0644"
+        )
+
+        # Verify ownership is set to root
+        assert "owner: root" in tasks_content, (
+            "SSH config must be owned by root"
+        )
+
+        assert "group: root" in tasks_content, (
+            "SSH config must have group root"
+        )

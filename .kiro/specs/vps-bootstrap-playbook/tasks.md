@@ -317,7 +317,7 @@ The implementation follows a logical progression: project structure → core rol
     - Use hypothesis strategies for username generation
     - _Requirements: 1.1-1.8, 2.1-2.8_
   
-  - [ ] 17.3 Implement property tests for SSH hardening
+  - [x] 17.3 Implement property tests for SSH hardening
     - Property 5: SSH daemon hardening configuration
     - Property 6: SSH access restriction
     - Property 7: SSH port configuration
