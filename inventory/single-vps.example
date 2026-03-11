@@ -1,0 +1,120 @@
+---
+# ============================================================================
+# Single VPS Inventory Example
+# ============================================================================
+#
+# This is a simple inventory file for bootstrapping a SINGLE VPS.
+# Use this when you have one server to configure.
+#
+# SETUP INSTRUCTIONS:
+# -------------------
+# 1. Copy this file to create your actual inventory:
+#    cp inventory/single-vps.example inventory/single-vps.yml
+#
+# 2. Edit the file and replace the example values:
+#    - Change the hostname (vps-prod-01) to your server's name
+#    - Change the IP address (203.0.113.10) to your server's IP
+#    - Update the SSH key path to match your root SSH key location
+#
+# 3. Create and configure your variables:
+#    cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml
+#    # Edit all.yml with your configuration
+#
+# 4. Create and encrypt your vault:
+#    cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
+#    # Edit vault.yml with your secrets
+#    uv run ansible-vault encrypt inventory/group_vars/vault.yml
+#
+# 5. Run the bootstrap playbook:
+#    make bootstrap INVENTORY=inventory/single-vps.yml
+#    # Or: uv run ansible-playbook -i inventory/single-vps.yml site.yml --ask-vault-pass
+#
+# ============================================================================
+
+all:
+  hosts:
+    # ----------------------------------------------------------------------------
+    # Your VPS Configuration
+    # ----------------------------------------------------------------------------
+    vps-prod-01:
+      # Public IP address or hostname of your VPS
+      ansible_host: 203.0.113.10
+      
+      # Initial connection user (root for fresh VPS)
+      ansible_user: root
+      
+      # SSH connection method (choose ONE):
+      
+      # Option 1: SSH key authentication (RECOMMENDED)
+      # Path to your root SSH private key on the Ansible controller
+      ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+      
+      # Option 2: Password authentication (less secure)
+      # Uncomment this line and comment out the SSH key line above
+      # The password should be stored in host_vars vault (see below)
+      # ansible_ssh_pass: "{{ vault_root_password }}"
+      
+      # Optional: Custom SSH port (if your VPS uses non-standard port)
+      # ansible_port: 22
+      
+      # Optional: Disable host key checking for first connection
+      # (Remove this after first successful connection)
+      # ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+  # ----------------------------------------------------------------------------
+  # Global Variables
+  # ----------------------------------------------------------------------------
+  # Variables that apply to all hosts in this inventory
+  # For more detailed configuration, use inventory/group_vars/all.yml
+  vars:
+    # Ansible connection settings
+    ansible_python_interpreter: /usr/bin/python3
+    
+    # Optional: Reference to vault file (if using password authentication)
+    # vault_file: "{{ playbook_dir }}/inventory/group_vars/vault.yml"
+
+
+# ============================================================================
+# NEXT STEPS AFTER BOOTSTRAP
+# ============================================================================
+#
+# After the bootstrap playbook completes successfully:
+#
+# 1. Root SSH access will be DISABLED
+# 2. You can access the server using the manual access user:
+#    ssh admin@203.0.113.10 -i ~/.ssh/id_ed25519_admin
+#
+# 3. For future Ansible automation, update your inventory to use the Ansible user:
+#    ansible_user: ansible
+#    ansible_ssh_private_key_file: ~/.ssh/id_ed25519_ansible
+#
+# 4. If Tailscale is enabled, SSH will only be accessible via the Tailscale network
+#
+# 5. If you get locked out, use the emergency access script on the server:
+#    # Connect via console/KVM
+#    /root/emergency-ssh-access.sh           # Unrestrict SSH
+#    /root/emergency-ssh-access.sh --restore # Restore restrictions
+#
+# ============================================================================
+
+# ============================================================================
+# USING PASSWORD AUTHENTICATION (OPTIONAL)
+# ============================================================================
+#
+# If you need to use password authentication instead of SSH keys:
+#
+# 1. Create a host-specific vault file:
+#    mkdir -p inventory/host_vars/vps-prod-01
+#    cp inventory/host_vars/vps-prod-01/vault.yml.example \
+#       inventory/host_vars/vps-prod-01/vault.yml
+#
+# 2. Edit the vault file and set vault_root_password:
+#    vault_root_password: "your-root-password"
+#
+# 3. Encrypt the vault file:
+#    uv run ansible-vault encrypt inventory/host_vars/vps-prod-01/vault.yml
+#
+# 4. In this inventory file, uncomment the ansible_ssh_pass line above
+#    and comment out the ansible_ssh_private_key_file line
+#
+# ============================================================================

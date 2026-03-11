@@ -1,0 +1,265 @@
+---
+# ============================================================================
+# Multiple VPS Inventory Example
+# ============================================================================
+#
+# This inventory file demonstrates how to bootstrap MULTIPLE VPS servers
+# organized into logical groups with different configurations.
+#
+# SETUP INSTRUCTIONS:
+# -------------------
+# 1. Copy this file to create your actual inventory:
+#    cp inventory/multiple-vps.example inventory/multiple-vps.yml
+#
+# 2. Edit the file and customize for your infrastructure:
+#    - Add/remove hosts as needed
+#    - Update IP addresses and hostnames
+#    - Organize hosts into appropriate groups
+#    - Update SSH key paths
+#
+# 3. Create group-level configuration:
+#    cp inventory/group_vars/all.yml.example inventory/group_vars/all.yml
+#    # Edit all.yml with common configuration for ALL servers
+#
+# 4. Create group-specific configuration (optional):
+#    cp inventory/group_vars/webservers.yml.example inventory/group_vars/webservers.yml
+#    # Edit webservers.yml with configuration specific to web servers
+#    # Repeat for other groups (databases.yml, monitoring.yml, etc.)
+#
+# 5. Create host-specific configuration (optional):
+#    mkdir -p inventory/host_vars/web-01
+#    cp inventory/host_vars/vps-prod-01/vars.yml.example inventory/host_vars/web-01/vars.yml
+#    # Edit vars.yml with configuration specific to web-01
+#    # Repeat for other hosts as needed
+#
+# 6. Create and encrypt your vault:
+#    cp inventory/group_vars/vault.yml.example inventory/group_vars/vault.yml
+#    # Edit vault.yml with shared secrets
+#    uv run ansible-vault encrypt inventory/group_vars/vault.yml
+#
+# 7. Run the bootstrap playbook:
+#    make bootstrap INVENTORY=inventory/multiple-vps.yml
+#    # Or: uv run ansible-playbook -i inventory/multiple-vps.yml site.yml --ask-vault-pass
+#
+# ============================================================================
+
+all:
+  # ----------------------------------------------------------------------------
+  # Host Groups
+  # ----------------------------------------------------------------------------
+  # Organize your servers into logical groups for easier management
+  # and group-specific configuration
+  children:
+    # ==========================================================================
+    # Web Servers Group
+    # ==========================================================================
+    # Front-end web servers running nginx, Apache, or application servers
+    webservers:
+      hosts:
+        web-01:
+          ansible_host: 203.0.113.20
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+        
+        web-02:
+          ansible_host: 203.0.113.21
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+        
+        web-03:
+          ansible_host: 203.0.113.22
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+      
+      # Group-specific variables (can also be in group_vars/webservers.yml)
+      vars:
+        # Web servers might need more swap for handling traffic spikes
+        zram_enabled: true
+        zram_size: "2G"
+        disk_swap_size: "4G"
+        
+        # Web servers might need stricter security
+        fail2ban_max_retry: 3
+        fail2ban_ban_time: "1h"
+    
+    # ==========================================================================
+    # Database Servers Group
+    # ==========================================================================
+    # Database servers running PostgreSQL, MySQL, MongoDB, etc.
+    databases:
+      hosts:
+        db-01:
+          ansible_host: 203.0.113.30
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+        
+        db-02:
+          ansible_host: 203.0.113.31
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+      
+      # Group-specific variables (can also be in group_vars/databases.yml)
+      vars:
+        # Database servers might need more disk swap
+        zram_enabled: true
+        zram_size: "4G"
+        disk_swap_size: "8G"
+        
+        # Database servers might need more log retention
+        journald_max_disk_usage: "2G"
+        journald_max_retention_time: "3month"
+    
+    # ==========================================================================
+    # Monitoring Servers Group
+    # ==========================================================================
+    # Monitoring and observability servers (Prometheus, Grafana, etc.)
+    monitoring:
+      hosts:
+        monitor-01:
+          ansible_host: 203.0.113.40
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+      
+      # Group-specific variables (can also be in group_vars/monitoring.yml)
+      vars:
+        # Monitoring servers might need more log storage
+        journald_max_disk_usage: "5G"
+        journald_max_retention_time: "6month"
+    
+    # ==========================================================================
+    # Application Servers Group
+    # ==========================================================================
+    # Application servers running your custom applications
+    appservers:
+      hosts:
+        app-01:
+          ansible_host: 203.0.113.50
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+        
+        app-02:
+          ansible_host: 203.0.113.51
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa_root
+      
+      # Group-specific variables (can also be in group_vars/appservers.yml)
+      vars:
+        # Application servers might use standard settings
+        zram_enabled: true
+        zram_size: "1G"
+
+  # ----------------------------------------------------------------------------
+  # Global Variables
+  # ----------------------------------------------------------------------------
+  # Variables that apply to ALL hosts in this inventory
+  # For more detailed configuration, use inventory/group_vars/all.yml
+  vars:
+    # Ansible connection settings
+    ansible_python_interpreter: /usr/bin/python3
+    
+    # Optional: Reference to vault file (if using password authentication)
+    # vault_file: "{{ playbook_dir }}/inventory/group_vars/vault.yml"
+
+
+# ============================================================================
+# VARIABLE PRECEDENCE
+# ============================================================================
+#
+# Ansible loads variables in this order (lowest to highest precedence):
+#
+# 1. Role defaults (roles/*/defaults/main.yml)
+# 2. inventory/group_vars/all.yml              ← Common to ALL hosts
+# 3. inventory/group_vars/vault.yml            ← Shared secrets
+# 4. inventory/group_vars/<group>.yml          ← Group-specific (e.g., webservers.yml)
+# 5. inventory/host_vars/<hostname>/vars.yml   ← Host-specific configuration
+# 6. inventory/host_vars/<hostname>/vault.yml  ← Host-specific secrets (highest)
+# 7. Inventory file vars (this file)           ← Can override everything
+#
+# This allows you to:
+# - Set common defaults in group_vars/all.yml
+# - Override for specific groups in group_vars/<group>.yml
+# - Override for specific hosts in host_vars/<hostname>/vars.yml
+# - Store secrets separately in vault files
+#
+# ============================================================================
+
+# ============================================================================
+# RUNNING THE PLAYBOOK
+# ============================================================================
+#
+# Bootstrap all servers:
+#   make bootstrap INVENTORY=inventory/multiple-vps.yml
+#
+# Bootstrap only web servers:
+#   uv run ansible-playbook -i inventory/multiple-vps.yml site.yml \
+#     --limit webservers --ask-vault-pass
+#
+# Bootstrap only specific hosts:
+#   uv run ansible-playbook -i inventory/multiple-vps.yml site.yml \
+#     --limit web-01,web-02 --ask-vault-pass
+#
+# Bootstrap all except databases:
+#   uv run ansible-playbook -i inventory/multiple-vps.yml site.yml \
+#     --limit 'all:!databases' --ask-vault-pass
+#
+# Check what would change (dry run):
+#   uv run ansible-playbook -i inventory/multiple-vps.yml site.yml \
+#     --check --diff --ask-vault-pass
+#
+# ============================================================================
+
+# ============================================================================
+# DIRECTORY STRUCTURE EXAMPLE
+# ============================================================================
+#
+# inventory/
+# ├── multiple-vps.yml                    # This file
+# ├── group_vars/
+# │   ├── all.yml                         # Common configuration for all hosts
+# │   ├── vault.yml                       # Shared secrets (encrypted)
+# │   ├── webservers.yml                  # Web server specific config
+# │   ├── databases.yml                   # Database server specific config
+# │   └── monitoring.yml                  # Monitoring server specific config
+# └── host_vars/
+#     ├── web-01/
+#     │   ├── vars.yml                    # web-01 specific config
+#     │   └── vault.yml                   # web-01 specific secrets (encrypted)
+#     ├── web-02/
+#     │   ├── vars.yml                    # web-02 specific config
+#     │   └── vault.yml                   # web-02 specific secrets (encrypted)
+#     ├── db-01/
+#     │   ├── vars.yml                    # db-01 specific config
+#     │   └── vault.yml                   # db-01 specific secrets (encrypted)
+#     └── monitor-01/
+#         ├── vars.yml                    # monitor-01 specific config
+#         └── vault.yml                   # monitor-01 specific secrets (encrypted)
+#
+# ============================================================================
+
+# ============================================================================
+# NEXT STEPS AFTER BOOTSTRAP
+# ============================================================================
+#
+# After the bootstrap playbook completes successfully on all servers:
+#
+# 1. Root SSH access will be DISABLED on all servers
+#
+# 2. You can access each server using the manual access user:
+#    ssh admin@203.0.113.20 -i ~/.ssh/id_ed25519_admin  # web-01
+#    ssh admin@203.0.113.30 -i ~/.ssh/id_ed25519_admin  # db-01
+#
+# 3. For future Ansible automation, update your inventory to use the Ansible user:
+#    ansible_user: ansible
+#    ansible_ssh_private_key_file: ~/.ssh/id_ed25519_ansible
+#
+# 4. If Tailscale is enabled, SSH will only be accessible via the Tailscale network
+#
+# 5. If you get locked out of a server, use the emergency access script:
+#    # Connect via console/KVM
+#    /root/emergency-ssh-access.sh           # Unrestrict SSH
+#    /root/emergency-ssh-access.sh --restore # Restore restrictions
+#
+# 6. Verify all servers are properly configured:
+#    make verify INVENTORY=inventory/multiple-vps.yml
+#
+# ============================================================================
