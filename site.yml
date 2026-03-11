@@ -35,8 +35,8 @@
       ansible.builtin.assert:
         that:
           - ansible_distribution == "Debian"
-          - ansible_distribution_major_version | int >= 11
-        fail_msg: "This playbook requires Debian 11 (bullseye) or newer"
+          - ansible_distribution_major_version | int >= 13
+        fail_msg: "This playbook requires Debian 13 (trixie) or newer"
         success_msg: "Target system is running Debian {{ ansible_distribution_version }}"
 
     - name: Pre-flight - Verify required variables are defined
