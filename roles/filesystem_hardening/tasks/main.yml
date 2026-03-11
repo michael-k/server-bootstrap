@@ -1,0 +1,10 @@
+---
+# Filesystem Hardening Role - Main Tasks
+#
+# Hardens /tmp, /dev/shm, and /var/tmp with noexec, nosuid, nodev options
+# to prevent execution of uploaded payloads from temporary directories.
+#
+# Mount strategy:
+#   /tmp     - bind-mount onto itself with restricted options (no RAM cost)
+#   /dev/shm - drop-in override on existing tmpfs mount
+#   /var/tmp - bind-mount to /tmp (inherits restrictions)
