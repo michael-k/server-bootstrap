@@ -1,0 +1,768 @@
+---
+# Verification Playbook for VPS Bootstrap Configuration
+# This playbook implements the 44 verification tasks from Requirement 14
+# to ensure the bootstrap playbook has correctly configured the VPS.
+#
+# Usage:
+#   make verify
+#   OR
+#   uv run ansible-playbook -i inventory tests/verify_bootstrap.yml
+#
+# Exit codes:
+#   0 - All tests passed
+#   Non-zero - One or more tests failed
+
+- name: Verify VPS Bootstrap Configuration
+  hosts: all
+  gather_facts: true
+  vars:
+    verification_results: []
+    tests_passed: 0
+    tests_failed: 0
+    tests_skipped: 0
+
+  tasks:
+    # ==============================================================================
+    # USER ACCOUNT VERIFICATION (Requirements 14.1-14.4)
+    # ==============================================================================
+
+    - name: "Test 14.1: Verify manual access user exists with uid 1000"
+      block:
+        - name: Get manual user information
+          ansible.builtin.command: "getent passwd {{ manual_user_name }}"
+          register: manual_user_info
+          changed_when: false
+          failed_when: false
+
+        - name: Check manual user UID
+          ansible.builtin.assert:
+            that:
+              - manual_user_info.rc == 0
+              - manual_user_info.stdout is search(':1000:')
+            fail_msg: "Manual user {{ manual_user_name }} does not exist with uid 1000"
+            success_msg: "✓ Manual user {{ manual_user_name }} exists with uid 1000"
+
+    - name: "Test 14.2: Verify Ansible user exists with uid 1999"
+      block:
+        - name: Get Ansible user information
+          ansible.builtin.command: "getent passwd {{ ansible_user_name }}"
+          register: ansible_user_info
+          changed_when: false
+          failed_when: false
+
+        - name: Check Ansible user UID
+          ansible.builtin.assert:
+            that:
+              - ansible_user_info.rc == 0
+              - ansible_user_info.stdout is search(':1999:')
+            fail_msg: "Ansible user {{ ansible_user_name }} does not exist with uid 1999"
+            success_msg: "✓ Ansible user {{ ansible_user_name }} exists with uid 1999"
+
+    - name: "Test 14.3: Verify manual access user has sudo privileges"
+      block:
+        - name: Check manual user sudo configuration
+          ansible.builtin.stat:
+            path: "/etc/sudoers.d/{{ manual_user_name }}"
+          register: manual_sudo_file
+
+        - name: Read manual user sudo configuration
+          ansible.builtin.slurp:
+            path: "/etc/sudoers.d/{{ manual_user_name }}"
+          register: manual_sudo_content
+          when: manual_sudo_file.stat.exists
+
+        - name: Verify manual user sudo privileges
+          ansible.builtin.assert:
+            that:
+              - manual_sudo_file.stat.exists
+              - manual_sudo_content.content | b64decode is search(manual_user_name)
+              - manual_sudo_content.content | b64decode is search('ALL=\\(ALL:ALL\\) ALL')
+            fail_msg: "Manual user {{ manual_user_name }} does not have proper sudo privileges"
+            success_msg: "✓ Manual user {{ manual_user_name }} has sudo privileges"
+
+    - name: "Test 14.4: Verify Ansible user has passwordless sudo privileges"
+      block:
+        - name: Check Ansible user sudo configuration
+          ansible.builtin.stat:
+            path: "/etc/sudoers.d/{{ ansible_user_name }}"
+          register: ansible_sudo_file
+
+        - name: Read Ansible user sudo configuration
+          ansible.builtin.slurp:
+            path: "/etc/sudoers.d/{{ ansible_user_name }}"
+          register: ansible_sudo_content
+          when: ansible_sudo_file.stat.exists
+
+        - name: Verify Ansible user passwordless sudo
+          ansible.builtin.assert:
+            that:
+              - ansible_sudo_file.stat.exists
+              - ansible_sudo_content.content | b64decode is search(ansible_user_name)
+              - ansible_sudo_content.content | b64decode is search('NOPASSWD')
+            fail_msg: "Ansible user {{ ansible_user_name }} does not have passwordless sudo"
+            success_msg: "✓ Ansible user {{ ansible_user_name }} has passwordless sudo"
+
+    # ==============================================================================
+    # SSH CONFIGURATION VERIFICATION (Requirements 14.5-14.17)
+    # ==============================================================================
+
+    - name: "Test 14.5: Verify SSHD password authentication is disabled"
+      block:
+        - name: Check SSHD password authentication setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify password authentication disabled
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('passwordauthentication no')
+            fail_msg: "SSHD password authentication is not disabled"
+            success_msg: "✓ SSHD password authentication is disabled"
+
+    - name: "Test 14.6: Verify SSHD root login is disabled"
+      block:
+        - name: Check SSHD root login setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify root login disabled
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('permitrootlogin no')
+            fail_msg: "SSHD root login is not disabled"
+            success_msg: "✓ SSHD root login is disabled"
+
+    - name: "Test 14.7: Verify SSHD is listening on configured port only"
+      block:
+        - name: Check SSHD port setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify SSH port configuration
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('port ' + (ssh_port | string))
+            fail_msg: "SSHD is not listening on port {{ ssh_port }}"
+            success_msg: "✓ SSHD is listening on port {{ ssh_port }}"
+
+    - name: "Test 14.8: Verify SSHD AllowUsers is restricted"
+      block:
+        - name: Check SSHD AllowUsers setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify AllowUsers restriction
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('allowusers')
+              - sshd_config.stdout is search(manual_user_name)
+              - sshd_config.stdout is search(ansible_user_name)
+            fail_msg: "SSHD AllowUsers is not properly restricted"
+            success_msg: "✓ SSHD AllowUsers is restricted to {{ manual_user_name }} and {{ ansible_user_name }}"
+
+    - name: "Test 14.9: Verify SSHD key exchange algorithms"
+      block:
+        - name: Check SSHD KexAlgorithms setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify modern key exchange algorithms
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('kexalgorithms')
+              - sshd_config.stdout is search('curve25519-sha256')
+            fail_msg: "SSHD key exchange algorithms are not properly configured"
+            success_msg: "✓ SSHD key exchange algorithms are hardened"
+
+    - name: "Test 14.10: Verify SSHD ciphers"
+      block:
+        - name: Check SSHD Ciphers setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify AEAD ciphers
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('ciphers')
+              - sshd_config.stdout is search('chacha20-poly1305@openssh.com') or sshd_config.stdout is search('aes256-gcm@openssh.com')
+            fail_msg: "SSHD ciphers are not properly configured"
+            success_msg: "✓ SSHD ciphers are hardened"
+
+    - name: "Test 14.11: Verify SSHD MACs"
+      block:
+        - name: Check SSHD MACs setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify Encrypt-Then-MAC variants
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('macs')
+              - sshd_config.stdout is search('etm@openssh.com')
+            fail_msg: "SSHD MACs are not properly configured"
+            success_msg: "✓ SSHD MACs are hardened"
+
+    - name: "Test 14.12: Verify X11 forwarding is disabled"
+      block:
+        - name: Check SSHD X11Forwarding setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify X11 forwarding disabled
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('x11forwarding no')
+            fail_msg: "SSHD X11 forwarding is not disabled"
+            success_msg: "✓ SSHD X11 forwarding is disabled"
+
+    - name: "Test 14.13: Verify TCP forwarding is disabled"
+      block:
+        - name: Check SSHD AllowTcpForwarding setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify TCP forwarding disabled
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('allowtcpforwarding no')
+            fail_msg: "SSHD TCP forwarding is not disabled"
+            success_msg: "✓ SSHD TCP forwarding is disabled"
+
+    - name: "Test 14.14: Verify agent forwarding is disabled"
+      block:
+        - name: Check SSHD AllowAgentForwarding setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify agent forwarding disabled
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('allowagentforwarding no')
+            fail_msg: "SSHD agent forwarding is not disabled"
+            success_msg: "✓ SSHD agent forwarding is disabled"
+
+    - name: "Test 14.15: Verify tunneling is disabled"
+      block:
+        - name: Check SSHD PermitTunnel setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Verify tunneling disabled
+          ansible.builtin.assert:
+            that:
+              - sshd_config.stdout is search('permittunnel no')
+            fail_msg: "SSHD tunneling is not disabled"
+            success_msg: "✓ SSHD tunneling is disabled"
+
+    - name: "Test 14.16: Verify SSHD service is running"
+      block:
+        - name: Check SSHD service status
+          ansible.builtin.systemd:
+            name: sshd
+          register: sshd_service
+          failed_when: false
+
+        - name: Verify SSHD is active
+          ansible.builtin.assert:
+            that:
+              - sshd_service.status.ActiveState == 'active'
+            fail_msg: "SSHD service is not running"
+            success_msg: "✓ SSHD service is running"
+
+    - name: "Test 14.17: Verify SSHD service is enabled"
+      block:
+        - name: Check SSHD service enablement
+          ansible.builtin.systemd:
+            name: sshd
+          register: sshd_service
+
+        - name: Verify SSHD is enabled
+          ansible.builtin.assert:
+            that:
+              - sshd_service.status.UnitFileState == 'enabled'
+            fail_msg: "SSHD service is not enabled"
+            success_msg: "✓ SSHD service is enabled"
+
+    # ==============================================================================
+    # TAILSCALE VERIFICATION (Requirements 14.18-14.21)
+    # ==============================================================================
+
+    - name: "Test 14.18: Verify Tailscale service is running"
+      when: tailscale_enabled | default(false)
+      block:
+        - name: Check Tailscale service status
+          ansible.builtin.systemd:
+            name: tailscaled
+          register: tailscale_service
+          failed_when: false
+
+        - name: Verify Tailscale is active
+          ansible.builtin.assert:
+            that:
+              - tailscale_service.status.ActiveState == 'active'
+            fail_msg: "Tailscale service is not running"
+            success_msg: "✓ Tailscale service is running"
+
+    - name: "Test 14.19: Verify Tailscale service is enabled"
+      when: tailscale_enabled | default(false)
+      block:
+        - name: Check Tailscale service enablement
+          ansible.builtin.systemd:
+            name: tailscaled
+          register: tailscale_service
+
+        - name: Verify Tailscale is enabled
+          ansible.builtin.assert:
+            that:
+              - tailscale_service.status.UnitFileState == 'enabled'
+            fail_msg: "Tailscale service is not enabled"
+            success_msg: "✓ Tailscale service is enabled"
+
+    - name: "Test 14.20: Verify SSH is restricted to Tailscale interface"
+      when: tailscale_enabled | default(false)
+      block:
+        - name: Check SSHD ListenAddress setting
+          ansible.builtin.command: sshd -T
+          register: sshd_config
+          changed_when: false
+
+        - name: Get Tailscale IP address
+          ansible.builtin.command: "ip -4 addr show {{ tailscale_interface | default('tailscale0') }}"
+          register: tailscale_ip
+          changed_when: false
+          failed_when: false
+
+        - name: Verify SSH restricted to Tailscale
+          ansible.builtin.assert:
+            that:
+              - tailscale_ip.rc == 0
+              - sshd_config.stdout is search('listenaddress')
+              - not (sshd_config.stdout is search('listenaddress 0.0.0.0'))
+            fail_msg: "SSH is not restricted to Tailscale interface"
+            success_msg: "✓ SSH is restricted to Tailscale interface"
+
+    - name: "Test 14.21: Verify emergency script exists"
+      when: tailscale_enabled | default(false)
+      block:
+        - name: Check emergency script file
+          ansible.builtin.stat:
+            path: /root/emergency-ssh-access.sh
+          register: emergency_script
+
+        - name: Verify emergency script exists and is executable
+          ansible.builtin.assert:
+            that:
+              - emergency_script.stat.exists
+              - emergency_script.stat.executable
+            fail_msg: "Emergency script does not exist or is not executable"
+            success_msg: "✓ Emergency script exists at /root/emergency-ssh-access.sh"
+
+    # ==============================================================================
+    # NFTABLES FIREWALL VERIFICATION (Requirements 14.22-14.28)
+    # ==============================================================================
+
+    - name: "Test 14.22: Verify NFTables service is active"
+      block:
+        - name: Check NFTables service status
+          ansible.builtin.systemd:
+            name: nftables
+          register: nftables_service
+
+        - name: Verify NFTables is active
+          ansible.builtin.assert:
+            that:
+              - nftables_service.status.ActiveState == 'active'
+            fail_msg: "NFTables service is not active"
+            success_msg: "✓ NFTables service is active"
+
+    - name: "Test 14.23: Verify NFTables service is enabled"
+      block:
+        - name: Check NFTables service enablement
+          ansible.builtin.systemd:
+            name: nftables
+          register: nftables_service
+
+        - name: Verify NFTables is enabled
+          ansible.builtin.assert:
+            that:
+              - nftables_service.status.UnitFileState == 'enabled'
+            fail_msg: "NFTables service is not enabled"
+            success_msg: "✓ NFTables service is enabled"
+
+    - name: "Test 14.24: Verify NFTables default input policy is drop"
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_rules
+          changed_when: false
+
+        - name: Verify input policy drop
+          ansible.builtin.assert:
+            that:
+              - nft_rules.stdout is search('type filter hook input.*policy drop')
+            fail_msg: "NFTables input policy is not drop"
+            success_msg: "✓ NFTables input policy is drop"
+
+    - name: "Test 14.25: Verify NFTables default forward policy is drop"
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_rules
+          changed_when: false
+
+        - name: Verify forward policy drop
+          ansible.builtin.assert:
+            that:
+              - nft_rules.stdout is search('type filter hook forward.*policy drop')
+            fail_msg: "NFTables forward policy is not drop"
+            success_msg: "✓ NFTables forward policy is drop"
+
+    - name: "Test 14.26: Verify NFTables allows established/related connections"
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_rules
+          changed_when: false
+
+        - name: Verify stateful rules
+          ansible.builtin.assert:
+            that:
+              - nft_rules.stdout is search('ct state.*established.*related.*accept')
+            fail_msg: "NFTables does not allow established/related connections"
+            success_msg: "✓ NFTables allows established/related connections"
+
+    - name: "Test 14.27: Verify NFTables allows loopback traffic"
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_rules
+          changed_when: false
+
+        - name: Verify loopback rules
+          ansible.builtin.assert:
+            that:
+              - nft_rules.stdout is search('iif.*lo.*accept') or nft_rules.stdout is search('iifname.*lo.*accept')
+            fail_msg: "NFTables does not allow loopback traffic"
+            success_msg: "✓ NFTables allows loopback traffic"
+
+    - name: "Test 14.28: Verify SSH port is accessible through firewall"
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_rules
+          changed_when: false
+
+        - name: Verify SSH port rules
+          ansible.builtin.assert:
+            that:
+              - nft_rules.stdout is search('tcp dport ' + (ssh_port | string))
+            fail_msg: "SSH port {{ ssh_port }} is not accessible through firewall"
+            success_msg: "✓ SSH port {{ ssh_port }} is accessible through firewall"
+
+    # ==============================================================================
+    # HOSTNAME VERIFICATION (Requirement 14.29)
+    # ==============================================================================
+
+    - name: "Test 14.29: Verify system hostname matches configured value"
+      when: system_hostname is defined and system_hostname | length > 0
+      block:
+        - name: Get current hostname
+          ansible.builtin.command: hostname
+          register: current_hostname
+          changed_when: false
+
+        - name: Verify hostname matches
+          ansible.builtin.assert:
+            that:
+              - current_hostname.stdout == system_hostname
+            fail_msg: "System hostname does not match configured value"
+            success_msg: "✓ System hostname is {{ system_hostname }}"
+
+    # ==============================================================================
+    # FAIL2BAN VERIFICATION (Requirements 14.30-14.32)
+    # ==============================================================================
+
+    - name: "Test 14.30: Verify fail2ban service is active"
+      block:
+        - name: Check fail2ban service status
+          ansible.builtin.systemd:
+            name: fail2ban
+          register: fail2ban_service
+
+        - name: Verify fail2ban is active
+          ansible.builtin.assert:
+            that:
+              - fail2ban_service.status.ActiveState == 'active'
+            fail_msg: "Fail2ban service is not active"
+            success_msg: "✓ Fail2ban service is active"
+
+    - name: "Test 14.31: Verify fail2ban service is enabled"
+      block:
+        - name: Check fail2ban service enablement
+          ansible.builtin.systemd:
+            name: fail2ban
+          register: fail2ban_service
+
+        - name: Verify fail2ban is enabled
+          ansible.builtin.assert:
+            that:
+              - fail2ban_service.status.UnitFileState == 'enabled'
+            fail_msg: "Fail2ban service is not enabled"
+            success_msg: "✓ Fail2ban service is enabled"
+
+    - name: "Test 14.32: Verify fail2ban is monitoring SSHD"
+      block:
+        - name: Check fail2ban status
+          ansible.builtin.command: fail2ban-client status
+          register: fail2ban_status
+          changed_when: false
+
+        - name: Verify sshd jail is active
+          ansible.builtin.assert:
+            that:
+              - fail2ban_status.stdout is search('sshd')
+            fail_msg: "Fail2ban is not monitoring SSHD"
+            success_msg: "✓ Fail2ban is monitoring SSHD"
+
+    # ==============================================================================
+    # JOURNALD VERIFICATION (Requirement 14.33)
+    # ==============================================================================
+
+    - name: "Test 14.33: Verify journald is configured to persist logs"
+      block:
+        - name: Check journald configuration
+          ansible.builtin.slurp:
+            path: /etc/systemd/journald.conf
+          register: journald_config
+
+        - name: Verify persistent storage
+          ansible.builtin.assert:
+            that:
+              - journald_config.content | b64decode is search('Storage=persistent')
+            fail_msg: "Journald is not configured for persistent storage"
+            success_msg: "✓ Journald is configured for persistent storage"
+
+    # ==============================================================================
+    # TIME SYNCHRONIZATION VERIFICATION (Requirements 14.34-14.36)
+    # ==============================================================================
+
+    - name: "Test 14.34: Verify time sync service is active"
+      block:
+        - name: Check time sync service status (chrony)
+          ansible.builtin.systemd:
+            name: chrony
+          register: chrony_service
+          failed_when: false
+
+        - name: Check time sync service status (timesyncd)
+          ansible.builtin.systemd:
+            name: systemd-timesyncd
+          register: timesyncd_service
+          failed_when: false
+          when: chrony_service.status.ActiveState | default('inactive') != 'active'
+
+        - name: Verify time sync service is active
+          ansible.builtin.assert:
+            that:
+              - chrony_service.status.ActiveState == 'active' or timesyncd_service.status.ActiveState == 'active'
+            fail_msg: "No time synchronization service is active"
+            success_msg: "✓ Time synchronization service is active"
+
+    - name: "Test 14.35: Verify time sync service is enabled"
+      block:
+        - name: Check time sync service enablement (chrony)
+          ansible.builtin.systemd:
+            name: chrony
+          register: chrony_service
+          failed_when: false
+
+        - name: Check time sync service enablement (timesyncd)
+          ansible.builtin.systemd:
+            name: systemd-timesyncd
+          register: timesyncd_service
+          failed_when: false
+          when: chrony_service.status.UnitFileState | default('disabled') != 'enabled'
+
+        - name: Verify time sync service is enabled
+          ansible.builtin.assert:
+            that:
+              - chrony_service.status.UnitFileState == 'enabled' or timesyncd_service.status.UnitFileState == 'enabled'
+            fail_msg: "No time synchronization service is enabled"
+            success_msg: "✓ Time synchronization service is enabled"
+
+    - name: "Test 14.36: Verify time synchronization is active"
+      block:
+        - name: Check chrony tracking status
+          ansible.builtin.command: chronyc tracking
+          register: chrony_tracking
+          changed_when: false
+          failed_when: false
+
+        - name: Check timesyncd status
+          ansible.builtin.command: timedatectl show-timesync --all
+          register: timesyncd_status
+          changed_when: false
+          failed_when: false
+          when: chrony_tracking.rc != 0
+
+        - name: Verify time sync is working
+          ansible.builtin.assert:
+            that:
+              - chrony_tracking.rc == 0 or timesyncd_status.rc == 0
+            fail_msg: "Time synchronization is not working"
+            success_msg: "✓ Time synchronization is active"
+
+    # ==============================================================================
+    # SWAP CONFIGURATION VERIFICATION (Requirements 14.37-14.43)
+    # ==============================================================================
+
+    - name: "Test 14.37: Verify zram device exists"
+      when: zram_enabled | default(false)
+      block:
+        - name: Check for zram device
+          ansible.builtin.stat:
+            path: /dev/zram0
+          register: zram_device
+
+        - name: Verify zram device exists
+          ansible.builtin.assert:
+            that:
+              - zram_device.stat.exists
+            fail_msg: "Zram device does not exist"
+            success_msg: "✓ Zram device exists"
+
+    - name: "Test 14.38: Verify zram device is active as swap"
+      when: zram_enabled | default(false)
+      block:
+        - name: Get swap status
+          ansible.builtin.command: swapon --show
+          register: swap_status
+          changed_when: false
+
+        - name: Verify zram swap is active
+          ansible.builtin.assert:
+            that:
+              - swap_status.stdout is search('/dev/zram0')
+            fail_msg: "Zram device is not active as swap"
+            success_msg: "✓ Zram device is active as swap"
+
+    - name: "Test 14.39: Verify zram compression algorithm is lz4"
+      when: zram_enabled | default(false)
+      block:
+        - name: Check zram compression algorithm
+          ansible.builtin.command: cat /sys/block/zram0/comp_algorithm
+          register: zram_comp
+          changed_when: false
+
+        - name: Verify lz4 compression
+          ansible.builtin.assert:
+            that:
+              - zram_comp.stdout is search('lz4')
+            fail_msg: "Zram compression algorithm is not lz4"
+            success_msg: "✓ Zram compression algorithm is lz4"
+
+    - name: "Test 14.40: Verify zram has higher priority than disk swap"
+      when: zram_enabled | default(false) and disk_swap_size is defined and disk_swap_size | length > 0
+      block:
+        - name: Get swap priorities
+          ansible.builtin.command: swapon --show
+          register: swap_status
+          changed_when: false
+
+        - name: Verify zram priority
+          ansible.builtin.assert:
+            that:
+              - swap_status.stdout is search('/dev/zram0.*100')
+            fail_msg: "Zram does not have priority 100"
+            success_msg: "✓ Zram has priority 100 (higher than disk swap)"
+
+    - name: "Test 14.41: Verify disk swap file exists"
+      when: disk_swap_size is defined and disk_swap_size | length > 0
+      block:
+        - name: Check for swap file
+          ansible.builtin.stat:
+            path: /swapfile
+          register: swap_file
+
+        - name: Verify swap file exists
+          ansible.builtin.assert:
+            that:
+              - swap_file.stat.exists
+              - swap_file.stat.mode == '0600'
+            fail_msg: "Swap file does not exist or has incorrect permissions"
+            success_msg: "✓ Swap file exists with correct permissions"
+
+    - name: "Test 14.42: Verify disk swap file is active"
+      when: disk_swap_size is defined and disk_swap_size | length > 0
+      block:
+        - name: Get swap status
+          ansible.builtin.command: swapon --show
+          register: swap_status
+          changed_when: false
+
+        - name: Verify disk swap is active
+          ansible.builtin.assert:
+            that:
+              - swap_status.stdout is search('/swapfile')
+            fail_msg: "Disk swap file is not active"
+            success_msg: "✓ Disk swap file is active"
+
+    - name: "Test 14.43: Verify disk swap file is in fstab"
+      when: disk_swap_size is defined and disk_swap_size | length > 0
+      block:
+        - name: Check fstab for swap entry
+          ansible.builtin.command: grep /swapfile /etc/fstab
+          register: fstab_swap
+          changed_when: false
+          failed_when: false
+
+        - name: Verify swap in fstab
+          ansible.builtin.assert:
+            that:
+              - fstab_swap.rc == 0
+              - fstab_swap.stdout is search('swap')
+            fail_msg: "Disk swap file is not in /etc/fstab"
+            success_msg: "✓ Disk swap file is in /etc/fstab"
+
+    # ==============================================================================
+    # FINAL SUMMARY (Requirement 14.44)
+    # ==============================================================================
+
+    - name: "Test 14.44: Display verification summary"
+      block:
+        - name: Count test results
+          ansible.builtin.set_fact:
+            total_tests: "{{ ansible_play_batch | length }}"
+
+        - name: Display summary
+          ansible.builtin.debug:
+            msg:
+              - "=========================================="
+              - "VPS Bootstrap Verification Complete"
+              - "=========================================="
+              - "All verification tests passed successfully!"
+              - ""
+              - "Configuration verified:"
+              - "  ✓ User accounts and sudo privileges"
+              - "  ✓ SSH hardening and access restrictions"
+              - "  ✓ Tailscale VPN (if enabled)"
+              - "  ✓ NFTables firewall rules"
+              - "  ✓ Fail2ban intrusion prevention"
+              - "  ✓ System logging configuration"
+              - "  ✓ Time synchronization"
+              - "  ✓ Swap configuration (if enabled)"
+              - "  ✓ Hostname configuration (if set)"
+              - ""
+              - "The VPS is properly configured and ready for use."
+              - "=========================================="
