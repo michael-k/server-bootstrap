@@ -258,7 +258,7 @@ The implementation follows a logical progression: project structure → core rol
 - [x] 14. Checkpoint - Verify all roles implemented
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Create main playbook orchestration
+- [x] 15. Create main playbook orchestration
   - [x] 15.1 Create site.yml main playbook
     - Define play targeting all hosts with root user
     - Include all roles in logical order: system_updates, users, ssh_hardening, tailscale, firewall, emergency_access, fail2ban, logging, system_config, swap
