@@ -1,0 +1,189 @@
+---
+# VPS Bootstrap Playbook
+#
+# This playbook performs initial configuration of a fresh VPS, transforming it from
+# root-only access to a hardened, production-ready state with secure access patterns.
+#
+# USAGE:
+#   make bootstrap
+#
+# REQUIREMENTS:
+#   - Fresh Debian stable VPS with root access (password or SSH key)
+#   - Configured inventory file (inventory/hosts.yml)
+#   - Encrypted vault file with secrets (inventory/vault.yml)
+#   - SSH public key files for manual and Ansible users
+#
+# EXECUTION MODEL:
+#   This playbook is designed for single execution against a fresh VPS.
+#   It is idempotent and safe to re-run for configuration updates.
+
+- name: Bootstrap VPS with secure configuration
+  hosts: all
+  become: true
+  gather_facts: true
+
+  # Pre-flight checks to validate environment before making changes
+  pre_tasks:
+    - name: Pre-flight - Verify target is Debian
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == "Debian"
+        fail_msg: "This playbook only supports Debian-based systems"
+        success_msg: "Target system is Debian-based"
+
+    - name: Pre-flight - Verify Debian stable (bookworm)
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Debian"
+          - ansible_distribution_major_version | int >= 11
+        fail_msg: "This playbook requires Debian 11 (bullseye) or newer"
+        success_msg: "Target system is running Debian {{ ansible_distribution_version }}"
+
+    - name: Pre-flight - Verify required variables are defined
+      ansible.builtin.assert:
+        that:
+          - manual_user_name is defined
+          - manual_user_name | length > 0
+          - ansible_user_name is defined
+          - ansible_user_name | length > 0
+          - manual_user_password is defined
+          - manual_user_ssh_key_file is defined
+          - ansible_user_ssh_key_file is defined
+        fail_msg: "Required user configuration variables are missing. Check inventory/hosts.yml"
+        success_msg: "All required user configuration variables are defined"
+
+    - name: Pre-flight - Verify manual user SSH key file exists
+      ansible.builtin.stat:
+        path: "{{ manual_user_ssh_key_file }}"
+      delegate_to: localhost
+      become: false
+      register: manual_key_stat
+      failed_when: not manual_key_stat.stat.exists
+
+    - name: Pre-flight - Verify Ansible user SSH key file exists
+      ansible.builtin.stat:
+        path: "{{ ansible_user_ssh_key_file }}"
+      delegate_to: localhost
+      become: false
+      register: ansible_key_stat
+      failed_when: not ansible_key_stat.stat.exists
+
+    - name: Pre-flight - Verify Tailscale configuration when enabled
+      ansible.builtin.assert:
+        that:
+          - tailscale_control_server is defined
+          - tailscale_control_server | length > 0
+          - tailscale_pre_auth_key is defined
+          - tailscale_pre_auth_key | length > 0
+        fail_msg: "Tailscale is enabled but required variables are missing (tailscale_control_server, tailscale_pre_auth_key)"
+        success_msg: "Tailscale configuration variables are defined"
+      when: tailscale_enabled | default(false) | bool
+
+    - name: Pre-flight - Display configuration summary
+      ansible.builtin.debug:
+        msg:
+          - "=== VPS Bootstrap Configuration Summary ==="
+          - "Target: {{ ansible_host | default(inventory_hostname) }}"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Manual User: {{ manual_user_name }} (uid 1000)"
+          - "Ansible User: {{ ansible_user_name }} (uid 1999)"
+          - "SSH Port: {{ ssh_port | default(22) }}"
+          - "Tailscale VPN: {{ 'Enabled' if (tailscale_enabled | default(false) | bool) else 'Disabled' }}"
+          - "Hostname: {{ system_hostname if (system_hostname | default('') | length > 0) else 'Not configured' }}"
+          - "Zram Swap: {{ 'Enabled' if (zram_enabled | default(false) | bool) else 'Disabled' }}"
+          - "Disk Swap: {{ disk_swap_size if (disk_swap_size | default('') | length > 0) else 'Disabled' }}"
+          - "=========================================="
+
+  # Roles execute in logical order to build up the secure configuration
+  roles:
+    # 1. Update system packages first to ensure security patches are applied
+    - role: system_updates
+      tags: ["system_updates", "updates"]
+
+    # 2. Create user accounts for future access
+    - role: users
+      tags: ["users", "access"]
+
+    # 3. Harden SSH configuration (but don't restrict interface yet)
+    - role: ssh_hardening
+      tags: ["ssh", "hardening", "access"]
+
+    # 4. Install and configure Tailscale VPN (if enabled)
+    - role: tailscale
+      tags: ["tailscale", "vpn", "network"]
+      when: tailscale_enabled | default(false) | bool
+
+    # 5. Configure firewall rules based on Tailscale status
+    - role: firewall
+      tags: ["firewall", "network", "security"]
+
+    # 6. Deploy emergency access script (if Tailscale enabled)
+    - role: emergency_access
+      tags: ["emergency", "access"]
+      when: tailscale_enabled | default(false) | bool
+
+    # 7. Configure intrusion prevention
+    - role: fail2ban
+      tags: ["fail2ban", "security"]
+
+    # 8. Configure system logging
+    - role: logging
+      tags: ["logging", "journald"]
+
+    # 9. Configure hostname and time synchronization
+    - role: system_config
+      tags: ["system_config", "hostname", "time"]
+
+    # 10. Configure swap space (if enabled)
+    - role: swap
+      tags: ["swap", "memory"]
+      when: (zram_enabled | default(false) | bool) or (disk_swap_size | default('') | length > 0)
+
+  # Post-execution tasks to verify and inform
+  post_tasks:
+    - name: Post-execution - Check if reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: Post-execution - Notify if reboot is required
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "WARNING: System reboot is required!"
+          - "Package updates have installed a new kernel or critical system components."
+          - "Please reboot the system at your earliest convenience."
+          - "=========================================="
+      when: reboot_required.stat.exists
+
+    - name: Post-execution - Build success message
+      ansible.builtin.set_fact:
+        success_message: |
+          ==========================================
+          VPS Bootstrap Complete!
+          ==========================================
+
+          Next Steps:
+            1. Verify configuration: make verify
+            2. Test manual user access: ssh {{ manual_user_name }}@{{ ansible_host | default(inventory_hostname) }}
+            3. Test Ansible user access: ssh {{ ansible_user_name }}@{{ ansible_host | default(inventory_hostname) }}
+
+          {% if tailscale_enabled | default(false) | bool %}Emergency Access:
+            If Tailscale VPN fails, use the emergency script on the VPS:
+            sudo /root/emergency-ssh-access.sh          # Unrestrict SSH
+            sudo /root/emergency-ssh-access.sh --restore # Restore restrictions
+
+          {% endif %}Important Notes:
+            - Root SSH access is now disabled
+            - Password authentication is disabled (SSH keys only)
+            - SSH is restricted to {{ manual_user_name }} and {{ ansible_user_name }}
+          {% if tailscale_enabled | default(false) | bool %}  - SSH is restricted to Tailscale interface only
+          {% endif %}  - Firewall is active with default-deny policy
+            - Fail2ban is monitoring SSH for brute-force attempts
+
+          {% if reboot_required.stat.exists %}REMINDER: System reboot is required!
+          {% endif %}==========================================
+
+    - name: Post-execution - Display success message
+      ansible.builtin.debug:
+        msg: "{{ success_message }}"
