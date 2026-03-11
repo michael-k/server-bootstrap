@@ -736,7 +736,65 @@
             success_msg: "✓ Disk swap file is in /etc/fstab"
 
     # ==============================================================================
-    # FINAL SUMMARY (Requirement 14.44)
+    # FILESYSTEM HARDENING VERIFICATION
+    # ==============================================================================
+
+    - name: "Verify /tmp has noexec,nosuid,nodev"
+      block:
+        - name: Get mount options for /tmp
+          ansible.builtin.command: findmnt -n -o OPTIONS /tmp
+          register: tmp_mount_options
+          changed_when: false
+          failed_when: false
+
+        - name: Check /tmp mount options
+          ansible.builtin.assert:
+            that:
+              - tmp_mount_options.rc == 0
+              - tmp_mount_options.stdout is search('noexec')
+              - tmp_mount_options.stdout is search('nosuid')
+              - tmp_mount_options.stdout is search('nodev')
+            fail_msg: "/tmp does not have required mount options (noexec,nosuid,nodev). Got: {{ tmp_mount_options.stdout | default('N/A') }}"
+            success_msg: "✓ /tmp is mounted with noexec,nosuid,nodev"
+
+    - name: "Verify /dev/shm has noexec,nosuid,nodev"
+      block:
+        - name: Get mount options for /dev/shm
+          ansible.builtin.command: findmnt -n -o OPTIONS /dev/shm
+          register: shm_mount_options
+          changed_when: false
+          failed_when: false
+
+        - name: Check /dev/shm mount options
+          ansible.builtin.assert:
+            that:
+              - shm_mount_options.rc == 0
+              - shm_mount_options.stdout is search('noexec')
+              - shm_mount_options.stdout is search('nosuid')
+              - shm_mount_options.stdout is search('nodev')
+            fail_msg: "/dev/shm does not have required mount options (noexec,nosuid,nodev). Got: {{ shm_mount_options.stdout | default('N/A') }}"
+            success_msg: "✓ /dev/shm is mounted with noexec,nosuid,nodev"
+
+    - name: "Verify /var/tmp has noexec,nosuid,nodev"
+      block:
+        - name: Get mount options for /var/tmp
+          ansible.builtin.command: findmnt -n -o OPTIONS /var/tmp
+          register: var_tmp_mount_options
+          changed_when: false
+          failed_when: false
+
+        - name: Check /var/tmp mount options
+          ansible.builtin.assert:
+            that:
+              - var_tmp_mount_options.rc == 0
+              - var_tmp_mount_options.stdout is search('noexec')
+              - var_tmp_mount_options.stdout is search('nosuid')
+              - var_tmp_mount_options.stdout is search('nodev')
+            fail_msg: "/var/tmp does not have required mount options (noexec,nosuid,nodev). Got: {{ var_tmp_mount_options.stdout | default('N/A') }}"
+            success_msg: "✓ /var/tmp is mounted with noexec,nosuid,nodev"
+
+    # ==============================================================================
+    # FINAL SUMMARY
     # ==============================================================================
 
     - name: "Test 14.44: Display verification summary"
@@ -763,6 +821,7 @@
               - "  ✓ Time synchronization"
               - "  ✓ Swap configuration (if enabled)"
               - "  ✓ Hostname configuration (if set)"
+              - "  ✓ Filesystem hardening (noexec on tmp directories)"
               - ""
               - "The VPS is properly configured and ready for use."
               - "=========================================="
