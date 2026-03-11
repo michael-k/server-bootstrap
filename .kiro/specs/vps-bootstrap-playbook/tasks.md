@@ -376,7 +376,7 @@ The implementation follows a logical progression: project structure → core rol
     - Test service restart handler
     - _Requirements: 3.1-3.18_
   
-  - [~] 18.4 Write unit tests for Tailscale
+  - [x] 18.4 Write unit tests for Tailscale
     - Test installation when enabled
     - Test skip when disabled
     - Test connectivity verification logic
