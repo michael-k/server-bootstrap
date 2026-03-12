@@ -25,3 +25,9 @@ authorized_keys_mode: "0600"
 
 # Sudo hardening
 sudo_timestamp_timeout: 5
+
+# Login policy hardening
+login_policy_tmout: 600
+login_policy_umask: "027"
+login_policy_retries: 3
+login_policy_timeout: 30
