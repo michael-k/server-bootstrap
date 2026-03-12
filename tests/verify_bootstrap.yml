@@ -896,12 +896,16 @@
         - name: Verify hardened login.defs settings
           ansible.builtin.assert:
             that:
-              - login_defs_content.content | b64decode is search('UMASK.*027')
-              - login_defs_content.content | b64decode is search('LOGIN_RETRIES.*3')
-              - login_defs_content.content | b64decode is search('LOGIN_TIMEOUT.*30')
+              - login_defs_content.content | b64decode is search('UMASK.*' + (login_policy_umask | string))
+              - login_defs_content.content | b64decode is search('LOGIN_RETRIES.*' + (login_policy_retries | string))
+              - login_defs_content.content | b64decode is search('LOGIN_TIMEOUT.*' + (login_policy_timeout | string))
               - login_defs_content.content | b64decode is search('LOG_OK_LOGINS.*yes')
             fail_msg: "login.defs hardening is missing or incomplete"
-            success_msg: "✓ login.defs is hardened (UMASK 027, LOGIN_RETRIES 3, LOGIN_TIMEOUT 30, LOG_OK_LOGINS yes)"
+            success_msg: >-
+              ✓ login.defs is hardened (UMASK {{ login_policy_umask }},
+              LOGIN_RETRIES {{ login_policy_retries }},
+              LOGIN_TIMEOUT {{ login_policy_timeout }},
+              LOG_OK_LOGINS yes)
 
     - name: "Verify securetty and shell timeout"
       block:
