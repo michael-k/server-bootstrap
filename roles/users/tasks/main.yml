@@ -167,3 +167,49 @@
   tags:
     - users
     - sudo
+
+# Login Policy Hardening
+# Harden login.defs, restrict console TTYs, enforce shell idle timeout
+
+- name: Deploy hardened login.defs
+  ansible.builtin.template:
+    src: login.defs.j2
+    dest: /etc/login.defs
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - users
+    - login_policy
+
+- name: Ensure pam_securetty is enabled for console login
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/login
+    regexp: '^\s*#?\s*auth\s+requisite\s+pam_securetty\.so'
+    line: "auth       requisite   pam_securetty.so"
+    state: present
+  tags:
+    - users
+    - login_policy
+
+- name: Deploy securetty for console TTY restrictions
+  ansible.builtin.template:
+    src: securetty.j2
+    dest: /etc/securetty
+    owner: root
+    group: root
+    mode: "0600"
+  tags:
+    - users
+    - login_policy
+
+- name: Deploy shell idle timeout
+  ansible.builtin.template:
+    src: shell-timeout.sh.j2
+    dest: /etc/profile.d/shell-timeout.sh
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - users
+    - login_policy

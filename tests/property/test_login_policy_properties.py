@@ -364,3 +364,94 @@ class TestLoginDefsProperties:
 
         assert "HOME_MODE" in content, "login.defs must define HOME_MODE"
         assert "0700" in content, "HOME_MODE must be 0700"
+
+
+class TestLoginPolicyTasksProperties:
+    """Property-based tests for login policy deployment tasks."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_deploy_login_defs(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Deploy login.defs
+
+        The users role tasks SHALL deploy the login.defs template.
+
+        Validates: Login policy hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        assert tasks_path.exists(), "Users tasks must exist"
+
+        content = tasks_path.read_text()
+
+        assert "login.defs.j2" in content, (
+            "Tasks must reference login.defs.j2 template"
+        )
+        assert "dest: /etc/login.defs" in content, (
+            "Tasks must deploy to /etc/login.defs"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_deploy_securetty(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Deploy securetty
+
+        The users role tasks SHALL deploy the securetty template.
+
+        Validates: Login policy hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        content = tasks_path.read_text()
+
+        assert "securetty.j2" in content, (
+            "Tasks must reference securetty.j2 template"
+        )
+        assert "dest: /etc/securetty" in content, (
+            "Tasks must deploy to /etc/securetty"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_deploy_shell_timeout(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Deploy Shell Timeout
+
+        The users role tasks SHALL deploy the shell timeout template
+        to /etc/profile.d/.
+
+        Validates: Login policy hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        content = tasks_path.read_text()
+
+        assert "shell-timeout.sh.j2" in content, (
+            "Tasks must reference shell-timeout.sh.j2 template"
+        )
+        assert "dest: /etc/profile.d/shell-timeout.sh" in content, (
+            "Tasks must deploy to /etc/profile.d/shell-timeout.sh"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_ensure_pam_securetty(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Ensure pam_securetty
+
+        The users role tasks SHALL ensure pam_securetty.so is enabled
+        in /etc/pam.d/login.
+
+        Validates: Login policy hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        content = tasks_path.read_text()
+
+        assert "pam_securetty" in content, (
+            "Tasks must reference pam_securetty.so"
+        )
+        assert "/etc/pam.d/login" in content, (
+            "Tasks must target /etc/pam.d/login"
+        )
+        assert "ansible.builtin.lineinfile:" in content, (
+            "Tasks must use lineinfile module for pam_securetty"
+        )
