@@ -34,12 +34,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_45_tmp_mount_has_required_options(
+    def test_tmp_mount_has_required_options(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 45: /tmp Mount Hardening
+        Feature: vps-bootstrap-playbook, /tmp Mount Hardening
 
         For any execution of the bootstrap playbook, /tmp SHALL be mounted
         with noexec, nosuid, and nodev options via a systemd bind-mount unit.
@@ -69,12 +69,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_46_dev_shm_override_has_required_options(
+    def test_dev_shm_override_has_required_options(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 46: /dev/shm Mount Hardening
+        Feature: vps-bootstrap-playbook, /dev/shm Mount Hardening
 
         For any execution of the bootstrap playbook, /dev/shm SHALL be mounted
         with noexec, nosuid, and nodev options via a systemd drop-in override.
@@ -104,12 +104,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_47_var_tmp_mount_has_required_options(
+    def test_var_tmp_mount_has_required_options(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 47: /var/tmp Mount Hardening
+        Feature: vps-bootstrap-playbook, /var/tmp Mount Hardening
 
         For any execution of the bootstrap playbook, /var/tmp SHALL be mounted
         with noexec, nosuid, and nodev options as a bind-mount to /tmp.
@@ -138,12 +138,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_48_var_tmp_depends_on_tmp_mount(
+    def test_var_tmp_depends_on_tmp_mount(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 48: /var/tmp Depends on /tmp
+        Feature: vps-bootstrap-playbook, /var/tmp Depends on /tmp
 
         For any execution of the bootstrap playbook, the var-tmp.mount unit
         SHALL declare a dependency on tmp.mount via After= and Requires=.
@@ -168,12 +168,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mountpoint=hardened_mountpoint(),
     )
-    def test_property_49_tasks_deploy_all_mount_units(
+    def test_tasks_deploy_all_mount_units(
         self,
         mountpoint: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 49: Tasks Deploy All Mount Units
+        Feature: vps-bootstrap-playbook, Tasks Deploy All Mount Units
 
         For any execution of the bootstrap playbook, the filesystem_hardening
         tasks SHALL deploy systemd units for all three hardened mountpoints.
@@ -211,12 +211,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_50_no_default_dependencies_override(
+    def test_no_default_dependencies_override(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 50: No DefaultDependencies Override
+        Feature: vps-bootstrap-playbook, No DefaultDependencies Override
 
         For any execution of the bootstrap playbook, mount units SHALL NOT set
         DefaultDependencies=no, to preserve systemd's implicit boot ordering
@@ -242,12 +242,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_51_handler_triggers_daemon_reload(
+    def test_handler_triggers_daemon_reload(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 51: Handler Triggers Daemon Reload
+        Feature: vps-bootstrap-playbook, Handler Triggers Daemon Reload
 
         For any execution of the bootstrap playbook, unit file changes SHALL
         trigger a systemd daemon-reload via the handler.
@@ -276,12 +276,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_52_dev_shm_is_dropin_not_full_unit(
+    def test_dev_shm_is_dropin_not_full_unit(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 52: /dev/shm Uses Drop-in Override
+        Feature: vps-bootstrap-playbook, /dev/shm Uses Drop-in Override
 
         For any execution of the bootstrap playbook, /dev/shm hardening SHALL
         use a drop-in conf file (not a full unit replacement) to preserve the
@@ -320,12 +320,12 @@ class TestFilesystemHardeningProperties:
     @given(
         mount_option=required_mount_option(),
     )
-    def test_property_53_negative_missing_option_detected(
+    def test_negative_missing_option_detected(
         self,
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 53: Missing Option Detection
+        Feature: vps-bootstrap-playbook, Missing Option Detection
 
         Verify that the testing approach can detect a missing security option.
         If an options line does NOT contain a required option, the assertion fails.

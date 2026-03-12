@@ -31,12 +31,12 @@ class TestSudoHardeningProperties:
     @given(
         directive=sudo_security_directive(),
     )
-    def test_property_63_sudo_template_has_required_directives(
+    def test_sudo_template_has_required_directives(
         self,
         directive: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 63: Sudo Security Directives
+        Feature: vps-bootstrap-playbook, Sudo Security Directives
 
         The sudo security defaults template SHALL contain all required
         hardening directives: env_reset, env_clean, secure_path, use_pty,
@@ -55,9 +55,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_64_sudo_template_has_secure_path(self):
+    def test_sudo_template_has_secure_path(self):
         """
-        Feature: vps-bootstrap-playbook, Property 64: Secure PATH
+        Feature: vps-bootstrap-playbook, Secure PATH
 
         The sudo security template SHALL define a secure_path containing
         only standard system binary directories.
@@ -79,9 +79,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_65_sudo_template_has_configurable_timeout(self):
+    def test_sudo_template_has_configurable_timeout(self):
         """
-        Feature: vps-bootstrap-playbook, Property 65: Configurable Timeout
+        Feature: vps-bootstrap-playbook, Configurable Timeout
 
         The sudo security template SHALL reference the sudo_timestamp_timeout
         variable for credential caching, not a hardcoded value.
@@ -97,9 +97,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_66_sudo_template_has_requiretty_with_exemption(self):
+    def test_sudo_template_has_requiretty_with_exemption(self):
         """
-        Feature: vps-bootstrap-playbook, Property 66: requiretty with Ansible Exemption
+        Feature: vps-bootstrap-playbook, requiretty with Ansible Exemption
 
         The sudo security template SHALL require a TTY for sudo usage
         AND exempt the ansible user from this requirement.
@@ -119,9 +119,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_67_defaults_define_timeout(self):
+    def test_defaults_define_timeout(self):
         """
-        Feature: vps-bootstrap-playbook, Property 67: Defaults Define Timeout
+        Feature: vps-bootstrap-playbook, Defaults Define Timeout
 
         The users role defaults SHALL define sudo_timestamp_timeout.
 
@@ -138,9 +138,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_68_tasks_create_wheel_group(self):
+    def test_tasks_create_wheel_group(self):
         """
-        Feature: vps-bootstrap-playbook, Property 68: Tasks Create Wheel Group
+        Feature: vps-bootstrap-playbook, Tasks Create Wheel Group
 
         The users role tasks SHALL create the wheel group for su restriction.
 
@@ -158,9 +158,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_69_tasks_enable_pam_wheel(self):
+    def test_tasks_enable_pam_wheel(self):
         """
-        Feature: vps-bootstrap-playbook, Property 69: Tasks Enable pam_wheel
+        Feature: vps-bootstrap-playbook, Tasks Enable pam_wheel
 
         The users role tasks SHALL enable pam_wheel.so in /etc/pam.d/su.
 
@@ -181,9 +181,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_70_tasks_deploy_sudoers_with_validation(self):
+    def test_tasks_deploy_sudoers_with_validation(self):
         """
-        Feature: vps-bootstrap-playbook, Property 70: Sudoers Deployed with Validation
+        Feature: vps-bootstrap-playbook, Sudoers Deployed with Validation
 
         The sudo security defaults file SHALL be deployed using the template
         module with visudo validation to prevent syntax errors from breaking sudo.
@@ -205,9 +205,9 @@ class TestSudoHardeningProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_property_71_no_logfile_directive(self):
+    def test_no_logfile_directive(self):
         """
-        Feature: vps-bootstrap-playbook, Property 71: No logfile Directive
+        Feature: vps-bootstrap-playbook, No logfile Directive
 
         The sudo security template SHALL NOT contain a logfile directive.
         Sudo logs to syslog (AUTH facility) by default, which journald captures.

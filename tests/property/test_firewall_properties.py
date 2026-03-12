@@ -733,13 +733,13 @@ class TestNFTablesPortKnockingProperties:
         port_knocking_enabled=st.booleans(),
         tailscale_enabled=st.booleans(),
     )
-    def test_property_54_knock_rules_conditional_on_tailscale_and_knocking(
+    def test_knock_rules_conditional_on_tailscale_and_knocking(
         self,
         port_knocking_enabled: bool,
         tailscale_enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 54: Knock Rules Conditional Activation
+        Feature: vps-bootstrap-playbook, Knock Rules Conditional Activation
 
         Port knocking sets and rules SHALL appear in the NFTables template only when
         Tailscale is disabled AND port_knocking_enabled is true. They SHALL NOT appear
@@ -782,12 +782,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         knock_sequence=valid_knock_sequence(),
     )
-    def test_property_55_knock_sequence_ports_in_template(
+    def test_knock_sequence_ports_in_template(
         self,
         knock_sequence: list,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 55: Knock Sequence Ports in Template
+        Feature: vps-bootstrap-playbook, Knock Sequence Ports in Template
 
         All ports from the configured knock sequence SHALL appear in the NFTables
         template rules for both IPv4 and IPv6 address families.
@@ -819,12 +819,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         addr_type=st.sampled_from(["ipv4_addr", "ipv6_addr"]),
     )
-    def test_property_56_dual_stack_knock_sets(
+    def test_dual_stack_knock_sets(
         self,
         addr_type: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 56: Dual-Stack Knock Sets
+        Feature: vps-bootstrap-playbook, Dual-Stack Knock Sets
 
         The NFTables template SHALL define knock sets for both IPv4 and IPv6
         address families.
@@ -844,12 +844,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         af=st.sampled_from(["4", "6"]),
     )
-    def test_property_57_ssh_accept_references_knock_passed(
+    def test_ssh_accept_references_knock_passed(
         self,
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 57: SSH Accept References Knock Passed
+        Feature: vps-bootstrap-playbook, SSH Accept References Knock Passed
 
         When port knocking is enabled, the SSH accept rule SHALL reference the
         knock_passed set for the given address family.
@@ -869,12 +869,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         af=st.sampled_from(["4", "6"]),
     )
-    def test_property_58_sets_at_table_level(
+    def test_sets_at_table_level(
         self,
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 58: Sets at Table Level
+        Feature: vps-bootstrap-playbook, Sets at Table Level
 
         Named NFTables sets SHALL be defined at the table level (outside chain
         blocks), as required by NFTables syntax.
@@ -908,12 +908,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         af=st.sampled_from(["4", "6"]),
     )
-    def test_property_59_timeout_variables_used(
+    def test_timeout_variables_used(
         self,
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 59: Timeout Variables Used
+        Feature: vps-bootstrap-playbook, Timeout Variables Used
 
         Knock set timeouts SHALL use the configured variables, not hardcoded values.
 
@@ -935,12 +935,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         af=st.sampled_from(["4", "6"]),
     )
-    def test_property_60_explicit_drop_for_knock_ports(
+    def test_explicit_drop_for_knock_ports(
         self,
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 60: Explicit Drop for Knock Ports
+        Feature: vps-bootstrap-playbook, Explicit Drop for Knock Ports
 
         Knock port packets SHALL be explicitly dropped after set processing
         to prevent leakage to later rules or logs.
@@ -977,12 +977,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         af=st.sampled_from(["4", "6"]),
     )
-    def test_property_61_no_unconditional_ssh_accept_with_knocking(
+    def test_no_unconditional_ssh_accept_with_knocking(
         self,
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 61: No Unconditional SSH Accept
+        Feature: vps-bootstrap-playbook, No Unconditional SSH Accept
 
         When port knocking is enabled, there SHALL NOT be an unconditional SSH
         accept rule (one without @knock_passed set membership check).
@@ -1018,12 +1018,12 @@ class TestNFTablesPortKnockingProperties:
     @given(
         af=st.sampled_from(["4", "6"]),
     )
-    def test_property_62_defaults_define_knock_variables(
+    def test_defaults_define_knock_variables(
         self,
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 62: Defaults Define Knock Variables
+        Feature: vps-bootstrap-playbook, Defaults Define Knock Variables
 
         The firewall role defaults SHALL define all port knocking variables
         with the firewall_ prefix convention.
