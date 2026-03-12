@@ -1,0 +1,6 @@
+# Shell idle timeout — deployed by Ansible
+# Logs out idle interactive shells after the configured timeout.
+# Only affects shells waiting at the prompt, not running commands.
+TMOUT={{ login_policy_tmout }}
+readonly TMOUT
+export TMOUT
