@@ -32,8 +32,8 @@ Defaults    secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 # Credential caching
 Defaults    timestamp_timeout={{ sudo_timestamp_timeout }}
 
-# Logging — dedicated audit trail
-Defaults    logfile="{{ sudo_logfile }}"
+# Logging — enhance syslog entries (sudo logs to AUTH facility by default,
+# which journald captures automatically)
 Defaults    log_year
 Defaults    log_host
 
@@ -51,9 +51,8 @@ Defaults:{{ ansible_user_name }}    !requiretty
 | `env_clean` | Remove dangerous environment variables (LD_PRELOAD, etc.) |
 | `secure_path` | Hardcode PATH to system directories — prevents trojaned binaries |
 | `timestamp_timeout` | Re-prompt for password after configured timeout (default: 5 minutes) |
-| `logfile` | Write all sudo invocations to a dedicated log file |
-| `log_year` | Include the year in log timestamps |
-| `log_host` | Include the hostname in log entries |
+| `log_year` | Include the year in syslog timestamps |
+| `log_host` | Include the hostname in syslog entries |
 | `use_pty` | Allocate a PTY for sudo commands — prevents I/O log bypass |
 | `requiretty` | Require a real terminal to use sudo |
 | `!requiretty` for ansible user | Exempt Ansible from the TTY requirement — Ansible's `become: true` does not allocate a TTY |
@@ -91,10 +90,9 @@ Added to `roles/users/defaults/main.yml`:
 ```yaml
 # Sudo hardening
 sudo_timestamp_timeout: 5
-sudo_logfile: "/var/log/sudo.log"
 ```
 
-Only the timeout and log path are configurable. The security directives (`env_reset`, `env_clean`, `secure_path`, `use_pty`, `requiretty`) are hardcoded in the template — they should not be optional.
+Only the timeout is configurable. The security directives (`env_reset`, `env_clean`, `secure_path`, `use_pty`, `requiretty`, `log_year`, `log_host`) are hardcoded in the template — they should not be optional. Sudo logs to syslog (AUTH facility) by default, which journald captures automatically — no separate log file needed.
 
 ## Per-User Sudoers Files
 
@@ -109,10 +107,13 @@ These define **who** gets sudo and **how** (password vs passwordless). The `00-s
 
 ```
 roles/users/
-├── defaults/main.yml              # Add sudo_timestamp_timeout, sudo_logfile
+├── defaults/main.yml              # Add sudo_timestamp_timeout
 ├── tasks/main.yml                 # Add wheel group, sudo security, pam_wheel tasks
 └── templates/
     └── 00-sudo-security.j2       # New: sudo security defaults template
+
+docs/
+└── sudo-hardening.md              # New: admin instructions and log queries
 
 tests/
 ├── verify_bootstrap.yml           # Add sudo hardening verification checks
@@ -134,7 +135,7 @@ New tasks are appended after the existing ansible user tasks in `roles/users/tas
 New conditional checks in `verify_bootstrap.yml`:
 
 1. `/etc/sudoers.d/00-sudo-security` exists
-2. The file contains `env_reset`, `secure_path`, `logfile`, `use_pty`
+2. The file contains `env_reset`, `secure_path`, `use_pty`
 3. `wheel` group exists
 4. Manual user is a member of `wheel`
 5. `/etc/pam.d/su` contains uncommented `pam_wheel.so` line
@@ -146,14 +147,31 @@ New file `tests/property/test_sudo_hardening_properties.py`:
 - Template contains `env_reset` and `env_clean`
 - Template contains `secure_path` with standard system directories
 - Template contains `timestamp_timeout` referencing `sudo_timestamp_timeout` variable
-- Template contains `logfile` referencing `sudo_logfile` variable
 - Template contains `use_pty`
 - Template contains `requiretty`
 - Template contains `!requiretty` exemption for ansible user (references `ansible_user_name` variable)
-- Defaults file defines `sudo_timestamp_timeout` and `sudo_logfile`
+- Defaults file defines `sudo_timestamp_timeout`
 - Tasks file creates wheel group
 - Tasks file enables `pam_wheel.so`
 - Tasks file deploys `00-sudo-security` with `visudo` validation
+
+## Querying Sudo Logs
+
+Sudo logs to syslog's AUTH facility, which journald captures. The client documentation (`docs/sudo-hardening.md`) should include these common queries:
+
+```bash
+# All sudo activity
+journalctl SYSLOG_IDENTIFIER=sudo
+
+# Today's sudo activity
+journalctl SYSLOG_IDENTIFIER=sudo --since today
+
+# Sudo activity by a specific user
+journalctl SYSLOG_IDENTIFIER=sudo _COMM=sudo | grep "admin"
+
+# Follow sudo logs in real time
+journalctl SYSLOG_IDENTIFIER=sudo -f
+```
 
 ## Interaction with Existing Roles
 
