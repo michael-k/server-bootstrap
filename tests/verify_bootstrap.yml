@@ -883,6 +883,61 @@
             success_msg: "✓ /var/tmp is mounted with noexec,nosuid,nodev"
 
     # ==============================================================================
+    # LOGIN POLICY HARDENING VERIFICATION
+    # ==============================================================================
+
+    - name: "Verify login.defs hardening"
+      block:
+        - name: Read login.defs
+          ansible.builtin.slurp:
+            path: /etc/login.defs
+          register: login_defs_content
+
+        - name: Verify hardened login.defs settings
+          ansible.builtin.assert:
+            that:
+              - login_defs_content.content | b64decode is search('UMASK.*027')
+              - login_defs_content.content | b64decode is search('LOGIN_RETRIES.*3')
+              - login_defs_content.content | b64decode is search('LOGIN_TIMEOUT.*30')
+              - login_defs_content.content | b64decode is search('LOG_OK_LOGINS.*yes')
+            fail_msg: "login.defs hardening is missing or incomplete"
+            success_msg: "✓ login.defs is hardened (UMASK 027, LOGIN_RETRIES 3, LOGIN_TIMEOUT 30, LOG_OK_LOGINS yes)"
+
+    - name: "Verify securetty and shell timeout"
+      block:
+        - name: Check securetty exists
+          ansible.builtin.stat:
+            path: /etc/securetty
+          register: securetty_file
+
+        - name: Read securetty
+          ansible.builtin.slurp:
+            path: /etc/securetty
+          register: securetty_content
+          when: securetty_file.stat.exists
+
+        - name: Check shell timeout exists
+          ansible.builtin.stat:
+            path: /etc/profile.d/shell-timeout.sh
+          register: shell_timeout_file
+
+        - name: Read shell timeout
+          ansible.builtin.slurp:
+            path: /etc/profile.d/shell-timeout.sh
+          register: shell_timeout_content
+          when: shell_timeout_file.stat.exists
+
+        - name: Verify securetty and shell timeout
+          ansible.builtin.assert:
+            that:
+              - securetty_file.stat.exists
+              - securetty_content.content | b64decode is search('tty1')
+              - shell_timeout_file.stat.exists
+              - shell_timeout_content.content | b64decode is search('TMOUT')
+            fail_msg: "Securetty or shell timeout is missing"
+            success_msg: "✓ Securetty deployed, shell timeout active"
+
+    # ==============================================================================
     # FINAL SUMMARY
     # ==============================================================================
 
@@ -912,6 +967,7 @@
               - "  ✓ Swap configuration (if enabled)"
               - "  ✓ Hostname configuration (if set)"
               - "  ✓ Filesystem hardening (noexec on tmp directories)"
+              - "  ✓ Login policy hardening (TMOUT, securetty, login.defs)"
               - ""
               - "The VPS is properly configured and ready for use."
               - "=========================================="
