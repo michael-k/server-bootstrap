@@ -149,7 +149,7 @@ tests/
 New tasks are appended after the sudo hardening tasks in `roles/users/tasks/main.yml`:
 
 1. **Deploy login.defs** — `ansible.builtin.template`, `dest: /etc/login.defs`, `owner: root`, `group: root`, `mode: 0644`
-2. **Ensure pam_securetty is enabled** — `ansible.builtin.lineinfile`, verify `/etc/pam.d/login` contains `auth required pam_securetty.so` (Debian ships this by default, but this task ensures it)
+2. **Ensure pam_securetty is enabled** — `ansible.builtin.lineinfile`, verify `/etc/pam.d/login` contains `auth requisite pam_securetty.so` (Debian ships this with `requisite` — immediate rejection if TTY not listed)
 3. **Deploy securetty** — `ansible.builtin.template`, `dest: /etc/securetty`, `owner: root`, `group: root`, `mode: 0600`
 4. **Deploy shell timeout** — `ansible.builtin.template`, `dest: /etc/profile.d/shell-timeout.sh`, `owner: root`, `group: root`, `mode: 0644`
 
