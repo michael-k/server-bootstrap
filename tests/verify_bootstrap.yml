@@ -470,6 +470,41 @@
             fail_msg: "SSH port {{ ssh_port }} is not accessible through firewall"
             success_msg: "✓ SSH port {{ ssh_port }} is accessible through firewall"
 
+    - name: "Verify port knocking sets exist in NFTables"
+      when: not (tailscale_enabled | default(false) | bool) and (port_knocking_enabled | default(true) | bool)
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_knock_rules
+          changed_when: false
+
+        - name: Verify knock sets exist
+          ansible.builtin.assert:
+            that:
+              - nft_knock_rules.stdout is search('knock4_stage1')
+              - nft_knock_rules.stdout is search('knock6_stage1')
+              - nft_knock_rules.stdout is search('knock4_passed')
+              - nft_knock_rules.stdout is search('knock6_passed')
+            fail_msg: "Port knocking sets not found in NFTables ruleset"
+            success_msg: "✓ Port knocking sets exist for both IPv4 and IPv6"
+
+    - name: "Verify port knocking sequence ports in NFTables"
+      when: not (tailscale_enabled | default(false) | bool) and (port_knocking_enabled | default(true) | bool)
+      block:
+        - name: Get NFTables ruleset
+          ansible.builtin.command: nft list ruleset
+          register: nft_knock_ports
+          changed_when: false
+
+        - name: Verify knock sequence ports
+          ansible.builtin.assert:
+            that:
+              - nft_knock_ports.stdout is search(port_knocking_sequence[0] | string)
+              - nft_knock_ports.stdout is search(port_knocking_sequence[1] | string)
+              - nft_knock_ports.stdout is search(port_knocking_sequence[2] | string)
+            fail_msg: "Port knocking sequence ports not found in NFTables ruleset"
+            success_msg: "✓ Port knocking sequence ports are configured"
+
     # ==============================================================================
     # HOSTNAME VERIFICATION (Requirement 14.29)
     # ==============================================================================
