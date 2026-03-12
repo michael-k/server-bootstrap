@@ -124,3 +124,46 @@
     - users
     - ansible_user
     - sudo
+
+# Sudo Hardening
+# Harden sudo with environment sanitization, logging, timeouts, and su restriction
+
+- name: Create wheel group for su restriction
+  ansible.builtin.group:
+    name: wheel
+    state: present
+  tags:
+    - users
+    - sudo
+
+- name: Add manual user to wheel group
+  ansible.builtin.user:
+    name: "{{ manual_user_name }}"
+    groups: wheel
+    append: true
+  tags:
+    - users
+    - manual_user
+    - sudo
+
+- name: Deploy sudo security defaults
+  ansible.builtin.template:
+    src: 00-sudo-security.j2
+    dest: /etc/sudoers.d/00-sudo-security
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  tags:
+    - users
+    - sudo
+
+- name: Restrict su to wheel group members
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/su
+    regexp: '^\s*#?\s*auth\s+required\s+pam_wheel\.so'
+    line: "auth       required   pam_wheel.so"
+    state: present
+  tags:
+    - users
+    - sudo
