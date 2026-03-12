@@ -1,0 +1,14 @@
+# Console TTY restrictions — deployed by Ansible
+# Only listed TTYs allow root login. pam_securetty.so enforces this.
+
+# Virtual console TTYs (KVM/physical console)
+tty1
+tty2
+tty3
+tty4
+tty5
+tty6
+
+# Serial console TTYs (some hosters use serial instead of VT)
+ttyS0
+ttyS1

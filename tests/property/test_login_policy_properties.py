@@ -8,6 +8,8 @@ and the users role tasks that deploy login hardening.
 from pathlib import Path
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 
 class TestLoginPolicyDefaults:
@@ -142,4 +144,93 @@ class TestShellTimeoutProperties:
 
         assert "export TMOUT" in content, (
             "TMOUT must be exported"
+        )
+
+
+@st.composite
+def virtual_console_tty(draw):
+    """Generate one of the expected virtual console TTYs."""
+    return draw(st.sampled_from(["tty1", "tty2", "tty3", "tty4", "tty5", "tty6"]))
+
+
+@st.composite
+def serial_console_tty(draw):
+    """Generate one of the expected serial console TTYs."""
+    return draw(st.sampled_from(["ttyS0", "ttyS1"]))
+
+
+class TestSecurettyProperties:
+    """Property-based tests for console TTY restrictions."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        tty=virtual_console_tty(),
+    )
+    def test_securetty_lists_virtual_console_ttys(
+        self,
+        tty: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Securetty Virtual Console TTYs
+
+        The securetty template SHALL list tty1 through tty6
+        for KVM/physical console access.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/securetty.j2")
+        assert template_path.exists(), "Securetty template must exist"
+
+        content = template_path.read_text()
+
+        # Check for the TTY as a whole line (not substring of another word)
+        lines = [line.strip() for line in content.split("\n")]
+        assert tty in lines, (
+            f"Securetty must list {tty} for virtual console access"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        tty=serial_console_tty(),
+    )
+    def test_securetty_lists_serial_console_ttys(
+        self,
+        tty: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Securetty Serial Console TTYs
+
+        The securetty template SHALL list ttyS0 and ttyS1
+        for serial console access.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/securetty.j2")
+        content = template_path.read_text()
+
+        lines = [line.strip() for line in content.split("\n")]
+        assert tty in lines, (
+            f"Securetty must list {tty} for serial console access"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_securetty_does_not_list_pseudo_terminals(self):
+        """
+        Feature: vps-bootstrap-playbook, Securetty No Pseudo-Terminals
+
+        The securetty template SHALL NOT contain pts/ entries.
+        Root should not be able to log in via pseudo-terminals.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/securetty.j2")
+        content = template_path.read_text()
+
+        assert "pts/" not in content, (
+            "Securetty must NOT list pseudo-terminal entries (pts/)"
         )
