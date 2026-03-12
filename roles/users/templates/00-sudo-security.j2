@@ -1,0 +1,19 @@
+# Sudo security defaults — deployed by Ansible
+
+# Environment sanitization — prevent LD_PRELOAD, PATH injection
+Defaults    env_reset
+Defaults    env_clean
+Defaults    secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Credential caching
+Defaults    timestamp_timeout={{ sudo_timestamp_timeout }}
+
+# Logging — enhance syslog entries (sudo logs to AUTH facility by default,
+# which journald captures automatically)
+Defaults    log_year
+Defaults    log_host
+
+# Security restrictions
+Defaults    use_pty
+Defaults    requiretty
+Defaults:{{ ansible_user_name }}    !requiretty
