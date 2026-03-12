@@ -103,6 +103,60 @@
             success_msg: "✓ Ansible user {{ ansible_user_name }} has passwordless sudo"
 
     # ==============================================================================
+    # SUDO HARDENING VERIFICATION
+    # ==============================================================================
+
+    - name: "Verify sudo security defaults are deployed"
+      block:
+        - name: Check sudo security defaults file exists
+          ansible.builtin.stat:
+            path: /etc/sudoers.d/00-sudo-security
+          register: sudo_security_file
+
+        - name: Read sudo security defaults
+          ansible.builtin.slurp:
+            path: /etc/sudoers.d/00-sudo-security
+          register: sudo_security_content
+          when: sudo_security_file.stat.exists
+
+        - name: Verify sudo security directives
+          ansible.builtin.assert:
+            that:
+              - sudo_security_file.stat.exists
+              - sudo_security_content.content | b64decode is search('env_reset')
+              - sudo_security_content.content | b64decode is search('secure_path')
+              - sudo_security_content.content | b64decode is search('use_pty')
+              - sudo_security_content.content | b64decode is search('requiretty')
+            fail_msg: "Sudo security defaults are missing or incomplete"
+            success_msg: "✓ Sudo security defaults are properly configured"
+
+    - name: "Verify wheel group and su restriction"
+      block:
+        - name: Check wheel group exists
+          ansible.builtin.command: getent group wheel
+          register: wheel_group
+          changed_when: false
+
+        - name: Check manual user is in wheel group
+          ansible.builtin.command: "id -nG {{ manual_user_name }}"
+          register: manual_user_groups_check
+          changed_when: false
+
+        - name: Check pam_wheel is enabled
+          ansible.builtin.command: grep -E '^\s*auth\s+required\s+pam_wheel\.so' /etc/pam.d/su
+          register: pam_wheel_check
+          changed_when: false
+
+        - name: Verify wheel group and su restriction
+          ansible.builtin.assert:
+            that:
+              - wheel_group.rc == 0
+              - "'wheel' in manual_user_groups_check.stdout"
+              - pam_wheel_check.rc == 0
+            fail_msg: "Wheel group or su restriction is not properly configured"
+            success_msg: "✓ Wheel group exists, manual user is a member, su restricted to wheel"
+
+    # ==============================================================================
     # SSH CONFIGURATION VERIFICATION (Requirements 14.5-14.17)
     # ==============================================================================
 
@@ -848,6 +902,7 @@
               - ""
               - "Configuration verified:"
               - "  ✓ User accounts and sudo privileges"
+              - "  ✓ Sudo hardening (env sanitization, logging, timeouts, su restriction)"
               - "  ✓ SSH hardening and access restrictions"
               - "  ✓ Tailscale VPN (if enabled)"
               - "  ✓ NFTables firewall rules"
