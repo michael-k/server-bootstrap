@@ -22,3 +22,6 @@ ansible_user_shell: "/bin/bash"
 ansible_user_groups: []
 # SSH authorized_keys file permissions
 authorized_keys_mode: "0600"
+
+# Sudo hardening
+sudo_timestamp_timeout: 5
