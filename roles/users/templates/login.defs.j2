@@ -1,0 +1,109 @@
+#
+# /etc/login.defs — deployed by Ansible
+#
+# Based on Debian default (shadow package) with hardened settings.
+# See login.defs(5) for documentation.
+#
+
+#
+# Mail directory
+#
+MAIL_DIR        /var/mail
+
+#
+# Logging
+#
+# Log failed login attempts with unknown usernames
+LOG_UNKFAIL_ENAB    no
+
+# [HARDENED] Log successful logins (Debian default: no)
+LOG_OK_LOGINS       yes
+
+#
+# Hushlogin — suppress login messages if ~/.hushlogin exists
+#
+HUSHLOGIN_FILE  .hushlogin
+
+#
+# Environment PATH settings
+#
+# PATH for root (su, login)
+ENV_SUPATH  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# PATH for regular users
+ENV_PATH    PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+
+#
+# Terminal permissions
+#
+TTYPERM     0600
+
+#
+# Terminal control characters
+#
+ERASECHAR   0177
+KILLCHAR    025
+
+#
+# Home directory permissions for new users
+#
+HOME_MODE   0700
+
+#
+# Password aging (preserved at Debian defaults — password auth is disabled)
+#
+PASS_MAX_DAYS   99999
+PASS_MIN_DAYS   0
+PASS_WARN_AGE   7
+
+#
+# UID/GID allocation ranges
+#
+UID_MIN         1000
+UID_MAX         60000
+
+GID_MIN         1000
+GID_MAX         60000
+
+#
+# Subordinate UID/GID ranges (for user namespaces / containers)
+#
+SUB_UID_MIN     100000
+SUB_UID_MAX     600100000
+SUB_UID_COUNT   65536
+
+SUB_GID_MIN     100000
+SUB_GID_MAX     600100000
+SUB_GID_COUNT   65536
+
+#
+# Console login security
+#
+# [HARDENED] Max login attempts before failure (Debian default: 5)
+LOGIN_RETRIES   {{ login_policy_retries }}
+
+# [HARDENED] Seconds to complete login (Debian default: 60)
+LOGIN_TIMEOUT   {{ login_policy_timeout }}
+
+#
+# File creation mask
+#
+# [HARDENED] Default umask (Debian default: 022 implicit)
+# 027 = files rw-r-----, directories rwxr-x---
+UMASK       {{ login_policy_umask }}
+
+#
+# chfn restrictions
+#
+CHFN_RESTRICT   rwh
+
+#
+# Password encryption method
+#
+ENCRYPT_METHOD  YESCRYPT
+
+#
+# Miscellaneous
+#
+DEFAULT_HOME    yes
+NONEXISTENT     /nonexistent
+USERGROUPS_ENAB yes

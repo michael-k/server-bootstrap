@@ -234,3 +234,133 @@ class TestSecurettyProperties:
         assert "pts/" not in content, (
             "Securetty must NOT list pseudo-terminal entries (pts/)"
         )
+
+
+@st.composite
+def hardened_login_defs_setting(draw):
+    """Generate one of the hardened login.defs settings with expected values."""
+    return draw(
+        st.sampled_from(
+            [
+                ("UMASK", "login_policy_umask"),
+                ("LOGIN_RETRIES", "login_policy_retries"),
+                ("LOGIN_TIMEOUT", "login_policy_timeout"),
+            ]
+        )
+    )
+
+
+class TestLoginDefsProperties:
+    """Property-based tests for /etc/login.defs template."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        setting=hardened_login_defs_setting(),
+    )
+    def test_login_defs_has_hardened_settings(
+        self,
+        setting: tuple,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, login.defs Hardened Settings
+
+        The login.defs template SHALL contain all hardened settings
+        using their corresponding configurable variables.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/login.defs.j2")
+        assert template_path.exists(), "login.defs template must exist"
+
+        content = template_path.read_text()
+
+        setting_name, variable_name = setting
+        assert setting_name in content, (
+            f"login.defs must contain {setting_name}"
+        )
+        assert variable_name in content, (
+            f"{setting_name} must use {variable_name} variable"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_login_defs_enables_ok_login_logging(self):
+        """
+        Feature: vps-bootstrap-playbook, login.defs Successful Login Logging
+
+        The login.defs template SHALL set LOG_OK_LOGINS to yes
+        to log successful console logins.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/login.defs.j2")
+        content = template_path.read_text()
+
+        # Find the LOG_OK_LOGINS line (not commented)
+        for line in content.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("LOG_OK_LOGINS") and not stripped.startswith("#"):
+                assert "yes" in stripped, (
+                    "LOG_OK_LOGINS must be set to yes"
+                )
+                return
+        pytest.fail("login.defs must contain an uncommented LOG_OK_LOGINS directive")
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_login_defs_preserves_uid_ranges(self):
+        """
+        Feature: vps-bootstrap-playbook, login.defs Preserves UID Ranges
+
+        The login.defs template SHALL preserve Debian's default UID
+        ranges (UID_MIN 1000, UID_MAX 60000) to avoid breaking user creation.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/login.defs.j2")
+        content = template_path.read_text()
+
+        assert "UID_MIN" in content, "login.defs must define UID_MIN"
+        assert "UID_MAX" in content, "login.defs must define UID_MAX"
+        assert "1000" in content, "UID_MIN must be 1000"
+        assert "60000" in content, "UID_MAX must be 60000"
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_login_defs_preserves_encrypt_method(self):
+        """
+        Feature: vps-bootstrap-playbook, login.defs Preserves Encryption
+
+        The login.defs template SHALL preserve ENCRYPT_METHOD YESCRYPT
+        to maintain password hashing compatibility.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/login.defs.j2")
+        content = template_path.read_text()
+
+        assert "ENCRYPT_METHOD" in content, (
+            "login.defs must define ENCRYPT_METHOD"
+        )
+        assert "YESCRYPT" in content, (
+            "ENCRYPT_METHOD must be YESCRYPT"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_login_defs_preserves_home_mode(self):
+        """
+        Feature: vps-bootstrap-playbook, login.defs Preserves HOME_MODE
+
+        The login.defs template SHALL preserve HOME_MODE 0700
+        for secure home directory permissions.
+
+        Validates: Login policy hardening design spec
+        """
+        template_path = Path("roles/users/templates/login.defs.j2")
+        content = template_path.read_text()
+
+        assert "HOME_MODE" in content, "login.defs must define HOME_MODE"
+        assert "0700" in content, "HOME_MODE must be 0700"
