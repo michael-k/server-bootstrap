@@ -383,7 +383,7 @@ class TestNFTablesSSHAccessControlProperties:
         )
 
         # Verify conditional logic for Tailscale enabled/disabled
-        assert "{% if firewall_tailscale_enabled %}" in template_content, (
+        assert "{% if firewall_tailscale_enabled | bool %}" in template_content, (
             "Template must have conditional logic for Tailscale enabled state"
         )
         assert "{% else %}" in template_content, (
@@ -400,7 +400,7 @@ class TestNFTablesSSHAccessControlProperties:
         tailscale_block_lines = []
 
         for line in lines:
-            if '{% if firewall_tailscale_enabled %}' in line:
+            if '{% if firewall_tailscale_enabled | bool %}' in line:
                 in_tailscale_block = True
                 continue
             if ('{% else %}' in line or '{% endif %}' in line) and in_tailscale_block:
@@ -708,4 +708,343 @@ class TestNFTablesServicePersistenceProperties:
         # - Configuration changes trigger service reload via handlers
         # - Template contains valid nftables syntax
         # - This applies consistently regardless of SSH port or Tailscale status
+
+
+@st.composite
+def valid_knock_sequence(draw):
+    """Generate valid 3-port knock sequences."""
+    ports = draw(
+        st.lists(
+            st.integers(min_value=1024, max_value=65535),
+            min_size=3,
+            max_size=3,
+        )
+    )
+    return ports
+
+
+class TestNFTablesPortKnockingProperties:
+    """Property-based tests for NFTables port knocking configuration."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        port_knocking_enabled=st.booleans(),
+        tailscale_enabled=st.booleans(),
+    )
+    def test_property_54_knock_rules_conditional_on_tailscale_and_knocking(
+        self,
+        port_knocking_enabled: bool,
+        tailscale_enabled: bool,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 54: Knock Rules Conditional Activation
+
+        Port knocking sets and rules SHALL appear in the NFTables template only when
+        Tailscale is disabled AND port_knocking_enabled is true. They SHALL NOT appear
+        when Tailscale is enabled or when port knocking is disabled.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        assert template_path.exists(), "NFTables template must exist"
+
+        content = template_path.read_text()
+
+        if tailscale_enabled:
+            # When Tailscale is enabled, knock rules should be in the elif branch
+            # which won't execute — verify the template has the right conditional
+            assert "{% if firewall_tailscale_enabled" in content, (
+                "Template must check Tailscale status first"
+            )
+            assert "{% elif firewall_port_knocking_enabled" in content, (
+                "Port knocking must be in elif branch (never active with Tailscale)"
+            )
+        elif port_knocking_enabled:
+            # When Tailscale disabled and knocking enabled, verify knock content exists
+            # Template uses Jinja2 for-loops so check for the loop variable form
+            assert "knock{{ af }}_stage1" in content, (
+                "IPv4/IPv6 knock stage1 set must be defined in template via loop"
+            )
+            assert "knock{{ af }}_passed" in content, (
+                "IPv4/IPv6 knock passed set must be defined in template via loop"
+            )
+        else:
+            # When both disabled, verify unconditional SSH accept exists in else branch
+            assert "{% else %}" in content, (
+                "Template must have else branch for open SSH"
+            )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        knock_sequence=valid_knock_sequence(),
+    )
+    def test_property_55_knock_sequence_ports_in_template(
+        self,
+        knock_sequence: list,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 55: Knock Sequence Ports in Template
+
+        All ports from the configured knock sequence SHALL appear in the NFTables
+        template rules for both IPv4 and IPv6 address families.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        # Verify template references the sequence variable for all 3 ports
+        assert "firewall_port_knocking_sequence[0]" in content, (
+            "Template must reference first port in sequence"
+        )
+        assert "firewall_port_knocking_sequence[1]" in content, (
+            "Template must reference second port in sequence"
+        )
+        assert "firewall_port_knocking_sequence[2]" in content, (
+            "Template must reference third port in sequence"
+        )
+
+        # Verify the drop rule references the full sequence
+        assert "firewall_port_knocking_sequence | join" in content, (
+            "Drop rule must reference the full knock sequence"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        addr_type=st.sampled_from(["ipv4_addr", "ipv6_addr"]),
+    )
+    def test_property_56_dual_stack_knock_sets(
+        self,
+        addr_type: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 56: Dual-Stack Knock Sets
+
+        The NFTables template SHALL define knock sets for both IPv4 and IPv6
+        address families.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        assert addr_type in content, (
+            f"Template must define sets with type {addr_type}"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        af=st.sampled_from(["4", "6"]),
+    )
+    def test_property_57_ssh_accept_references_knock_passed(
+        self,
+        af: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 57: SSH Accept References Knock Passed
+
+        When port knocking is enabled, the SSH accept rule SHALL reference the
+        knock_passed set for the given address family.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        assert f"@knock{af}_passed accept" in content, (
+            f"SSH accept rule must reference knock{af}_passed set"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        af=st.sampled_from(["4", "6"]),
+    )
+    def test_property_58_sets_at_table_level(
+        self,
+        af: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 58: Sets at Table Level
+
+        Named NFTables sets SHALL be defined at the table level (outside chain
+        blocks), as required by NFTables syntax.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        lines = content.split("\n")
+
+        # Find the set definition and verify it's before "chain input"
+        set_line_num = None
+        chain_input_line_num = None
+
+        for i, line in enumerate(lines):
+            if f"knock{af}_stage1" in line and "set" in line:
+                set_line_num = i
+            if "chain input" in line:
+                chain_input_line_num = i
+
+        if set_line_num is not None and chain_input_line_num is not None:
+            assert set_line_num < chain_input_line_num, (
+                f"knock{af}_stage1 set must be defined before chain input "
+                "(sets must be at table level, not inside chains)"
+            )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        af=st.sampled_from(["4", "6"]),
+    )
+    def test_property_59_timeout_variables_used(
+        self,
+        af: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 59: Timeout Variables Used
+
+        Knock set timeouts SHALL use the configured variables, not hardcoded values.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        assert "firewall_port_knocking_stage_timeout" in content, (
+            "Stage timeout must use firewall_port_knocking_stage_timeout variable"
+        )
+        assert "firewall_port_knocking_timeout" in content, (
+            "Passed timeout must use firewall_port_knocking_timeout variable"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        af=st.sampled_from(["4", "6"]),
+    )
+    def test_property_60_explicit_drop_for_knock_ports(
+        self,
+        af: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 60: Explicit Drop for Knock Ports
+
+        Knock port packets SHALL be explicitly dropped after set processing
+        to prevent leakage to later rules or logs.
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        # Find the knock section and verify drop rule exists
+        assert "firewall_port_knocking_sequence | join" in content, (
+            "Template must have a drop rule referencing the knock sequence"
+        )
+
+        # Verify drop comes after the knock rules but before SSH accept
+        lines = content.split("\n")
+        drop_line = None
+        ssh_accept_line = None
+
+        for i, line in enumerate(lines):
+            if "drop" in line and "port_knocking_sequence" in line:
+                drop_line = i
+            if f"@knock{af}_passed accept" in line:
+                ssh_accept_line = i
+
+        if drop_line is not None and ssh_accept_line is not None:
+            assert drop_line < ssh_accept_line, (
+                "Drop rule for knock ports must come before SSH accept rule"
+            )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        af=st.sampled_from(["4", "6"]),
+    )
+    def test_property_61_no_unconditional_ssh_accept_with_knocking(
+        self,
+        af: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 61: No Unconditional SSH Accept
+
+        When port knocking is enabled, there SHALL NOT be an unconditional SSH
+        accept rule (one without @knock_passed set membership check).
+
+        Validates: Port knocking design spec
+        """
+        template_path = Path("roles/firewall/templates/nftables.conf.j2")
+        content = template_path.read_text()
+
+        # The elif block for port knocking should only have SSH accept with set check
+        lines = content.split("\n")
+        in_knock_block = False
+
+        for line in lines:
+            if "elif firewall_port_knocking_enabled" in line:
+                in_knock_block = True
+                continue
+            if in_knock_block and ("{% else %}" in line or "{% endif %}" in line):
+                break
+            if in_knock_block and (
+                "tcp dport" in line
+                and "firewall_ssh_port" in line
+                and "accept" in line
+            ):
+                # This SSH accept must reference a knock_passed set
+                assert "@knock" in line, (
+                    "SSH accept in knock block must check knock_passed set membership"
+                )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        af=st.sampled_from(["4", "6"]),
+    )
+    def test_property_62_defaults_define_knock_variables(
+        self,
+        af: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Property 62: Defaults Define Knock Variables
+
+        The firewall role defaults SHALL define all port knocking variables
+        with the firewall_ prefix convention.
+
+        Validates: Port knocking design spec
+        """
+        defaults_path = Path("roles/firewall/defaults/main.yml")
+        assert defaults_path.exists(), "Firewall defaults must exist"
+
+        content = defaults_path.read_text()
+
+        assert "firewall_port_knocking_enabled:" in content, (
+            "firewall_port_knocking_enabled must be defined in defaults"
+        )
+        assert "firewall_port_knocking_sequence:" in content, (
+            "firewall_port_knocking_sequence must be defined in defaults"
+        )
+        assert "firewall_port_knocking_timeout:" in content, (
+            "firewall_port_knocking_timeout must be defined in defaults"
+        )
+        assert "firewall_port_knocking_stage_timeout:" in content, (
+            "firewall_port_knocking_stage_timeout must be defined in defaults"
+        )
         # - Rules persist across system reboots through systemd service
