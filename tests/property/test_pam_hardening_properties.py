@@ -321,3 +321,129 @@ class TestFaillockPamProfileProperties:
         assert "Default: yes" in content, (
             "PAM profile must set Default: yes"
         )
+
+
+@st.composite
+def resource_limit_type(draw):
+    """Generate one of the resource limit types."""
+    return draw(st.sampled_from(["nproc", "nofile", "core"]))
+
+
+class TestResourceLimitsProperties:
+    """Property-based tests for resource limits template."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    @settings(max_examples=100)
+    @given(
+        limit_type=resource_limit_type(),
+    )
+    def test_limits_template_contains_all_limit_types(
+        self,
+        limit_type: str,
+    ):
+        """
+        Feature: vps-bootstrap-playbook, Resource Limits Contains All Types
+
+        The resource limits template SHALL contain nproc, nofile, and
+        core limit definitions.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/50-hardening.conf.j2")
+        assert template_path.exists(), "Resource limits template must exist"
+
+        content = template_path.read_text()
+
+        assert limit_type in content, (
+            f"Resource limits must contain {limit_type} limit"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_limits_template_hardcodes_core_zero(self):
+        """
+        Feature: vps-bootstrap-playbook, Resource Limits Core Zero
+
+        The resource limits template SHALL hardcode core to 0 to prevent
+        credential leaks in core dumps.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/50-hardening.conf.j2")
+        content = template_path.read_text()
+
+        for line in content.split("\n"):
+            stripped = line.strip()
+            if not stripped.startswith("#") and "core" in stripped:
+                assert "0" in stripped, (
+                    "core limit must be set to 0"
+                )
+                return
+        pytest.fail("Resource limits must contain an uncommented core limit line")
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_limits_template_has_separate_root_nproc(self):
+        """
+        Feature: vps-bootstrap-playbook, Resource Limits Root Nproc
+
+        The resource limits template SHALL define a separate nproc limit
+        for root using the pam_limits_nproc_root variable.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/50-hardening.conf.j2")
+        content = template_path.read_text()
+
+        assert "pam_limits_nproc_root" in content, (
+            "Resource limits must use pam_limits_nproc_root variable for root"
+        )
+        assert "pam_limits_nproc" in content, (
+            "Resource limits must use pam_limits_nproc variable for regular users"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_limits_template_has_separate_root_nofile(self):
+        """
+        Feature: vps-bootstrap-playbook, Resource Limits Root Nofile
+
+        The resource limits template SHALL define a separate nofile limit
+        for root using the pam_limits_nofile_root variable.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/50-hardening.conf.j2")
+        content = template_path.read_text()
+
+        assert "pam_limits_nofile_root" in content, (
+            "Resource limits must use pam_limits_nofile_root variable for root"
+        )
+        assert "pam_limits_nofile" in content, (
+            "Resource limits must use pam_limits_nofile variable for regular users"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_limits_template_uses_hard_limits_only(self):
+        """
+        Feature: vps-bootstrap-playbook, Resource Limits Hard Only
+
+        The resource limits template SHALL use hard limits only (not soft).
+        Hard limits set the ceiling; users keep flexibility below it.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/50-hardening.conf.j2")
+        content = template_path.read_text()
+
+        for line in content.split("\n"):
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                assert "hard" in stripped, (
+                    f"All limit lines must use 'hard' type, got: {stripped}"
+                )
+                assert "soft" not in stripped, (
+                    f"Limit lines must NOT use 'soft' type, got: {stripped}"
+                )

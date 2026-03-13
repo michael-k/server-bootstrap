@@ -1,0 +1,15 @@
+# Resource limits — deployed by Ansible
+# Prevents fork bombs, caps file descriptors, disables core dumps.
+# Only affects PAM-authenticated sessions (login shells, SSH).
+# Systemd services set their own limits via LimitNOFILE= independently.
+
+# Prevent fork bombs — hard limit on number of processes
+*               hard    nproc           {{ pam_limits_nproc }}
+root            hard    nproc           {{ pam_limits_nproc_root }}
+
+# Cap open file descriptors — prevents fd exhaustion
+*               hard    nofile          {{ pam_limits_nofile }}
+root            hard    nofile          {{ pam_limits_nofile_root }}
+
+# Disable core dumps — prevents credential leaks in dumps
+*               hard    core            0
