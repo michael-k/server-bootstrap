@@ -66,6 +66,7 @@ def run_bootstrap_playbook(
     extra_vars: dict | None = None,
     limit_to_role: str | list[str] | None = None,
     timeout: int = 600,
+    check_mode: bool = False,
 ) -> subprocess.CompletedProcess:
     """Run site.yml (or a single role) against the VM."""
     pub_key_path = _write_ssh_public_key_file(vm)
@@ -98,6 +99,8 @@ def run_bootstrap_playbook(
         "-e", f"@{vars_path}",
         playbook_path,
     ]
+    if check_mode:
+        cmd.append("--check")
 
     try:
         return subprocess.run(
