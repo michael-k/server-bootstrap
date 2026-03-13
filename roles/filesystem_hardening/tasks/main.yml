@@ -5,21 +5,53 @@
 # to prevent execution of uploaded payloads from temporary directories.
 #
 # Mount strategy:
-#   /tmp     - bind-mount onto itself with restricted options (no RAM cost)
+#   /tmp     - drop-in override if tmp.mount exists, bind-mount unit otherwise
 #   /dev/shm - drop-in override on existing tmpfs mount
 #   /var/tmp - bind-mount to /tmp (inherits restrictions)
 
-# Deploy /tmp bind-mount unit
-- name: Deploy hardened /tmp mount unit
+# --- /tmp hardening ---
+
+# Check if a base tmp.mount unit exists (systemd ships one for tmpfs /tmp)
+- name: Check if tmp.mount unit exists
+  ansible.builtin.command: systemctl cat tmp.mount
+  register: tmp_mount_exists
+  changed_when: false
+  failed_when: false
+
+# Strategy A: drop-in override when tmp.mount already exists
+- name: Ensure /tmp drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/tmp.mount.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: tmp_mount_exists.rc == 0
+
+- name: Deploy hardened /tmp mount drop-in override
+  ansible.builtin.template:
+    src: tmp.mount.conf.j2
+    dest: /etc/systemd/system/tmp.mount.d/hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: tmp_mount_exists.rc == 0
+  notify: Reload systemd daemon
+  register: tmp_dropin
+
+# Strategy B: deploy full bind-mount unit when no tmp.mount exists
+- name: Deploy hardened /tmp bind-mount unit
   ansible.builtin.template:
     src: tmp.mount.j2
     dest: /etc/systemd/system/tmp.mount
     owner: root
     group: root
     mode: "0644"
+  when: tmp_mount_exists.rc != 0
   notify: Reload systemd daemon
 
-# Create drop-in directory for /dev/shm override
+# --- /dev/shm hardening ---
+
 - name: Ensure /dev/shm drop-in directory exists
   ansible.builtin.file:
     path: /etc/systemd/system/dev-shm.mount.d
@@ -28,7 +60,6 @@
     group: root
     mode: "0755"
 
-# Deploy /dev/shm drop-in override
 - name: Deploy hardened /dev/shm mount override
   ansible.builtin.template:
     src: dev-shm.mount.conf.j2
@@ -39,7 +70,8 @@
   notify: Reload systemd daemon
   register: shm_override
 
-# Deploy /var/tmp bind-mount unit
+# --- /var/tmp hardening ---
+
 - name: Deploy hardened /var/tmp mount unit
   ansible.builtin.template:
     src: var-tmp.mount.j2
@@ -49,36 +81,30 @@
     mode: "0644"
   notify: Reload systemd daemon
 
-# Flush handlers to ensure daemon-reload runs before enabling mounts
+# Flush handlers to ensure daemon-reload runs before enabling/restarting mounts
 - name: Flush handlers to reload systemd if unit files changed
   ansible.builtin.meta: flush_handlers
 
-# Enable and start /tmp bind-mount
+# --- Activate mounts ---
+
 - name: Enable and start hardened /tmp mount
   ansible.builtin.systemd:
     name: tmp.mount
     enabled: true
     state: started
 
-# Ensure /tmp has noexec even if the mount unit didn't remount it
-# (e.g., /tmp was already mounted as tmpfs in the VM)
-- name: Verify /tmp mount options include noexec
-  ansible.builtin.command: findmnt -n -o OPTIONS /tmp
-  register: tmp_mount_check
-  changed_when: false
+# Restart tmp.mount to pick up drop-in override if it changed
+- name: Restart /tmp mount to apply drop-in override
+  ansible.builtin.systemd:
+    name: tmp.mount
+    state: restarted
+  when: tmp_dropin is defined and tmp_dropin.changed
 
-- name: Remount /tmp with noexec if missing
-  ansible.builtin.command: mount -o remount,noexec,nosuid,nodev /tmp
-  when: "'noexec' not in tmp_mount_check.stdout"
-  changed_when: true
-
-# Remount /dev/shm if drop-in override changed
 - name: Remount /dev/shm with hardened options
   ansible.builtin.command: mount -o remount /dev/shm
   when: shm_override.changed
   changed_when: true
 
-# Enable and start /var/tmp bind-mount (depends on tmp.mount via unit file)
 - name: Enable and start hardened /var/tmp mount
   ansible.builtin.systemd:
     name: var-tmp.mount
