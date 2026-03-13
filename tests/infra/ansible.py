@@ -57,12 +57,13 @@ def build_single_role_playbook(roles: str | list[str]) -> str:
     return yaml.dump(playbook, default_flow_style=False)
 
 
-def _write_ssh_public_key_file(vm: IncusVM) -> Path:
-    """Write the VM's SSH public key to a temp file for Ansible to read."""
-    pub_key_path = vm.ssh_key.private_key_path.with_suffix(".pub")
-    if not pub_key_path.exists():
-        pub_key_path.write_text(vm.ssh_key.public_key + "\n")
-    return pub_key_path
+def _get_ssh_public_key_file(vm: IncusVM) -> Path:
+    """Return the path to the VM's SSH public key file.
+
+    ssh-keygen creates the .pub file alongside the private key,
+    so it always exists after SSHKeyPair.create().
+    """
+    return vm.ssh_key.private_key_path.with_suffix(".pub")
 
 
 def run_bootstrap_playbook(
@@ -73,7 +74,7 @@ def run_bootstrap_playbook(
     check_mode: bool = False,
 ) -> subprocess.CompletedProcess:
     """Run site.yml (or a single role) against the VM."""
-    pub_key_path = _write_ssh_public_key_file(vm)
+    pub_key_path = _get_ssh_public_key_file(vm)
 
     merged_vars = dict(DEFAULT_TEST_VARS)
     merged_vars["manual_user_ssh_key_file"] = str(pub_key_path)

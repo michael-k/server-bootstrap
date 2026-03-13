@@ -4,7 +4,7 @@
 import shutil
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -14,7 +14,7 @@ class SSHKeyPair:
 
     private_key_path: Path
     public_key: str
-    _temp_dir: Path
+    _temp_dir: Path = field(repr=False, compare=False)
 
     @classmethod
     def create(cls, name: str) -> SSHKeyPair:

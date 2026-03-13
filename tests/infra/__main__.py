@@ -10,10 +10,12 @@ Usage:
 
 
 import argparse
+import glob
 import json
 import os
 import subprocess
 import sys
+import tempfile
 
 from tests.infra.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX, VM_NAME_PREFIX
 from tests.infra.vm import IncusVM
@@ -111,9 +113,6 @@ def cmd_destroy(args: argparse.Namespace) -> None:
 
 def cmd_ssh(args: argparse.Namespace) -> None:
     """SSH into a test VM."""
-    import glob
-    import tempfile
-
     patterns = [
         os.path.join(tempfile.gettempdir(), f"bootstrap-test-{args.name}*", "vm-info.json"),
         os.path.join(tempfile.gettempdir(), f"bootstrap-test-*{args.name}*", "vm-info.json"),

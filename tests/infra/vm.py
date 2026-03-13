@@ -5,7 +5,7 @@ import json
 import secrets
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from tests.infra.constants import (
@@ -25,7 +25,7 @@ class IncusVM:
     ssh_key: SSHKeyPair
     ip_address: str = ""
     ssh_port: int = 22
-    _image: str = ""
+    _image: str = field(default="", repr=False, compare=False)
 
     @classmethod
     def create(cls, image: str, name_hint: str = "") -> IncusVM:
@@ -50,12 +50,20 @@ class IncusVM:
 
     def destroy(self) -> None:
         """Force-delete the VM and clean up SSH keys."""
-        subprocess.run(
+        import sys
+
+        result = subprocess.run(
             ["incus", "delete", self.name, "--force"],
             capture_output=True,
             text=True,
             check=False,
         )
+        if result.returncode != 0:
+            print(
+                f"Warning: failed to destroy VM '{self.name}': "
+                f"{result.stderr.strip()}",
+                file=sys.stderr,
+            )
         self.ssh_key.cleanup()
 
     def wait_ready(self, timeout: int = VM_READY_TIMEOUT_SECONDS) -> None:

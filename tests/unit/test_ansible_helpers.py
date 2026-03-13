@@ -64,7 +64,7 @@ class TestBuildSingleRolePlaybook:
 
 
 class TestRunBootstrapPlaybook:
-    @patch("tests.infra.ansible._write_ssh_public_key_file")
+    @patch("tests.infra.ansible._get_ssh_public_key_file")
     @patch("tests.infra.ansible.subprocess.run")
     def test_uses_site_yml_by_default(self, mock_run, mock_write_key):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
@@ -83,7 +83,7 @@ class TestRunBootstrapPlaybook:
         cmd_str = " ".join(str(c) for c in cmd)
         assert "site.yml" in cmd_str
 
-    @patch("tests.infra.ansible._write_ssh_public_key_file")
+    @patch("tests.infra.ansible._get_ssh_public_key_file")
     @patch("tests.infra.ansible.subprocess.run")
     def test_passes_extra_vars_via_json_file(self, mock_run, mock_write_key):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
