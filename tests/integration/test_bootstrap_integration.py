@@ -92,6 +92,7 @@ class TestPlaybookIdempotency:
         assert result.returncode == 0, (
             f"Check mode failed.\nstdout: {result.stdout[-2000:]}"
         )
+        assert "changed=0" in result.stdout
 
 
 class TestEmergencyScriptEndToEnd:

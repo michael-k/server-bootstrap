@@ -29,10 +29,10 @@ def _should_keep(request: pytest.FixtureRequest) -> bool:
     """Check if VMs should be preserved on failure."""
     if not os.environ.get("KEEP_VM_ON_FAIL"):
         return False
-    # Check if any test in the session failed
-    if hasattr(request.session, "testsfailed"):
-        return request.session.testsfailed > 0
-    return False
+    # Check if any test in the session failed or errored
+    failed = getattr(request.session, "testsfailed", 0)
+    errored = getattr(request.session, "testserrors", 0)
+    return (failed + errored) > 0
 
 
 def _print_debug_info(vm: IncusVM) -> None:
@@ -42,12 +42,6 @@ def _print_debug_info(vm: IncusVM) -> None:
         f"  SSH: ssh -i {vm.ssh_key.private_key_path} root@{vm.ip_address}\n"
         f"  Cleanup: make vm-destroy VM={vm.name}\n"
     )
-
-
-skip_no_incus = pytest.mark.skipif(
-    not incus_available(),
-    reason="Incus not available (not installed or daemon not running)",
-)
 
 
 @pytest.fixture(scope="session")

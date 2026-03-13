@@ -124,6 +124,7 @@ class IncusVM:
                     "ssh",
                     "-o", "PubkeyAuthentication=yes",
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     "-o", "BatchMode=yes",
                     "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
                     "-i", str(self.ssh_key.private_key_path),
