@@ -28,7 +28,10 @@ def build_inventory(vm: IncusVM, ssh_port: int = 22) -> str:
                     "ansible_user": "root",
                     "ansible_port": ssh_port,
                     "ansible_ssh_private_key_file": str(vm.ssh_key.private_key_path),
-                    "ansible_ssh_common_args": "-o StrictHostKeyChecking=no",
+                    "ansible_ssh_common_args": (
+                        "-o PubkeyAuthentication=yes "
+                        "-o StrictHostKeyChecking=no"
+                    ),
                 }
             }
         }

@@ -28,24 +28,18 @@ class IncusVM:
 
     @classmethod
     def create(cls, image: str, name_hint: str = "") -> IncusVM:
-        """Launch a new Incus VM with SSH access via cloud-init."""
+        """Launch a new Incus VM.
+
+        The Debian cloud images don't include cloud-init, so SSH setup
+        is handled in wait_ready() via incus exec after the VM boots.
+        """
         suffix = secrets.token_hex(4)
         name = f"{VM_NAME_PREFIX}{name_hint + '-' if name_hint else ''}{suffix}"
 
         ssh_key = SSHKeyPair.create(name)
 
-        cloud_init = (
-            "#cloud-config\n"
-            "ssh_authorized_keys:\n"
-            f"  - {ssh_key.public_key}\n"
-        )
-
         subprocess.run(
-            [
-                "incus", "launch", image, name,
-                "--vm",
-                f"--config=user.user-data={cloud_init}",
-            ],
+            ["incus", "launch", image, name, "--vm"],
             capture_output=True,
             text=True,
             check=True,
@@ -64,9 +58,18 @@ class IncusVM:
         self.ssh_key.cleanup()
 
     def wait_ready(self, timeout: int = VM_READY_TIMEOUT_SECONDS) -> None:
-        """Wait until the VM is running and SSH is reachable."""
+        """Wait until the VM is running and SSH is reachable.
+
+        Since the Debian cloud images lack cloud-init, this method:
+        1. Waits for the VM to reach Running state
+        2. Waits for the Incus agent inside the VM (incus exec works)
+        3. Installs openssh-server if not present
+        4. Injects the ephemeral SSH public key into root's authorized_keys
+        5. Waits for SSH to accept connections with the key
+        """
         deadline = time.monotonic() + timeout
 
+        # Phase 1: Wait for VM to be Running
         while time.monotonic() < deadline:
             result = subprocess.run(
                 ["incus", "list", self.name, "--format=json"],
@@ -82,6 +85,23 @@ class IncusVM:
         else:
             raise TimeoutError(f"VM '{self.name}' did not start within {timeout}s")
 
+        # Phase 2: Wait for Incus agent (incus exec) to work
+        while time.monotonic() < deadline:
+            result = subprocess.run(
+                ["incus", "exec", self.name, "--", "echo", "agent-ready"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0 and "agent-ready" in result.stdout:
+                break
+            time.sleep(SSH_POLL_INTERVAL_SECONDS)
+        else:
+            raise TimeoutError(
+                f"Incus agent not ready on VM '{self.name}' within {timeout}s"
+            )
+
+        # Phase 3: Wait for IP address
         self.ip_address = self.get_ip()
         if not self.ip_address:
             while time.monotonic() < deadline:
@@ -90,12 +110,19 @@ class IncusVM:
                     break
                 time.sleep(SSH_POLL_INTERVAL_SECONDS)
             else:
-                raise TimeoutError(f"VM '{self.name}' did not get an IP within {timeout}s")
+                raise TimeoutError(
+                    f"VM '{self.name}' did not get an IP within {timeout}s"
+                )
 
+        # Phase 4: Install openssh-server and inject SSH key via incus exec
+        self._setup_ssh()
+
+        # Phase 5: Wait for SSH to accept connections
         while time.monotonic() < deadline:
             result = subprocess.run(
                 [
                     "ssh",
+                    "-o", "PubkeyAuthentication=yes",
                     "-o", "StrictHostKeyChecking=no",
                     "-o", "BatchMode=yes",
                     "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
@@ -112,8 +139,35 @@ class IncusVM:
             time.sleep(SSH_POLL_INTERVAL_SECONDS)
 
         raise TimeoutError(
-            f"SSH not reachable on VM '{self.name}' ({self.ip_address}) within {timeout}s"
+            f"SSH not reachable on VM '{self.name}' ({self.ip_address}) "
+            f"within {timeout}s"
         )
+
+    def _setup_ssh(self) -> None:
+        """Install openssh-server and inject the ephemeral SSH key."""
+        # Install openssh-server if not already present
+        result = self.exec("dpkg -s openssh-server 2>/dev/null", timeout=10)
+        if result.returncode != 0:
+            self.exec(
+                "apt-get update -qq && apt-get install -y -qq openssh-server",
+                timeout=120,
+            )
+
+        # Ensure root login is permitted (Debian defaults may vary)
+        self.exec(
+            "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' "
+            "/etc/ssh/sshd_config"
+        )
+
+        # Inject SSH public key
+        self.exec("mkdir -p /root/.ssh && chmod 700 /root/.ssh")
+        self.exec(
+            f"echo '{self.ssh_key.public_key}' >> /root/.ssh/authorized_keys "
+            "&& chmod 600 /root/.ssh/authorized_keys"
+        )
+
+        # Restart sshd to pick up config changes
+        self.exec("systemctl restart ssh || systemctl restart sshd")
 
     def get_ip(self) -> str:
         """Get the VM's IPv4 address from Incus."""
@@ -157,6 +211,7 @@ class IncusVM:
         return subprocess.run(
             [
                 "ssh",
+                "-o", "PubkeyAuthentication=yes",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "BatchMode=yes",
                 "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",

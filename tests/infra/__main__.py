@@ -126,6 +126,7 @@ def cmd_ssh(args: argparse.Namespace) -> None:
                 info = json.loads(f.read())
             os.execvp("ssh", [
                 "ssh",
+                "-o", "PubkeyAuthentication=yes",
                 "-o", "StrictHostKeyChecking=no",
                 "-i", info["ssh_key"],
                 f"root@{info['ip_address']}",

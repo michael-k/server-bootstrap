@@ -33,7 +33,7 @@ class TestIncusVMCreate:
 
     @patch("tests.infra.vm.subprocess.run")
     @patch("tests.infra.vm.SSHKeyPair.create")
-    def test_create_uses_cloud_init_for_ssh_key(self, mock_keypair, mock_run):
+    def test_create_does_not_use_cloud_init(self, mock_keypair, mock_run):
         mock_keypair.return_value = MagicMock(
             public_key="ssh-ed25519 AAAA test",
             private_key_path="/tmp/fake/id_ed25519",
@@ -45,7 +45,8 @@ class TestIncusVMCreate:
         launch_call = mock_run.call_args_list[0]
         cmd = launch_call[0][0]
         cmd_str = " ".join(str(c) for c in cmd)
-        assert "cloud-init" in cmd_str or "user.user-data" in cmd_str
+        assert "cloud-init" not in cmd_str
+        assert "user.user-data" not in cmd_str
 
 
 class TestIncusVMName:
