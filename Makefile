@@ -1,4 +1,4 @@
-.PHONY: help bootstrap verify test test-unit test-property test-integration clean python-lint python-lint-fix ansible-lint ansible-lint-fix
+.PHONY: help bootstrap verify test test-unit test-property test-integration clean python-lint python-lint-fix ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh
 
 help:
 	@echo "VPS Bootstrap Playbook - Available targets:"
@@ -13,6 +13,10 @@ help:
 	@echo "  ansible-lint       Check Ansible files with ansible-lint"
 	@echo "  ansible-lint-fix   Fix Ansible files with ansible-lint"
 	@echo "  clean              Remove generated files and caches"
+	@echo "  vm-create          Create a test VM (DEBIAN=13|testing)"
+	@echo "  vm-list            List running test VMs"
+	@echo "  vm-destroy         Destroy test VM(s) (VM=name or all)"
+	@echo "  vm-ssh             SSH into a test VM (VM=name)"
 
 bootstrap:
 	@echo "Running VPS bootstrap playbook..."
@@ -36,7 +40,7 @@ test-property:
 
 test-integration:
 	@echo "Running integration tests..."
-	uv run pytest -m integration
+	uv run pytest -m integration $(ARGS)
 
 python-lint:
 	@echo "Checking Python code with ruff..."
@@ -59,3 +63,18 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
+
+vm-create:
+	@echo "Creating test VM..."
+	uv run python -m tests.infra create --debian $(or $(DEBIAN),13)
+
+vm-list:
+	@echo "Test VMs:"
+	uv run python -m tests.infra list
+
+vm-destroy:
+	uv run python -m tests.infra destroy $(if $(VM),$(VM),--all)
+
+vm-ssh:
+	@test -n "$(VM)" || (echo "Usage: make vm-ssh VM=<name>" && exit 1)
+	uv run python -m tests.infra ssh $(VM)
