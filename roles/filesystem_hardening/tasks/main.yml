@@ -60,6 +60,18 @@
     enabled: true
     state: started
 
+# Ensure /tmp has noexec even if the mount unit didn't remount it
+# (e.g., /tmp was already mounted as tmpfs in the VM)
+- name: Verify /tmp mount options include noexec
+  ansible.builtin.command: findmnt -n -o OPTIONS /tmp
+  register: tmp_mount_check
+  changed_when: false
+
+- name: Remount /tmp with noexec if missing
+  ansible.builtin.command: mount -o remount,noexec,nosuid,nodev /tmp
+  when: "'noexec' not in tmp_mount_check.stdout"
+  changed_when: true
+
 # Remount /dev/shm if drop-in override changed
 - name: Remount /dev/shm with hardened options
   ansible.builtin.command: mount -o remount /dev/shm
