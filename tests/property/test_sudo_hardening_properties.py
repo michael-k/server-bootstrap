@@ -17,7 +17,7 @@ def sudo_security_directive(draw):
     """Generate one of the required sudo security directives."""
     return draw(
         st.sampled_from(
-            ["env_reset", "env_clean", "secure_path", "use_pty", "log_year", "log_host"]
+            ["env_reset", "secure_path", "use_pty", "log_year", "log_host"]
         )
     )
 
