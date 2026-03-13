@@ -1,0 +1,9 @@
+# Account lockout policy — deployed by Ansible
+# Locks accounts after repeated failed authentication attempts.
+# See faillock.conf(5) for documentation.
+
+deny = {{ pam_faillock_deny }}
+unlock_time = {{ pam_faillock_unlock_time }}
+fail_interval = {{ pam_faillock_fail_interval }}
+even_deny_root = true
+root_unlock_time = {{ pam_faillock_unlock_time }}
