@@ -1,3 +1,7 @@
 ---
 # Handlers for users role
-# Currently no handlers needed for user management tasks
+
+- name: Enable faillock in PAM
+  ansible.builtin.command:
+    cmd: pam-auth-update --enable faillock
+  changed_when: true

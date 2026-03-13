@@ -447,3 +447,96 @@ class TestResourceLimitsProperties:
                 assert "soft" not in stripped, (
                     f"Limit lines must NOT use 'soft' type, got: {stripped}"
                 )
+
+
+class TestPamHardeningTasksProperties:
+    """Property-based tests for PAM hardening deployment tasks."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_deploy_faillock_conf(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Deploy faillock.conf
+
+        The users role tasks SHALL deploy the faillock.conf template.
+
+        Validates: PAM hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        assert tasks_path.exists(), "Users tasks must exist"
+
+        content = tasks_path.read_text()
+
+        assert "faillock.conf.j2" in content, (
+            "Tasks must reference faillock.conf.j2 template"
+        )
+        assert "dest: /etc/security/faillock.conf" in content, (
+            "Tasks must deploy to /etc/security/faillock.conf"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_deploy_faillock_pam_profile(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Deploy Faillock PAM Profile
+
+        The users role tasks SHALL deploy the faillock PAM profile
+        to /usr/share/pam-configs/.
+
+        Validates: PAM hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        content = tasks_path.read_text()
+
+        assert "faillock-pam-config.j2" in content, (
+            "Tasks must reference faillock-pam-config.j2 template"
+        )
+        assert "dest: /usr/share/pam-configs/faillock" in content, (
+            "Tasks must deploy to /usr/share/pam-configs/faillock"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_enable_faillock_via_pam_auth_update(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Enable Faillock via pam-auth-update
+
+        The users role SHALL run pam-auth-update to enable faillock
+        after deploying the PAM profile (via handler or task).
+
+        Validates: PAM hardening design spec
+        """
+        handlers_path = Path("roles/users/handlers/main.yml")
+        tasks_path = Path("roles/users/tasks/main.yml")
+
+        handlers_content = ""
+        if handlers_path.exists():
+            handlers_content = handlers_path.read_text()
+
+        tasks_content = tasks_path.read_text()
+        combined = handlers_content + tasks_content
+
+        assert "pam-auth-update" in combined, (
+            "Role must run pam-auth-update to enable faillock"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_tasks_deploy_resource_limits(self):
+        """
+        Feature: vps-bootstrap-playbook, Tasks Deploy Resource Limits
+
+        The users role tasks SHALL deploy the resource limits template
+        to /etc/security/limits.d/.
+
+        Validates: PAM hardening design spec
+        """
+        tasks_path = Path("roles/users/tasks/main.yml")
+        content = tasks_path.read_text()
+
+        assert "50-hardening.conf.j2" in content, (
+            "Tasks must reference 50-hardening.conf.j2 template"
+        )
+        assert "dest: /etc/security/limits.d/50-hardening.conf" in content, (
+            "Tasks must deploy to /etc/security/limits.d/50-hardening.conf"
+        )

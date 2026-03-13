@@ -213,3 +213,40 @@
   tags:
     - users
     - login_policy
+
+# PAM Hardening
+# Account lockout via pam_faillock, resource limits via pam_limits
+
+- name: Deploy faillock configuration
+  ansible.builtin.template:
+    src: faillock.conf.j2
+    dest: /etc/security/faillock.conf
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - users
+    - pam_hardening
+
+- name: Deploy faillock PAM profile
+  ansible.builtin.template:
+    src: faillock-pam-config.j2
+    dest: /usr/share/pam-configs/faillock
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - users
+    - pam_hardening
+  notify: Enable faillock in PAM
+
+- name: Deploy resource limits
+  ansible.builtin.template:
+    src: 50-hardening.conf.j2
+    dest: /etc/security/limits.d/50-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - users
+    - pam_hardening
