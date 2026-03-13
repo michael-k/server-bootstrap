@@ -115,7 +115,7 @@ class TestUserManagementProperties:
         )
 
         # Verify Ansible user uid is 1999
-        assert "ansible_user_uid" in tasks_content or "uid: 1999" in tasks_content, (
+        assert "deploy_user_uid" in tasks_content or "uid: 1999" in tasks_content, (
             "Users role must set Ansible user uid to 1999"
         )
 
@@ -130,7 +130,7 @@ class TestUserManagementProperties:
             )
 
             # Verify Ansible user uid default is 1999
-            assert "ansible_user_uid: 1999" in defaults_content, (
+            assert "deploy_user_uid: 1999" in defaults_content, (
                 "Ansible user uid default must be 1999"
             )
 
@@ -197,7 +197,7 @@ class TestUserManagementProperties:
             ".ssh" in tasks_content
         ), "Must create .ssh directory for manual user"
 
-        assert 'path: "/home/{{ ansible_user_name }}/.ssh"' in tasks_content or (
+        assert 'path: "/home/{{ deploy_user_name }}/.ssh"' in tasks_content or (
             ".ssh" in tasks_content
         ), "Must create .ssh directory for Ansible user"
 
@@ -232,7 +232,7 @@ class TestUserManagementProperties:
             "lookup('file'" in tasks_content
         ), "Manual user SSH key file path must be configurable"
 
-        assert "ansible_user_ssh_key_file" in tasks_content or (
+        assert "deploy_user_ssh_key_file" in tasks_content or (
             "lookup('file'" in tasks_content
         ), "Ansible user SSH key file path must be configurable"
 
@@ -332,7 +332,7 @@ class TestUserManagementProperties:
             "Manual user sudoers file must use username variable"
         )
 
-        assert "{{ ansible_user_name }}" in tasks_content, (
+        assert "{{ deploy_user_name }}" in tasks_content, (
             "Ansible user sudoers file must use username variable"
         )
 
@@ -411,7 +411,7 @@ class TestUserManagementProperties:
         ), "Manual user must have SSH key configured"
 
         # Verify SSH key deployment for Ansible user
-        assert "ansible_user_ssh_key_file" in tasks_content or (
+        assert "deploy_user_ssh_key_file" in tasks_content or (
             "lookup('file'" in tasks_content
         ), "Ansible user must have SSH key configured"
 
@@ -430,7 +430,7 @@ class TestUserManagementProperties:
                 "Manual user SSH key file path must be defined"
             )
 
-            assert "ansible_user_ssh_key_file" in defaults_content, (
+            assert "deploy_user_ssh_key_file" in defaults_content, (
                 "Ansible user SSH key file path must be defined"
             )
 
@@ -492,7 +492,7 @@ class TestUserManagementProperties:
             "User shell must be configurable"
         )
 
-        assert "ansible_user_shell" in tasks_content or "shell:" in tasks_content, (
+        assert "deploy_user_shell" in tasks_content or "shell:" in tasks_content, (
             "User shell must be configurable"
         )
 
@@ -620,9 +620,9 @@ class TestUserManagementProperties:
             "manual_user_name",
             "manual_user_uid",
             "manual_user_ssh_key_file",
-            "ansible_user_name",
-            "ansible_user_uid",
-            "ansible_user_ssh_key_file",
+            "deploy_user_name",
+            "deploy_user_uid",
+            "deploy_user_ssh_key_file",
         ]
 
         for var in configurable_vars:

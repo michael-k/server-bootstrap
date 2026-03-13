@@ -226,7 +226,7 @@ class TestSSHHardeningProperties:
         This property test verifies that:
         1. AllowUsers directive is present in configuration
         2. AllowUsers references manual_user_name variable
-        3. AllowUsers references ansible_user_name variable
+        3. AllowUsers references deploy_user_name variable
         4. AllowUsers is configurable through variables
         """
         # Skip if usernames are identical (invalid configuration)
@@ -251,7 +251,7 @@ class TestSSHHardeningProperties:
         # Verify AllowUsers uses variable for user list
         assert "{{ ssh_allowed_users" in template_content or (
             "{{ manual_user_name }}" in template_content
-            and "{{ ansible_user_name }}" in template_content
+            and "{{ deploy_user_name }}" in template_content
         ), "Template must use variables for allowed users"
 
         # Verify defaults file defines allowed users
@@ -270,8 +270,8 @@ class TestSSHHardeningProperties:
             "Allowed users must reference manual_user_name"
         )
 
-        assert "ansible_user_name" in defaults_content, (
-            "Allowed users must reference ansible_user_name"
+        assert "deploy_user_name" in defaults_content, (
+            "Allowed users must reference deploy_user_name"
         )
 
     @pytest.mark.property

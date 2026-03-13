@@ -44,11 +44,11 @@
         that:
           - manual_user_name is defined
           - manual_user_name | length > 0
-          - ansible_user_name is defined
-          - ansible_user_name | length > 0
+          - deploy_user_name is defined
+          - deploy_user_name | length > 0
           - manual_user_password is defined
           - manual_user_ssh_key_file is defined
-          - ansible_user_ssh_key_file is defined
+          - deploy_user_ssh_key_file is defined
         fail_msg: "Required user configuration variables are missing. Check inventory/hosts.yml"
         success_msg: "All required user configuration variables are defined"
 
@@ -62,7 +62,7 @@
 
     - name: Pre-flight - Verify Ansible user SSH key file exists
       ansible.builtin.stat:
-        path: "{{ ansible_user_ssh_key_file }}"
+        path: "{{ deploy_user_ssh_key_file }}"
       delegate_to: localhost
       become: false
       register: ansible_key_stat
@@ -86,7 +86,7 @@
           - "Target: {{ ansible_host | default(inventory_hostname) }}"
           - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
           - "Manual User: {{ manual_user_name }} (uid 1000)"
-          - "Ansible User: {{ ansible_user_name }} (uid 1999)"
+          - "Ansible User: {{ deploy_user_name }} (uid 1999)"
           - "SSH Port: {{ ssh_port | default(22) }}"
           - "Tailscale VPN: {{ 'Enabled' if (tailscale_enabled | default(false) | bool) else 'Disabled' }}"
           - "Hostname: {{ system_hostname if (system_hostname | default('') | length > 0) else 'Not configured' }}"
@@ -170,7 +170,7 @@
           Next Steps:
             1. Verify configuration: make verify
             2. Test manual user access: ssh {{ manual_user_name }}@{{ ansible_host | default(inventory_hostname) }}
-            3. Test Ansible user access: ssh {{ ansible_user_name }}@{{ ansible_host | default(inventory_hostname) }}
+            3. Test Ansible user access: ssh {{ deploy_user_name }}@{{ ansible_host | default(inventory_hostname) }}
 
           {% if tailscale_enabled | default(false) | bool %}Emergency Access:
             If Tailscale VPN fails, use the emergency script on the VPS:
@@ -180,7 +180,7 @@
           {% endif %}Important Notes:
             - Root SSH access is now disabled
             - Password authentication is disabled (SSH keys only)
-            - SSH is restricted to {{ manual_user_name }} and {{ ansible_user_name }}
+            - SSH is restricted to {{ manual_user_name }} and {{ deploy_user_name }}
           {% if tailscale_enabled | default(false) | bool %}  - SSH is restricted to Tailscale interface only
           {% endif %}  - Firewall is active with default-deny policy
             - Fail2ban is monitoring SSH for brute-force attempts

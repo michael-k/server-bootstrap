@@ -118,7 +118,7 @@ The bootstrap playbook runs with these defaults (defined in `tests/infra/constan
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `manual_user_name` | `testuser` | |
-| `ansible_user_name` | `ansible` | |
+| `deploy_user_name` | `ansible` | |
 | `ssh_port` | `22` | |
 | `tailscale_enabled` | `false` | Tailscale tests require multi-VM setup |
 | `swap_enabled` | `false` | |

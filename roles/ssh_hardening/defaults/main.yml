@@ -33,7 +33,7 @@ ssh_macs:
 # These should be overridden with actual usernames from inventory
 ssh_allowed_users:
   - "{{ manual_user_name }}"
-  - "{{ ansible_user_name }}"
+  - "{{ deploy_user_name }}"
 
 # Interface restriction (Requirements 5.2, 5.3)
 # When Tailscale is enabled, SSH listens only on Tailscale interface

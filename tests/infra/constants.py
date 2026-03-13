@@ -21,8 +21,8 @@ DEFAULT_TEST_VARS: dict[str, str | int | bool] = {
         "MOFwlVYpXqBERvMOmflOBxVGHfnYBvFYX."
     ),
     "manual_user_ssh_key_file": "",  # Set dynamically from VM's SSH key
-    "ansible_user_name": "ansible",
-    "ansible_user_ssh_key_file": "",  # Set dynamically from VM's SSH key
+    "deploy_user_name": "ansible",
+    "deploy_user_ssh_key_file": "",  # Set dynamically from VM's SSH key
     "ssh_port": 22,
     "target_hostname": "bootstrap-test",
     "tailscale_enabled": False,

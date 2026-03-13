@@ -44,8 +44,8 @@ def default_users_vars() -> dict:
     return {
         "manual_user_name": "admin",
         "manual_user_uid": 1000,
-        "ansible_user_name": "ansible",
-        "ansible_user_uid": 1999,
+        "deploy_user_name": "ansible",
+        "deploy_user_uid": 1999,
         "authorized_keys_mode": "0600",
     }
 

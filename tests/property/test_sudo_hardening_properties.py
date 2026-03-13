@@ -113,8 +113,8 @@ class TestSudoHardeningProperties:
         assert "!requiretty" in content, (
             "Template must exempt ansible user from requiretty"
         )
-        assert "ansible_user_name" in content, (
-            "TTY exemption must reference ansible_user_name variable"
+        assert "deploy_user_name" in content, (
+            "TTY exemption must reference deploy_user_name variable"
         )
 
     @pytest.mark.property

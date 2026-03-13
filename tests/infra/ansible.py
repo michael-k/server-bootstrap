@@ -78,7 +78,7 @@ def run_bootstrap_playbook(
 
     merged_vars = dict(DEFAULT_TEST_VARS)
     merged_vars["manual_user_ssh_key_file"] = str(pub_key_path)
-    merged_vars["ansible_user_ssh_key_file"] = str(pub_key_path)
+    merged_vars["deploy_user_ssh_key_file"] = str(pub_key_path)
     if extra_vars:
         merged_vars.update(extra_vars)
 

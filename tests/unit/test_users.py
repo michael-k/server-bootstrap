@@ -95,15 +95,15 @@ class TestManualUserCreation:
 class TestAnsibleUserCreation:
     """Tests for Ansible automation user creation."""
 
-    def test_ansible_user_uid_is_1999(self):
+    def test_deploy_user_uid_is_1999(self):
         """Test that the Ansible user task specifies uid 1999 via variable."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create ansible user")
         assert task is not None, "Could not find Ansible user creation task"
         user_params = task["ansible.builtin.user"]
         uid_value = user_params["uid"]
-        assert uid_value == 1999 or uid_value == "{{ ansible_user_uid }}", (
-            f"Expected uid 1999 or '{{{{ ansible_user_uid }}}}', got {uid_value!r}"
+        assert uid_value == 1999 or uid_value == "{{ deploy_user_uid }}", (
+            f"Expected uid 1999 or '{{{{ deploy_user_uid }}}}', got {uid_value!r}"
         )
 
     def test_ansible_user_password_is_locked(self):
@@ -212,7 +212,7 @@ class TestSudoConfiguration:
         assert task is not None, "Could not find Ansible user sudo task"
         copy_params = task["ansible.builtin.copy"]
         content = copy_params.get("content", "")
-        assert content == "{{ ansible_user_name }} ALL=(ALL:ALL) NOPASSWD:ALL\n", (
+        assert content == "{{ deploy_user_name }} ALL=(ALL:ALL) NOPASSWD:ALL\n", (
             f"Expected passwordless sudo content, got {content!r}"
         )
 

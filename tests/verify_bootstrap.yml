@@ -45,7 +45,7 @@
     - name: "Test 14.2: Verify Ansible user exists with uid 1999"
       block:
         - name: Get Ansible user information
-          ansible.builtin.command: "getent passwd {{ ansible_user_name }}"
+          ansible.builtin.command: "getent passwd {{ deploy_user_name }}"
           register: ansible_user_info
           changed_when: false
           failed_when: false
@@ -55,8 +55,8 @@
             that:
               - ansible_user_info.rc == 0
               - ansible_user_info.stdout is search(':1999:')
-            fail_msg: "Ansible user {{ ansible_user_name }} does not exist with uid 1999"
-            success_msg: "✓ Ansible user {{ ansible_user_name }} exists with uid 1999"
+            fail_msg: "Ansible user {{ deploy_user_name }} does not exist with uid 1999"
+            success_msg: "✓ Ansible user {{ deploy_user_name }} exists with uid 1999"
 
     - name: "Test 14.3: Verify manual access user has sudo privileges"
       block:
@@ -84,12 +84,12 @@
       block:
         - name: Check Ansible user sudo configuration
           ansible.builtin.stat:
-            path: "/etc/sudoers.d/{{ ansible_user_name }}"
+            path: "/etc/sudoers.d/{{ deploy_user_name }}"
           register: ansible_sudo_file
 
         - name: Read Ansible user sudo configuration
           ansible.builtin.slurp:
-            path: "/etc/sudoers.d/{{ ansible_user_name }}"
+            path: "/etc/sudoers.d/{{ deploy_user_name }}"
           register: ansible_sudo_content
           when: ansible_sudo_file.stat.exists
 
@@ -97,10 +97,10 @@
           ansible.builtin.assert:
             that:
               - ansible_sudo_file.stat.exists
-              - ansible_sudo_content.content | b64decode is search(ansible_user_name)
+              - ansible_sudo_content.content | b64decode is search(deploy_user_name)
               - ansible_sudo_content.content | b64decode is search('NOPASSWD')
-            fail_msg: "Ansible user {{ ansible_user_name }} does not have passwordless sudo"
-            success_msg: "✓ Ansible user {{ ansible_user_name }} has passwordless sudo"
+            fail_msg: "Ansible user {{ deploy_user_name }} does not have passwordless sudo"
+            success_msg: "✓ Ansible user {{ deploy_user_name }} has passwordless sudo"
 
     # ==============================================================================
     # SUDO HARDENING VERIFICATION
@@ -214,9 +214,9 @@
             that:
               - sshd_config.stdout is search('allowusers')
               - sshd_config.stdout is search(manual_user_name)
-              - sshd_config.stdout is search(ansible_user_name)
+              - sshd_config.stdout is search(deploy_user_name)
             fail_msg: "SSHD AllowUsers is not properly restricted"
-            success_msg: "✓ SSHD AllowUsers is restricted to {{ manual_user_name }} and {{ ansible_user_name }}"
+            success_msg: "✓ SSHD AllowUsers is restricted to {{ manual_user_name }} and {{ deploy_user_name }}"
 
     - name: "Test 14.9: Verify SSHD key exchange algorithms"
       block:

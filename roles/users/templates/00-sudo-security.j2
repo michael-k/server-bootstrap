@@ -16,4 +16,4 @@ Defaults    log_host
 # Security restrictions
 Defaults    use_pty
 Defaults    requiretty
-Defaults:{{ ansible_user_name }}    !requiretty
+Defaults:{{ deploy_user_name }}    !requiretty
