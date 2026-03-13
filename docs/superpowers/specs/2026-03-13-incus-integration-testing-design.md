@@ -101,7 +101,7 @@ class SSHKeyPair:
 ```
 
 - Ed25519 keys, consistent with the project's SSH hardening requirements
-- Private key stored in temp directory with `0600` permissions
+- Private key stored in a unique temp directory via `tempfile.mkdtemp()` with `0600` permissions — avoids name collisions and simplifies cleanup
 - Each VM gets its own keypair
 - `cleanup()` called during VM teardown (unless `KEEP_VM_ON_FAIL`)
 
@@ -190,7 +190,26 @@ def run_verify_playbook(vm):
 run_bootstrap_playbook(clean_vm, limit_to_role=["users", "ssh_hardening"])
 ```
 
-The `clean_vm` fixture is used for single-role tests since you want to control exactly which roles run.
+The `clean_vm` fixture is used for single-role tests since you want to control exactly which roles run. Since `clean_vm` is session-scoped, single-role tests must each specify their full prerequisite chain and be order-independent — after one role test runs, the VM is no longer pristine. Each test should assume arbitrary prior state and include all roles it depends on in `limit_to_role`.
+
+## Default Test Variables
+
+A `DEFAULT_TEST_VARS` constant in `constants.py` provides the standard set of variables needed to run the bootstrap playbook (usernames, SSH port, etc.). This avoids repeating variables in every test:
+
+```python
+DEFAULT_TEST_VARS = {
+    "manual_user_name": "testuser",
+    "manual_user_ssh_public_key_file": "",  # Set dynamically from VM's SSH key
+    "ansible_user_name": "ansible",
+    "ansible_user_ssh_public_key_file": "",  # Set dynamically from VM's SSH key
+    "ssh_port": 22,
+    "target_hostname": "bootstrap-test",
+    "tailscale_enabled": False,
+    "swap_enabled": False,
+}
+```
+
+`run_bootstrap_playbook` merges `extra_vars` on top of these defaults, and injects the VM's SSH public key path automatically.
 
 ## Make Targets
 
