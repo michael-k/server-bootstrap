@@ -19,6 +19,7 @@ class TestBuildInventory:
     def test_generates_valid_yaml_inventory(self):
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 22
         vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
 
         content = build_inventory(vm)
@@ -29,13 +30,15 @@ class TestBuildInventory:
         assert host_vars["ansible_host"] == "10.0.0.42"
         assert host_vars["ansible_ssh_private_key_file"] == "/tmp/fake/id_ed25519"
         assert host_vars["ansible_user"] == "root"
+        assert host_vars["ansible_port"] == 22
 
-    def test_uses_custom_ssh_port(self):
+    def test_uses_vm_ssh_port(self):
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 2222
         vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
 
-        content = build_inventory(vm, ssh_port=2222)
+        content = build_inventory(vm)
         inv = yaml.safe_load(content)
         assert inv["all"]["hosts"]["testvm"]["ansible_port"] == 2222
 
@@ -68,6 +71,7 @@ class TestRunBootstrapPlaybook:
         mock_write_key.return_value = Path("/tmp/fake/id_ed25519.pub")
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 22
         vm.ssh_key = MagicMock(
             private_key_path=Path("/tmp/fake/id_ed25519"),
             public_key="ssh-ed25519 AAAA test",
@@ -86,6 +90,7 @@ class TestRunBootstrapPlaybook:
         mock_write_key.return_value = Path("/tmp/fake/id_ed25519.pub")
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 22
         vm.ssh_key = MagicMock(
             private_key_path=Path("/tmp/fake/id_ed25519"),
             public_key="ssh-ed25519 AAAA test",
@@ -106,6 +111,7 @@ class TestRunVerifyPlaybook:
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 22
         vm.ssh_key = MagicMock(
             private_key_path=Path("/tmp/fake/id_ed25519"),
             public_key="ssh-ed25519 AAAA test",

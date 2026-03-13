@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 
 
-def build_inventory(vm: IncusVM, ssh_port: int = 22) -> str:
+def build_inventory(vm: IncusVM) -> str:
     """Generate a YAML inventory string pointing at the VM."""
     inventory = {
         "all": {
@@ -26,7 +26,7 @@ def build_inventory(vm: IncusVM, ssh_port: int = 22) -> str:
                 "testvm": {
                     "ansible_host": vm.ip_address,
                     "ansible_user": "root",
-                    "ansible_port": ssh_port,
+                    "ansible_port": vm.ssh_port,
                     "ansible_ssh_private_key_file": str(vm.ssh_key.private_key_path),
                     "ansible_ssh_common_args": (
                         "-o PubkeyAuthentication=yes "
@@ -107,7 +107,7 @@ def run_bootstrap_playbook(
         cmd.append("--check")
 
     try:
-        return subprocess.run(
+        result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
@@ -115,6 +115,11 @@ def run_bootstrap_playbook(
             cwd=str(WORKSPACE_ROOT),
             check=False,
         )
+        # Update the VM's SSH port to match what the playbook configured,
+        # so subsequent ssh() calls and inventory builds use the right port.
+        if result.returncode == 0:
+            vm.ssh_port = int(merged_vars.get("ssh_port", 22))
+        return result
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 

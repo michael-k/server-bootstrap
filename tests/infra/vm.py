@@ -24,6 +24,7 @@ class IncusVM:
     name: str
     ssh_key: SSHKeyPair
     ip_address: str = ""
+    ssh_port: int = 22
     _image: str = ""
 
     @classmethod
@@ -212,8 +213,10 @@ class IncusVM:
         return subprocess.run(
             [
                 "ssh",
+                "-p", str(self.ssh_port),
                 "-o", "PubkeyAuthentication=yes",
                 "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
                 "-o", "BatchMode=yes",
                 "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
                 "-i", str(self.ssh_key.private_key_path),
