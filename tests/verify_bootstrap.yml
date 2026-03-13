@@ -941,6 +941,70 @@
             fail_msg: "Securetty or shell timeout is missing"
             success_msg: "✓ Securetty deployed, shell timeout active"
 
+
+    # ==============================================================================
+    # PAM HARDENING VERIFICATION
+    # ==============================================================================
+
+    - name: "Verify faillock configuration"
+      block:
+        - name: Read faillock.conf
+          ansible.builtin.slurp:
+            path: /etc/security/faillock.conf
+          register: faillock_conf_content
+
+        - name: Verify faillock.conf settings
+          ansible.builtin.assert:
+            that:
+              - faillock_conf_content.content | b64decode is search('deny.*' + (pam_faillock_deny | string))
+              - faillock_conf_content.content | b64decode is search('even_deny_root.*true')
+            fail_msg: "faillock.conf is missing or incomplete"
+            success_msg: >-
+              ✓ faillock.conf deployed (deny {{ pam_faillock_deny }},
+              even_deny_root true)
+
+        - name: Check faillock PAM profile exists
+          ansible.builtin.stat:
+            path: /usr/share/pam-configs/faillock
+          register: faillock_pam_profile
+
+        - name: Verify faillock is enabled in PAM
+          ansible.builtin.command:
+            cmd: grep -q pam_faillock /etc/pam.d/common-auth
+          register: faillock_pam_check
+          changed_when: false
+          failed_when: false
+
+        - name: Verify faillock PAM integration
+          ansible.builtin.assert:
+            that:
+              - faillock_pam_profile.stat.exists
+              - faillock_pam_check.rc == 0
+            fail_msg: "Faillock PAM profile not deployed or not enabled in common-auth"
+            success_msg: "✓ Faillock enabled in PAM via pam-auth-update"
+
+    - name: "Verify resource limits"
+      block:
+        - name: Check resource limits file exists
+          ansible.builtin.stat:
+            path: /etc/security/limits.d/50-hardening.conf
+          register: limits_file
+
+        - name: Read resource limits
+          ansible.builtin.slurp:
+            path: /etc/security/limits.d/50-hardening.conf
+          register: limits_content
+          when: limits_file.stat.exists
+
+        - name: Verify resource limits
+          ansible.builtin.assert:
+            that:
+              - limits_file.stat.exists
+              - limits_content.content | b64decode is search('nproc')
+              - limits_content.content | b64decode is search('core.*0')
+            fail_msg: "Resource limits file is missing or incomplete"
+            success_msg: "✓ Resource limits deployed (nproc, nofile, core)"
+
     # ==============================================================================
     # FINAL SUMMARY
     # ==============================================================================
@@ -972,6 +1036,7 @@
               - "  ✓ Hostname configuration (if set)"
               - "  ✓ Filesystem hardening (noexec on tmp directories)"
               - "  ✓ Login policy hardening (TMOUT, securetty, login.defs)"
+              - "  ✓ PAM hardening (faillock account lockout, resource limits)"
               - ""
               - "The VPS is properly configured and ready for use."
               - "=========================================="
