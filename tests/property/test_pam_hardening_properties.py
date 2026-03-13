@@ -228,3 +228,96 @@ class TestFaillockConfProperties:
         assert "pam_faillock_unlock_time" in content, (
             "root_unlock_time must use pam_faillock_unlock_time variable"
         )
+
+
+class TestFaillockPamProfileProperties:
+    """Property-based tests for faillock pam-auth-update profile template."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_pam_profile_has_correct_priority(self):
+        """
+        Feature: vps-bootstrap-playbook, Faillock PAM Profile Priority
+
+        The faillock PAM profile SHALL set Priority to 512 to place it
+        after pam_unix (priority 256) in the PAM stack.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/faillock-pam-config.j2")
+        assert template_path.exists(), "Faillock PAM profile template must exist"
+
+        content = template_path.read_text()
+
+        assert "Priority: 512" in content, (
+            "PAM profile must set Priority to 512"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_pam_profile_has_auth_sections(self):
+        """
+        Feature: vps-bootstrap-playbook, Faillock PAM Profile Auth Sections
+
+        The faillock PAM profile SHALL contain Auth-Type Primary with
+        preauth and Auth-Final with authfail sections.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/faillock-pam-config.j2")
+        content = template_path.read_text()
+
+        assert "Auth-Type: Primary" in content, (
+            "PAM profile must have Auth-Type: Primary"
+        )
+        assert "preauth" in content, (
+            "PAM profile must contain preauth directive"
+        )
+        assert "Auth-Final:" in content, (
+            "PAM profile must have Auth-Final section"
+        )
+        assert "authfail" in content, (
+            "PAM profile must contain authfail directive"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_pam_profile_has_account_section(self):
+        """
+        Feature: vps-bootstrap-playbook, Faillock PAM Profile Account Section
+
+        The faillock PAM profile SHALL contain an Account section to reset
+        the failure counter on successful login.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/faillock-pam-config.j2")
+        content = template_path.read_text()
+
+        assert "Account-Type: Additional" in content, (
+            "PAM profile must have Account-Type: Additional"
+        )
+        assert "Account:" in content, (
+            "PAM profile must have Account section"
+        )
+        assert "pam_faillock.so" in content, (
+            "PAM profile Account section must reference pam_faillock.so"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_pam_profile_sets_default_yes(self):
+        """
+        Feature: vps-bootstrap-playbook, Faillock PAM Profile Default
+
+        The faillock PAM profile SHALL set Default to yes so
+        pam-auth-update enables it automatically.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/faillock-pam-config.j2")
+        content = template_path.read_text()
+
+        assert "Default: yes" in content, (
+            "PAM profile must set Default: yes"
+        )
