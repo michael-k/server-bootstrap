@@ -93,12 +93,13 @@
     enabled: true
     state: started
 
-# Restart tmp.mount to pick up drop-in override if it changed
-- name: Restart /tmp mount to apply drop-in override
-  ansible.builtin.systemd:
-    name: tmp.mount
-    state: restarted
+# Remount /tmp to pick up drop-in override if it changed.
+# Uses remount (not restart) to preserve /tmp contents — restarting a
+# tmpfs mount wipes it, which destroys Ansible's in-flight module payloads.
+- name: Remount /tmp to apply drop-in override
+  ansible.builtin.command: mount -o remount /tmp
   when: tmp_dropin is defined and tmp_dropin.changed
+  changed_when: true
 
 - name: Remount /dev/shm with hardened options
   ansible.builtin.command: mount -o remount /dev/shm
