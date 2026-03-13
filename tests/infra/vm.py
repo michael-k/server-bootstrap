@@ -237,6 +237,28 @@ class IncusVM:
             check=False,
         )
 
+    def knock(self, ports: list[int] | None = None, delay: float = 0.3) -> None:
+        """Perform a port knock sequence to unlock SSH access.
+
+        Sends a TCP SYN to each port in sequence with a short delay between.
+        Default sequence matches the firewall role default: [7000, 8500, 9100].
+        """
+        import socket
+
+        if ports is None:
+            ports = [7000, 8500, 9100]
+
+        for port in ports:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            try:
+                sock.connect((self.ip_address, port))
+            except (ConnectionRefusedError, TimeoutError, OSError):
+                pass
+            finally:
+                sock.close()
+            time.sleep(delay)
+
     def put_file(self, src: str | Path, dst: str) -> None:
         """Push a local file into the VM."""
         subprocess.run(

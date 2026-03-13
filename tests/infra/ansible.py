@@ -127,16 +127,31 @@ def run_bootstrap_playbook(
 
 def run_verify_playbook(
     vm: IncusVM,
+    extra_vars: dict | None = None,
     timeout: int = 300,
 ) -> subprocess.CompletedProcess:
     """Run verify_bootstrap.yml against the VM."""
+    pub_key_path = _get_ssh_public_key_file(vm)
+
+    merged_vars = dict(DEFAULT_TEST_VARS)
+    merged_vars["manual_user_ssh_key_file"] = str(pub_key_path)
+    merged_vars["deploy_user_ssh_key_file"] = str(pub_key_path)
+    if extra_vars:
+        merged_vars.update(extra_vars)
+
     tmp_dir = tempfile.mkdtemp(prefix="bootstrap-verify-")
-    inv_path = Path(tmp_dir) / "inventory.yml"
+    tmp_path = Path(tmp_dir)
+
+    inv_path = tmp_path / "inventory.yml"
     inv_path.write_text(build_inventory(vm))
+
+    vars_path = tmp_path / "extra_vars.json"
+    vars_path.write_text(json.dumps(merged_vars))
 
     cmd = [
         "uv", "run", "ansible-playbook",
         "-i", str(inv_path),
+        "-e", f"@{vars_path}",
         str(WORKSPACE_ROOT / "tests" / "verify_bootstrap.yml"),
     ]
 

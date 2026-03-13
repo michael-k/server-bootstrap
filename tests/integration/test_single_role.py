@@ -14,7 +14,7 @@ class TestUsersRole:
     def test_creates_manual_user(self, clean_vm):
         result = run_bootstrap_playbook(clean_vm, limit_to_role="users")
         assert result.returncode == 0, (
-            f"Users role failed.\nstdout: {result.stdout[-3000:]}"
+            f"Users role failed.\nstdout: {result.stdout[-3000:]}\nstderr: {result.stderr[-1000:]}"
         )
 
         check = clean_vm.exec("id testuser")
@@ -24,7 +24,7 @@ class TestUsersRole:
     def test_creates_ansible_user(self, clean_vm):
         result = run_bootstrap_playbook(clean_vm, limit_to_role="users")
         assert result.returncode == 0, (
-            f"Users role failed.\nstdout: {result.stdout[-3000:]}"
+            f"Users role failed.\nstdout: {result.stdout[-3000:]}\nstderr: {result.stderr[-1000:]}"
         )
 
         check = clean_vm.exec("id ansible")
@@ -41,7 +41,7 @@ class TestSSHHardeningRole:
             limit_to_role=["users", "ssh_hardening"],
         )
         assert result.returncode == 0, (
-            f"SSH hardening role failed.\nstdout: {result.stdout[-3000:]}"
+            f"SSH hardening role failed.\nstdout: {result.stdout[-3000:]}\nstderr: {result.stderr[-1000:]}"
         )
 
         check = clean_vm.exec("sshd -T | grep passwordauthentication")
@@ -54,7 +54,7 @@ class TestFirewallRole:
     def test_nftables_configured(self, clean_vm):
         result = run_bootstrap_playbook(clean_vm, limit_to_role="firewall")
         assert result.returncode == 0, (
-            f"Firewall role failed.\nstdout: {result.stdout[-3000:]}"
+            f"Firewall role failed.\nstdout: {result.stdout[-3000:]}\nstderr: {result.stderr[-1000:]}"
         )
 
         check = clean_vm.exec("systemctl is-active nftables")
@@ -67,7 +67,7 @@ class TestLoggingRole:
     def test_journald_persistent(self, clean_vm):
         result = run_bootstrap_playbook(clean_vm, limit_to_role="logging")
         assert result.returncode == 0, (
-            f"Logging role failed.\nstdout: {result.stdout[-3000:]}"
+            f"Logging role failed.\nstdout: {result.stdout[-3000:]}\nstderr: {result.stderr[-1000:]}"
         )
 
         check = clean_vm.exec("test -d /var/log/journal && echo EXISTS")

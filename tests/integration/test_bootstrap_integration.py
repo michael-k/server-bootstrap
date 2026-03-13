@@ -26,13 +26,13 @@ class TestFullBootstrapExecution:
 
     def test_bootstrap_creates_manual_user(self, bootstrap_vm):
         """Req 15.1: After bootstrap, manual access user exists with uid 1000."""
-        result = bootstrap_vm.ssh("id testuser")
+        result = bootstrap_vm.exec("id testuser")
         assert result.returncode == 0, "Manual user 'testuser' not found after bootstrap"
         assert "uid=1000" in result.stdout
 
     def test_bootstrap_creates_ansible_user(self, bootstrap_vm):
         """Req 15.1: After bootstrap, Ansible user exists with uid 1999."""
-        result = bootstrap_vm.ssh("id ansible")
+        result = bootstrap_vm.exec("id ansible")
         assert result.returncode == 0, "Ansible user 'ansible' not found after bootstrap"
         assert "uid=1999" in result.stdout
 
@@ -60,11 +60,51 @@ class TestFullBootstrapExecution:
         assert "EXISTS" in result.stdout
 
 
+class TestPortKnocking:
+    """Tests for port knocking firewall feature."""
+
+    def test_ssh_blocked_without_knock(self, bootstrap_vm):
+        """SSH should be unreachable without performing the knock sequence."""
+        import socket
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(3)
+        try:
+            sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
+            # If connect succeeds, SSH is open without knocking — unexpected
+            sock.close()
+            pytest.fail("SSH port is open without port knocking")
+        except (ConnectionRefusedError, TimeoutError, OSError):
+            pass  # Expected: port is filtered/blocked
+
+    def test_ssh_accessible_after_knock(self, bootstrap_vm):
+        """SSH should be reachable after performing the correct knock sequence."""
+        import socket
+
+        bootstrap_vm.knock()
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        try:
+            sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
+            sock.close()
+        except (ConnectionRefusedError, TimeoutError, OSError):
+            pytest.fail("SSH port not accessible after port knocking")
+
+    def test_port_knocking_rules_in_nftables(self, bootstrap_vm):
+        """NFTables ruleset should contain port knocking sets and rules."""
+        result = bootstrap_vm.exec("nft list ruleset")
+        assert result.returncode == 0
+        assert "knock4_stage1" in result.stdout
+        assert "knock4_passed" in result.stdout
+
+
 class TestBootstrapVerification:
     """Run the Ansible verification playbook against the bootstrapped VM."""
 
     def test_verify_playbook_passes(self, bootstrap_vm):
         """Run verify_bootstrap.yml and confirm all checks pass."""
+        bootstrap_vm.knock()
         result = run_verify_playbook(bootstrap_vm)
         assert result.returncode == 0, (
             f"Verification playbook failed.\n"
@@ -79,6 +119,7 @@ class TestPlaybookIdempotency:
 
     def test_second_run_reports_no_failures(self, bootstrap_vm):
         """Req 15.3, 15.4: Second playbook run completes without errors."""
+        bootstrap_vm.knock()
         result = run_bootstrap_playbook(bootstrap_vm)
         assert result.returncode == 0, (
             f"Second playbook run failed.\nstdout: {result.stdout[-2000:]}"
@@ -88,6 +129,7 @@ class TestPlaybookIdempotency:
 
     def test_check_mode_reports_no_changes(self, bootstrap_vm):
         """Req 15.4, 15.5: Check mode reports no changes on configured system."""
+        bootstrap_vm.knock()
         result = run_bootstrap_playbook(bootstrap_vm, check_mode=True)
         assert result.returncode == 0, (
             f"Check mode failed.\nstdout: {result.stdout[-2000:]}"

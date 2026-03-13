@@ -123,3 +123,4 @@ class TestRunVerifyPlaybook:
         cmd = mock_run.call_args[0][0]
         cmd_str = " ".join(str(c) for c in cmd)
         assert "verify_bootstrap.yml" in cmd_str
+        assert "-e" in cmd
