@@ -107,6 +107,11 @@ def run_bootstrap_playbook(
     if check_mode:
         cmd.append("--check")
 
+    env = None
+    if limit_to_role:
+        import os
+        env = {**os.environ, "ANSIBLE_ROLES_PATH": str(WORKSPACE_ROOT / "roles")}
+
     try:
         result = subprocess.run(
             cmd,
@@ -115,6 +120,7 @@ def run_bootstrap_playbook(
             timeout=timeout,
             cwd=str(WORKSPACE_ROOT),
             check=False,
+            env=env,
         )
         # Update the VM's SSH port to match what the playbook configured,
         # so subsequent ssh() calls and inventory builds use the right port.

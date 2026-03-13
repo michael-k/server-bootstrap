@@ -25,6 +25,7 @@ DEFAULT_TEST_VARS: dict[str, str | int | bool] = {
     "deploy_user_ssh_key_file": "",  # Set dynamically from VM's SSH key
     "ssh_port": 22,
     "target_hostname": "bootstrap-test",
+    "port_knocking_sequence": [7000, 8500, 9100],
     "tailscale_enabled": False,
     "swap_enabled": False,
 }
