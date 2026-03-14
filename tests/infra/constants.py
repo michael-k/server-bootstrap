@@ -28,4 +28,10 @@ DEFAULT_TEST_VARS: dict[str, str | int | bool] = {
     "port_knocking_sequence": [7000, 8500, 9100],
     "tailscale_enabled": False,
     "swap_enabled": False,
+    # Login policy defaults (must match roles/users/defaults/main.yml)
+    "login_policy_umask": "027",
+    "login_policy_retries": 3,
+    "login_policy_timeout": 30,
+    # PAM hardening defaults (must match roles/users/defaults/main.yml)
+    "pam_faillock_deny": 5,
 }
