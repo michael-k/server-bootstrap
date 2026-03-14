@@ -35,7 +35,7 @@ def _should_keep(request: pytest.FixtureRequest) -> bool:
     return (failed + errored) > 0
 
 
-def _print_debug_info(vm: IncusVM) -> None:
+def print_debug_info(vm: IncusVM) -> None:
     """Print connection info for a preserved VM."""
     print(
         f"\nVM '{vm.name}' preserved for debugging.\n"
@@ -68,7 +68,7 @@ def bootstrap_vm(request):
             )
     except Exception:
         if os.environ.get("KEEP_VM_ON_FAIL"):
-            _print_debug_info(vm)
+            print_debug_info(vm)
         else:
             vm.destroy()
         raise
@@ -76,7 +76,7 @@ def bootstrap_vm(request):
     yield vm
 
     if _should_keep(request):
-        _print_debug_info(vm)
+        print_debug_info(vm)
     else:
         vm.destroy()
 
@@ -98,7 +98,7 @@ def clean_vm(request):
         vm.wait_ready()
     except Exception:
         if os.environ.get("KEEP_VM_ON_FAIL"):
-            _print_debug_info(vm)
+            print_debug_info(vm)
         else:
             vm.destroy()
         raise
@@ -106,6 +106,6 @@ def clean_vm(request):
     yield vm
 
     if _should_keep(request):
-        _print_debug_info(vm)
+        print_debug_info(vm)
     else:
         vm.destroy()
