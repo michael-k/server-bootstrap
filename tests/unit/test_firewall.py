@@ -22,21 +22,36 @@ pytestmark = pytest.mark.unit
 ROLES_DIR = Path(__file__).parent.parent.parent / "roles"
 
 
+def _ansible_bool(value: object) -> bool:
+    """Mimic Ansible's ``bool`` Jinja2 filter for unit-test rendering."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ("true", "yes", "1")
+    return bool(value)
+
+
 @pytest.fixture
 def fw_env() -> Environment:
     template_dir = ROLES_DIR / "firewall" / "templates"
-    return Environment(loader=FileSystemLoader(str(template_dir)))
+    env = Environment(loader=FileSystemLoader(str(template_dir)))
+    env.filters["bool"] = _ansible_bool
+    return env
 
 
 @pytest.fixture
 def base_vars() -> dict:
-    """Default firewall variables — Tailscale disabled."""
+    """Default firewall variables — Tailscale disabled, port knocking disabled."""
     return {
         "firewall_ssh_port": 22,
         "firewall_tailscale_enabled": False,
         "firewall_tailscale_interface": "tailscale0",
         "firewall_tailscale_ipv4": "",
         "firewall_wireguard_port": 41641,
+        "firewall_port_knocking_enabled": False,
+        "firewall_port_knocking_sequence": [7000, 8500, 9100],
+        "firewall_port_knocking_timeout": 30,
+        "firewall_port_knocking_stage_timeout": 5,
     }
 
 
