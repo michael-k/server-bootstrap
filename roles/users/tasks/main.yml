@@ -22,7 +22,7 @@
     groups: "{{ manual_user_groups }}"
     append: true
     create_home: true
-    password: "{{ manual_user_password | password_hash('sha512') }}"
+    password: "{{ manual_user_password }}"
     update_password: on_create
     state: present
   tags:

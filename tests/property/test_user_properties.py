@@ -378,9 +378,9 @@ class TestUserManagementProperties:
         tasks_content = tasks_path.read_text()
 
         # Verify manual user has password authentication
-        # Password should be hashed using password_hash filter
-        assert "password_hash" in tasks_content, (
-            "Manual user password must be hashed"
+        # Password is set from a pre-hashed variable (not double-hashed at runtime)
+        assert "manual_user_password" in tasks_content, (
+            "Manual user password must be set from the manual_user_password variable"
         )
 
         assert "manual_user_password" in tasks_content, (

@@ -50,15 +50,15 @@ class TestManualUserCreation:
             f"Expected uid 1000 or '{{{{ manual_user_uid }}}}', got {uid_value!r}"
         )
 
-    def test_manual_user_password_uses_sha512(self):
-        """Test that the manual user password uses password_hash('sha512')."""
+    def test_manual_user_password_uses_pre_hashed_variable(self):
+        """Test that the manual user password is set from a pre-hashed variable."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create manual access user")
         assert task is not None, "Could not find manual user creation task"
         user_params = task["ansible.builtin.user"]
         password_value = user_params["password"]
-        assert "password_hash('sha512')" in password_value, (
-            f"Expected password_hash('sha512') in password filter, got {password_value!r}"
+        assert "manual_user_password" in password_value, (
+            f"Expected manual_user_password variable reference, got {password_value!r}"
         )
 
     def test_manual_user_update_password_on_create(self):

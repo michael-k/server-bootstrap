@@ -16,9 +16,10 @@ SSH_POLL_INTERVAL_SECONDS = 2
 DEFAULT_TEST_VARS: dict[str, str | int | bool] = {
     "manual_user_name": "testuser",
     # SHA-512 hash of "TestPassword123!" — test-only, not used for real servers
+    # Generated with: openssl passwd -6 -salt testsalt 'TestPassword123!'
     "manual_user_password": (
-        "$6$rounds=656000$testsalt$KiWOExmGav5tkvgH6hLZmBGbrNMmGrinaOwrUUmXFcQmBxJmBLXd"
-        "MOFwlVYpXqBERvMOmflOBxVGHfnYBvFYX."
+        "$6$testsalt$5P2FnhrAYcA6OcEmW5HOdQx2s/g5RDF/pjLq9r43iwy.jOyY9Ap0uReLp0zSd"
+        "/WR6.609JYtDYaQVnBIlY3zG/"
     ),
     "manual_user_ssh_key_file": "",  # Set dynamically from VM's SSH key
     "deploy_user_name": "ansible",
