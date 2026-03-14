@@ -23,7 +23,7 @@
 
 - name: Add Tailscale repository
   ansible.builtin.apt_repository:
-    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] {{ tailscale_repo_url }} {{ ansible_distribution_release }} main"
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] {{ tailscale_repo_url }} {{ ansible_facts['distribution_release'] }} main"
     state: present
     filename: tailscale
   tags:

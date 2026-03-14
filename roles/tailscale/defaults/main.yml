@@ -25,4 +25,4 @@ tailscale_interface: "tailscale0"
 # Tailscale Package Repository
 # Official Tailscale package repository for Debian
 tailscale_repo_url: "https://pkgs.tailscale.com/stable/debian"
-tailscale_repo_key_url: "https://pkgs.tailscale.com/stable/debian/{{ ansible_distribution_release }}.noarmor.gpg"
+tailscale_repo_key_url: "https://pkgs.tailscale.com/stable/debian/{{ ansible_facts['distribution_release'] }}.noarmor.gpg"

@@ -554,7 +554,7 @@ class TestTailscaleRepositoryConfigurationProperties:
         )
 
         # Verify GPG key URL uses distribution release variable
-        assert "{{ ansible_distribution_release }}" in defaults_content, (
+        assert "ansible_facts['distribution_release']" in defaults_content, (
             "GPG key URL must adapt to distribution release"
         )
 
@@ -581,7 +581,7 @@ class TestTailscaleRepositoryConfigurationProperties:
         ), "Repository must use signed-by parameter for GPG verification"
 
         # Verify repository uses distribution release variable
-        assert "{{ ansible_distribution_release }}" in install_tasks_content, (
+        assert "ansible_facts['distribution_release']" in install_tasks_content, (
             "Repository configuration must use distribution release variable"
         )
 
