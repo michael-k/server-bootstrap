@@ -12,7 +12,7 @@ Tests cover:
   - Playbook idempotency (second run + check mode)
   - Emergency script deployment (Tailscale-dependent tests skipped by default)
 
-Requirements: 9.1-9.8, 15.1, 15.2, 15.3, 15.4, 15.5
+Requirements: 9.1-9.8, 13.1-13.17, 15.1, 15.2, 15.3, 15.4, 15.5
 """
 
 import contextlib
@@ -507,6 +507,83 @@ class TestPlaybookIdempotency:
             f"Check mode failed.\nstdout: {result.stdout[-2000:]}"
         )
         assert "changed=0" in result.stdout
+
+
+# ===========================================================================
+# Swap behavioral tests — uses a separate VM with zram + disk swap enabled.
+# ===========================================================================
+
+
+class TestSwapBehavior:
+    """Verify swap configuration when zram and disk swap are enabled.
+
+    Uses the swap_vm fixture which bootstraps with:
+      zram_enabled=True, zram_size=50%, disk_swap_size=512M
+    """
+
+    def test_zram_device_exists(self, swap_vm):
+        """Req 13.4: Zram device is created."""
+        result = swap_vm.exec("test -b /dev/zram0 && echo EXISTS")
+        assert "EXISTS" in result.stdout, "Zram device /dev/zram0 not found"
+
+    def test_zram_active_as_swap(self, swap_vm):
+        """Req 13.7: Zram device is active as swap space."""
+        result = swap_vm.exec("swapon --show --noheadings")
+        assert "/dev/zram0" in result.stdout, (
+            f"Zram not active as swap.\nswapon output: {result.stdout}"
+        )
+
+    def test_zram_compression_is_lz4(self, swap_vm):
+        """Req 13.5: Zram uses lz4 compression."""
+        result = swap_vm.exec("cat /sys/block/zram0/comp_algorithm")
+        assert "lz4" in result.stdout, (
+            f"Expected lz4 compression, got: {result.stdout.strip()}"
+        )
+
+    def test_disk_swap_file_exists(self, swap_vm):
+        """Req 13.11: Swap file exists at /swapfile."""
+        result = swap_vm.exec("test -f /swapfile && echo EXISTS")
+        assert "EXISTS" in result.stdout, "/swapfile not found"
+
+    def test_disk_swap_file_permissions(self, swap_vm):
+        """Req 13.12: Swap file has 0600 permissions."""
+        result = swap_vm.exec("stat -c '%a' /swapfile")
+        assert result.stdout.strip() == "600", (
+            f"Expected 0600 permissions, got: {result.stdout.strip()}"
+        )
+
+    def test_disk_swap_active(self, swap_vm):
+        """Req 13.14: Disk swap file is active as swap space."""
+        result = swap_vm.exec("swapon --show --noheadings")
+        assert "/swapfile" in result.stdout, (
+            f"/swapfile not active as swap.\nswapon output: {result.stdout}"
+        )
+
+    def test_disk_swap_in_fstab(self, swap_vm):
+        """Req 13.15: Swap file is in /etc/fstab for persistence."""
+        result = swap_vm.exec("grep '/swapfile' /etc/fstab")
+        assert result.returncode == 0, "/swapfile not found in /etc/fstab"
+        assert "swap" in result.stdout
+
+    def test_zram_priority_higher_than_disk(self, swap_vm):
+        """Req 13.9, 13.16: Zram has higher swap priority than disk swap."""
+        result = swap_vm.exec("swapon --show=NAME,PRIO --noheadings")
+        lines = result.stdout.strip().splitlines()
+        priorities = {}
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 2:
+                priorities[parts[0]] = int(parts[1])
+        assert "/dev/zram0" in priorities, (
+            f"Zram not in swapon output: {result.stdout}"
+        )
+        assert "/swapfile" in priorities, (
+            f"/swapfile not in swapon output: {result.stdout}"
+        )
+        assert priorities["/dev/zram0"] > priorities["/swapfile"], (
+            f"Zram priority ({priorities['/dev/zram0']}) should be higher "
+            f"than disk swap priority ({priorities['/swapfile']})"
+        )
 
 
 # ===========================================================================

@@ -385,19 +385,19 @@ Maps each acceptance criterion from [requirements.md](../.kiro/specs/vps-bootstr
 | 13.1 | Configurable zram enablement | `test_system_services::TestSwapPriorityValues::test_zram_conditional_on_zram_enabled` | `test_swap_properties::TestZramSwapProperties` | | |
 | 13.2 | Configurable zram size | `test_system_services::TestSwapPriorityValues::test_zram_percentage_size`, `test_zram_absolute_size_*` | `test_swap_properties::TestZramSizeFormatProperties` | | |
 | 13.3 | Install zram-tools/systemd | | `test_swap_properties::TestZramSwapProperties` | | |
-| 13.4 | Create zram device | | `test_swap_properties::TestZramSwapProperties` | | Test 14.37 |
-| 13.5 | Lz4 compression | `test_system_services::TestSwapPriorityValues::test_zram_compression_is_lz4` | `test_swap_properties::TestZramSwapProperties` | | Test 14.39 |
+| 13.4 | Create zram device | | `test_swap_properties::TestZramSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_zram_device_exists` | Test 14.37 |
+| 13.5 | Lz4 compression | `test_system_services::TestSwapPriorityValues::test_zram_compression_is_lz4` | `test_swap_properties::TestZramSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_zram_compression_is_lz4` | Test 14.39 |
 | 13.6 | Format as swap | | `test_swap_properties::TestZramSwapProperties` | | |
-| 13.7 | Enable as swap | | `test_swap_properties::TestZramSwapProperties` | | Test 14.38 |
+| 13.7 | Enable as swap | | `test_swap_properties::TestZramSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_zram_active_as_swap` | Test 14.38 |
 | 13.8 | Initialize on boot | | `test_swap_properties::TestZramSwapProperties` | | |
-| 13.9 | Zram priority > disk | `test_system_services::TestSwapPriorityValues::test_zram_priority_higher_than_disk` | `test_swap_properties::TestSwapPriorityProperties` | | Test 14.40 |
+| 13.9 | Zram priority > disk | `test_system_services::TestSwapPriorityValues::test_zram_priority_higher_than_disk` | `test_swap_properties::TestSwapPriorityProperties` | `test_bootstrap_integration::TestSwapBehavior::test_zram_priority_higher_than_disk` | Test 14.40 |
 | 13.10 | Configurable disk swap size | `test_system_services::TestSwapPriorityValues::test_disk_swap_conditional_on_size` | `test_swap_properties::TestDiskSwapProperties` | | |
-| 13.11 | Create /swapfile | | `test_swap_properties::TestDiskSwapProperties` | | Test 14.41 |
-| 13.12 | Permissions 0600 | `test_system_services::TestSwapPriorityValues::test_disk_swap_file_mode_0600` | `test_swap_properties::TestDiskSwapProperties` | | |
+| 13.11 | Create /swapfile | | `test_swap_properties::TestDiskSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_disk_swap_file_exists` | Test 14.41 |
+| 13.12 | Permissions 0600 | `test_system_services::TestSwapPriorityValues::test_disk_swap_file_mode_0600` | `test_swap_properties::TestDiskSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_disk_swap_file_permissions` | |
 | 13.13 | Format as swap | | `test_swap_properties::TestDiskSwapProperties` | | |
-| 13.14 | Enable swap file | | `test_swap_properties::TestDiskSwapProperties` | | Test 14.42 |
-| 13.15 | Add to /etc/fstab | `test_system_services::TestSwapPriorityValues::test_disk_swap_fstab_entry_includes_priority` | `test_swap_properties::TestDiskSwapProperties` | | Test 14.43 |
-| 13.16 | Disk priority < zram | `test_system_services::TestSwapPriorityValues::test_zram_priority_higher_than_disk` | `test_swap_properties::TestSwapPriorityProperties` | | |
+| 13.14 | Enable swap file | | `test_swap_properties::TestDiskSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_disk_swap_active` | Test 14.42 |
+| 13.15 | Add to /etc/fstab | `test_system_services::TestSwapPriorityValues::test_disk_swap_fstab_entry_includes_priority` | `test_swap_properties::TestDiskSwapProperties` | `test_bootstrap_integration::TestSwapBehavior::test_disk_swap_in_fstab` | Test 14.43 |
+| 13.16 | Disk priority < zram | `test_system_services::TestSwapPriorityValues::test_zram_priority_higher_than_disk` | `test_swap_properties::TestSwapPriorityProperties` | `test_bootstrap_integration::TestSwapBehavior::test_zram_priority_higher_than_disk` | |
 | 13.17 | Skip when neither enabled | | `test_swap_properties::TestSwapConfigurationSkipProperties` | | |
 
 ### Req 14: Configuration Testing

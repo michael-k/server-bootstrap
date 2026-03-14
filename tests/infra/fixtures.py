@@ -82,6 +82,47 @@ def bootstrap_vm(request):
 
 
 @pytest.fixture(scope="session")
+def swap_vm(request):
+    """Fresh Debian VM with bootstrap applied and swap enabled (zram + disk).
+
+    Session-scoped: shared across all swap integration tests.
+    """
+    if not incus_available():
+        pytest.skip("Incus not available")
+
+    version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
+    image = f"{IMAGE_PREFIX}{version}"
+
+    vm = IncusVM.create(image=image)
+    try:
+        vm.wait_ready()
+        result = run_bootstrap_playbook(vm, extra_vars={
+            "zram_enabled": True,
+            "zram_size": "50%",
+            "disk_swap_size": "512M",
+        })
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Bootstrap playbook (swap) failed on VM '{vm.name}'.\n"
+                f"stdout: {result.stdout[-3000:]}\n"
+                f"stderr: {result.stderr[-1000:]}"
+            )
+    except Exception:
+        if os.environ.get("KEEP_VM_ON_FAIL"):
+            print_debug_info(vm)
+        else:
+            vm.destroy()
+        raise
+
+    yield vm
+
+    if _should_keep(request):
+        print_debug_info(vm)
+    else:
+        vm.destroy()
+
+
+@pytest.fixture(scope="session")
 def clean_vm(request):
     """Fresh Debian VM without bootstrap applied.
 
