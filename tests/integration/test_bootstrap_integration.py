@@ -236,12 +236,20 @@ class TestSSHHardeningBehavior:
     """Verify SSH access controls actually reject unauthorized connections.
 
     These tests generate failed auth attempts that fail2ban (in aggressive
-    mode) counts as failures. We reset fail2ban before and after to prevent
-    the test host IP from being banned.
+    mode) counts as failures. Two fixtures manage fail2ban state:
+      - clean_fail2ban_before_class: resets once before all tests in the class
+      - clean_fail2ban_after_test: resets after each individual test
     """
 
-    def test_0_reset_fail2ban_before_ssh_tests(self, bootstrap_vm):
-        """Ensure fail2ban has a clean slate before SSH hardening tests."""
+    @pytest.fixture(autouse=True, scope="class")
+    def clean_fail2ban_before_class(self, bootstrap_vm):
+        """Reset fail2ban once before SSH hardening tests begin."""
+        _reset_fail2ban(bootstrap_vm)
+
+    @pytest.fixture(autouse=True)
+    def clean_fail2ban_after_test(self, bootstrap_vm):
+        """Reset fail2ban after each test to clear accumulated failures."""
+        yield
         _reset_fail2ban(bootstrap_vm)
 
     def test_root_login_rejected(self, bootstrap_vm):
@@ -288,11 +296,6 @@ class TestSSHHardeningBehavior:
 
     def test_allowed_user_can_connect(self, bootstrap_vm):
         """An allowed user with the correct key can SSH in."""
-        # Clear any fail2ban bans from prior negative SSH tests — with
-        # aggressive mode, "Connection closed" entries count as failures
-        # and may have already tripped the ban threshold.
-        _reset_fail2ban(bootstrap_vm)
-
         # Verify the key is actually in authorized_keys (diagnostic)
         ak = bootstrap_vm.exec("cat /home/testuser/.ssh/authorized_keys")
         pub = bootstrap_vm.ssh_key.public_key.split()[1]  # just the key data
@@ -313,10 +316,6 @@ class TestSSHHardeningBehavior:
             f"stderr: {result.stderr}"
         )
         assert "SUCCESS" in result.stdout
-
-    def test_reset_fail2ban_after_ssh_tests(self, bootstrap_vm):
-        """Clean up: reset fail2ban to clear any bans from failed SSH attempts."""
-        _reset_fail2ban(bootstrap_vm)
 
 
 # ===========================================================================
