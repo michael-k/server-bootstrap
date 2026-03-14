@@ -1,4 +1,4 @@
-.PHONY: help bootstrap verify test test-unit test-property test-integration clean python-lint python-lint-fix ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh
+.PHONY: help bootstrap verify test test-unit test-property test-integration clean python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh
 
 help:
 	@echo "VPS Bootstrap Playbook - Available targets:"
@@ -10,6 +10,7 @@ help:
 	@echo "  test-integration   Run integration tests only"
 	@echo "  python-lint        Check Python code with ruff"
 	@echo "  python-lint-fix    Fix Python code issues with ruff"
+	@echo "  python-typecheck   Type-check Python code with ty"
 	@echo "  ansible-lint       Check Ansible files with ansible-lint"
 	@echo "  ansible-lint-fix   Fix Ansible files with ansible-lint"
 	@echo "  clean              Remove generated files and caches"
@@ -49,6 +50,10 @@ python-lint:
 python-lint-fix:
 	@echo "Fixing Python code with ruff..."
 	uv run ruff check --fix tests/
+
+python-typecheck:
+	@echo "Type-checking Python code with ty..."
+	uv run ty check
 
 ansible-lint:
 	@echo "Checking Ansible files with ansible-lint..."

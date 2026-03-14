@@ -13,7 +13,7 @@ SSH_CONNECT_TIMEOUT_SECONDS = 10
 
 SSH_POLL_INTERVAL_SECONDS = 2
 
-DEFAULT_TEST_VARS: dict[str, str | int | bool] = {
+DEFAULT_TEST_VARS: dict[str, str | int | bool | list[int]] = {
     "manual_user_name": "testuser",
     # SHA-512 hash of "TestPassword123!" — test-only, not used for real servers
     # Generated with: openssl passwd -6 -salt testsalt 'TestPassword123!'

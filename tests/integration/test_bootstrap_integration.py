@@ -15,6 +15,7 @@ Tests cover:
 Requirements: 9.1-9.8, 15.1, 15.2, 15.3, 15.4, 15.5
 """
 
+import contextlib
 import socket
 import subprocess
 import time
@@ -411,7 +412,7 @@ class TestTimeSyncBehavior:
         # ("503 No such source") while still showing valid sources, so we
         # check the output content rather than the return code.
         lines = result.stdout.strip().splitlines()
-        source_lines = [l for l in lines if l.startswith("^")]
+        source_lines = [line for line in lines if line.startswith("^")]
         assert len(source_lines) > 0, (
             f"No NTP sources configured in chrony.\n"
             f"chronyc sources output:\n{result.stdout}"
@@ -541,7 +542,7 @@ class TestFail2banBehavior:
             # We avoid BatchMode=yes here because it causes the client to
             # disconnect before sshd logs a "Failed publickey" entry —
             # sshd only logs "Connection closed" which fail2ban doesn't match.
-            for i in range(8):
+            for _i in range(8):
                 bootstrap_vm.knock()
                 time.sleep(1)
                 cmd = [
@@ -558,13 +559,11 @@ class TestFail2banBehavior:
                     f"testuser@{bootstrap_vm.ip_address}",
                     "echo FAIL",
                 ]
-                try:
+                with contextlib.suppress(subprocess.TimeoutExpired):
                     subprocess.run(
                         cmd, capture_output=True, text=True,
                         timeout=15, check=False,
                     )
-                except subprocess.TimeoutExpired:
-                    pass  # Later attempts may timeout if already banned
                 time.sleep(1)
 
             # Give fail2ban time to process the journal entries

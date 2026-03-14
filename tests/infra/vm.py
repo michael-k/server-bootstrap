@@ -251,12 +251,12 @@ class IncusVM:
             ports = [7000, 8500, 9100]
 
         for port in ports:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            with (
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock,
+                contextlib.suppress(ConnectionRefusedError, TimeoutError, OSError),
+            ):
                 sock.settimeout(1)
-                try:
-                    sock.connect((self.ip_address, port))
-                except (ConnectionRefusedError, TimeoutError, OSError):
-                    pass
+                sock.connect((self.ip_address, port))
             time.sleep(delay)
 
     @contextlib.contextmanager

@@ -14,8 +14,9 @@ dev = [
   {include-group = "test"}
 ]
 lint = [
-  "ruff>=0.15.2",
   "ansible-lint>=26.1.1",
+  "ruff>=0.15.2",
+  "ty>=0.0.23",
 ]
 test = [
     "hypothesis>=6.151.9",
@@ -63,6 +64,11 @@ ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # Allow assert in tests
+
+
+[tool.ty.rules]
+# Hypothesis @given() strategies use ParamSpec that ty can't resolve
+missing-argument = "ignore"
 
 
 [tool.uv]

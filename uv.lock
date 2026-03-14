@@ -491,6 +491,16 @@ wheels = [
 ]
 
 [[package]]
+name = "ty"
+version = "0.0.23"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/ba/d3c998ff4cf6b5d75b39356db55fe1b7caceecc522b9586174e6a5dee6f7/ty-0.0.23.tar.gz", hash = "sha256:5fb05db58f202af366f80ef70f806e48f5237807fe424ec787c9f289e3f3a4ef", size = 5341461, upload-time = "2026-03-13T12:34:23.125Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/14/69a25a0cad493fb6a947302471b579a03516a3b00e7bece77fdc6b4afb9b/ty-0.0.23-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:559d9a299df793cb7a7902caed5eda8a720ff69164c31c979673e928f02251ee", size = 10752487, upload-time = "2026-03-13T12:34:31.785Z" },
+    { url = "https://files.pythonhosted.org/packages/98/c7/dfc83203d37998620bba9c4873a080c8850a784a8a46f56f8163c5b4e320/ty-0.0.23-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:252539c3fcd7aeb9b8d5c14e2040682c3e1d7ff640906d63fd2c4ce35865a4ba", size = 10848162, upload-time = "2026-03-13T12:34:45.421Z" },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -516,10 +526,12 @@ dev = [
     { name = "pytest-ansible", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pytest-cov", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "ruff", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "ty", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 lint = [
     { name = "ansible-lint", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "ruff", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "ty", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
 test = [
     { name = "hypothesis", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -542,10 +554,12 @@ dev = [
     { name = "pytest-ansible", specifier = ">=26.2.0" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.15.2" },
+    { name = "ty", specifier = ">=0.0.23" },
 ]
 lint = [
     { name = "ansible-lint", specifier = ">=26.1.1" },
     { name = "ruff", specifier = ">=0.15.2" },
+    { name = "ty", specifier = ">=0.0.23" },
 ]
 test = [
     { name = "hypothesis", specifier = ">=6.151.9" },

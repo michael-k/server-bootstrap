@@ -127,7 +127,8 @@ def run_bootstrap_playbook(
         # Update the VM's SSH port to match what the playbook configured,
         # so subsequent ssh() calls and inventory builds use the right port.
         if result.returncode == 0:
-            vm.ssh_port = int(merged_vars.get("ssh_port", 22))
+            ssh_port = merged_vars.get("ssh_port", 22)
+            vm.ssh_port = ssh_port if isinstance(ssh_port, int) else int(ssh_port)  # type: ignore[arg-type]
         return result
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

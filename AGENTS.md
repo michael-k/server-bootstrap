@@ -31,6 +31,7 @@ make test-property     # Run property-based tests
 make test-integration  # Run integration tests
 make python-lint       # Check Python code with ruff
 make python-lint-fix   # Fix Python code issues with ruff
+make python-typecheck  # Type-check Python code with ty
 make ansible-lint      # Check Ansible files with ansible-lint
 make ansible-lint-fix  # Fix Ansible files with ansible-lint
 make clean             # Clean up generated files
@@ -90,6 +91,7 @@ uv run ansible-lint               # Use: make ansible-lint
 | `pytest tests/unit/` | `make test-unit` |
 | `ruff check` | `make python-lint` |
 | `ruff check --fix` | `make python-lint-fix` |
+| `ty check` | `make python-typecheck` |
 | `ansible-lint` | `make ansible-lint` |
 | `ansible-playbook` | `make bootstrap` or `uv run ansible-playbook` |
 | `ansible-vault` | `uv run ansible-vault` |
@@ -125,6 +127,9 @@ make python-lint
 
 # Python auto-fix with ruff
 make python-lint-fix
+
+# Python type-checking with ty
+make python-typecheck
 
 # Ansible linting
 make ansible-lint
