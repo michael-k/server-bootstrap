@@ -338,6 +338,38 @@ class TestTailscaleIntegration:
         )
         assert "SUCCESS" not in result.stdout
 
+    def test_ssh_closed_without_firewall(
+        self, tailscale_env: TailscaleEnv,
+    ) -> None:
+        """SSH from host must fail even with the firewall disabled.
+
+        sshd should be bound only to Tailscale IPs, so disabling
+        nftables must not expose SSH on the bridge interface. This
+        is defense-in-depth: both sshd binding and firewall restrict
+        access independently.
+        """
+        env = tailscale_env
+
+        # Disable the firewall
+        env.target.exec("systemctl stop nftables")
+        env.target.exec("nft flush ruleset")
+        try:
+            result = _ssh_from_host(
+                ip=env.target.ip_address,
+                port=env.target.ssh_port,
+                user=env.manual_user,
+                key_path=str(env.target.ssh_key.private_key_path),
+                timeout=_SSH_FAIL_TIMEOUT,
+            )
+            assert result.returncode != 0, (
+                "SSH from host succeeded with firewall disabled — "
+                "sshd is not bound exclusively to Tailscale interface"
+            )
+            assert "SUCCESS" not in result.stdout
+        finally:
+            # Re-enable the firewall
+            env.target.exec("systemctl start nftables")
+
     def test_ssh_open_from_tailnet_peer(
         self, tailscale_env: TailscaleEnv,
     ) -> None:
