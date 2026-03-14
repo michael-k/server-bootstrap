@@ -93,3 +93,9 @@ table inet filter {
         type filter hook output priority 0; policy accept;
     }
 }
+
+# Include purpose-specific rules from drop-in directory
+# Files must use "add rule" syntax (not "flush ruleset" or "table ... { }") since
+# the base table already exists. Example:
+#   add rule inet filter input tcp dport 443 accept
+include "/etc/nftables.d/*.nft"

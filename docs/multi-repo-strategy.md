@@ -82,7 +82,21 @@ After a successful bootstrap run, a coding agent working on a purpose-specific r
   - **Port knocking** (default when Tailscale disabled): SSH hidden behind a 3-port TCP knock sequence (default: 7000, 8500, 9100) with configurable timeouts
   - **Open** (when both Tailscale and port knocking disabled): SSH accepted on all interfaces
 
-**Important — no include directory exists.** The nftables config is a monolithic file at `/etc/nftables.conf` generated from a template. It starts with `flush ruleset`. Purpose repos that need additional firewall rules must manage their own mechanism (e.g. a systemd service that runs `nft add rule ...` after nftables starts, or a separate nftables file loaded by a dedicated service).
+**Extension point:** `/etc/nftables.d/*.nft` — bootstrap creates this directory and includes it at the end of `/etc/nftables.conf`. Purpose repos drop rule files here. Files **must** use `add rule` syntax since the base table already exists. Example:
+
+```
+# /etc/nftables.d/webserver.nft
+add rule inet filter input tcp dport { 80, 443 } accept
+```
+
+Bootstrap owns `/etc/nftables.conf` and regenerates it on re-run, but the `include` directive and `/etc/nftables.d/` directory are preserved. Drop-in files survive bootstrap re-runs. After deploying a drop-in file, reload nftables to apply:
+
+```yaml
+- name: Reload nftables to apply firewall rules
+  ansible.builtin.systemd:
+    name: nftables
+    state: reloaded
+```
 
 ### Intrusion Prevention (fail2ban)
 
@@ -125,7 +139,7 @@ Purpose repos should be aware that executables cannot run from `/tmp`, `/var/tmp
 - Install packages via apt
 - Create systemd services (they log to journald automatically)
 - Add fail2ban jails in `/etc/fail2ban/jail.d/`
-- Add firewall rules at runtime via `nft add rule inet filter input ...` (but these won't survive a bootstrap re-run or reboot — see note above)
+- Add firewall rules by dropping `*.nft` files into `/etc/nftables.d/` (survives reboots and bootstrap re-runs)
 - Use the automation user (`ansible` by default) for Ansible-driven configuration
 - Assume the Tailscale interface exists if `tailscale_enabled` was set
 

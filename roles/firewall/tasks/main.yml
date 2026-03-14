@@ -19,6 +19,15 @@
     update_cache: true
   become: true
 
+- name: Create nftables drop-in directory for purpose-specific rules
+  ansible.builtin.file:
+    path: /etc/nftables.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
 - name: Deploy NFTables configuration
   ansible.builtin.template:
     src: nftables.conf.j2
