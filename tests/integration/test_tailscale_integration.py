@@ -186,7 +186,9 @@ def _collect_diagnostics(
         for cmd in cmds:
             result = vm.exec(cmd, timeout=10)
             lines.append(f"$ {cmd}")
-            lines.append(result.stdout[:500] if result.stdout else "(empty)")
+            lines.append(result.stdout[:500] if result.stdout else "(empty stdout)")
+            if result.stderr:
+                lines.append(f"  stderr: {result.stderr[:200]}")
 
     return "\n".join(lines)
 
@@ -289,11 +291,13 @@ def tailscale_env(request):
     yield env
 
     # Teardown
-    headscale.teardown()
-    keep = bool(os.environ.get("KEEP_VM_ON_FAIL"))
-    failed = getattr(request.session, "testsfailed", 0)
-    errored = getattr(request.session, "testserrors", 0)
-    _cleanup(preserve=keep and (failed + errored) > 0)
+    try:
+        headscale.teardown()
+    finally:
+        keep = bool(os.environ.get("KEEP_VM_ON_FAIL"))
+        failed = getattr(request.session, "testsfailed", 0)
+        errored = getattr(request.session, "testserrors", 0)
+        _cleanup(preserve=keep and (failed + errored) > 0)
 
 
 class TestTailscaleIntegration:

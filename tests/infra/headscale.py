@@ -1,6 +1,7 @@
 """Headscale server lifecycle management for integration testing."""
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 
@@ -42,9 +43,15 @@ class HeadscaleServer:
         deadline = time.monotonic() + timeout
 
         # 1. Fetch latest release download URL
+        # Note: unauthenticated GitHub API allows 60 requests/hour per IP.
+        # Set GITHUB_TOKEN env var on the host if rate-limited in CI.
         self.vm.exec("apt-get update -qq && apt-get install -y -qq curl jq", timeout=60)
+        auth_header = ""
+        token = os.environ.get("GITHUB_TOKEN", "")
+        if token:
+            auth_header = f"-H 'Authorization: Bearer {token}'"
         result = self.vm.exec(
-            f"curl -sL {_GITHUB_RELEASES_URL}"
+            f"curl -sL {auth_header} {_GITHUB_RELEASES_URL}"
             " | jq -r '.assets[] | select(.name | test(\"linux_amd64\")) | .browser_download_url'"
             " | head -1",
             timeout=30,
