@@ -4,6 +4,14 @@
 
 # Requirement 4.1: Install Tailscale packages from official repository
 
+- name: Ensure gpg is installed for apt_repository
+  ansible.builtin.apt:
+    name: gpg
+    state: present
+  tags:
+    - tailscale
+    - packages
+
 - name: Add Tailscale GPG key
   ansible.builtin.get_url:
     url: "{{ tailscale_repo_key_url }}"

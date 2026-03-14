@@ -100,20 +100,14 @@ def _ssh_from_peer(
 
 def _install_tailscale_on_peer(vm: IncusVM, login_server: str, authkey: str) -> None:
     """Raw-install tailscale on a VM and join the tailnet."""
-    # Add Tailscale apt repo
-    vm.exec(
-        "curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg"
-        " | tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null",
-        timeout=30,
-    )
-    # Get the Debian codename for the correct repo
-    codename = vm.exec("lsb_release -cs 2>/dev/null || echo bookworm").stdout.strip()
-    vm.exec(
-        f'echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]'
-        f' https://pkgs.tailscale.com/stable/debian {codename} main"'
-        f" | tee /etc/apt/sources.list.d/tailscale.list",
-    )
-    vm.exec("apt-get update -qq && apt-get install -y -qq tailscale", timeout=120)
+    # Use Tailscale's official install script — handles all Debian versions
+    vm.exec("apt-get update -qq && apt-get install -y -qq curl", timeout=60)
+    result = vm.exec("curl -fsSL https://tailscale.com/install.sh | sh", timeout=120)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Tailscale install failed on peer.\n"
+            f"stdout: {result.stdout[-1000:]}\nstderr: {result.stderr[-500:]}"
+        )
 
     # Join the tailnet
     result = vm.exec(
@@ -127,16 +121,16 @@ def _install_tailscale_on_peer(vm: IncusVM, login_server: str, authkey: str) -> 
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
-    # Wait for Running state
+    # Wait for tailscale to have an IP (confirms it joined the tailnet)
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
-        result = vm.exec("tailscale status --json 2>/dev/null")
-        if result.returncode == 0 and '"BackendState":"Running"' in result.stdout:
+        result = vm.exec("tailscale ip -4 2>/dev/null")
+        if result.returncode == 0 and result.stdout.strip():
             return
         time.sleep(2)
 
     raise TimeoutError(
-        f"Tailscale on peer did not reach Running state.\n"
+        f"Tailscale on peer did not get an IP.\n"
         f"tailscale status: {vm.exec('tailscale status').stdout}"
     )
 
