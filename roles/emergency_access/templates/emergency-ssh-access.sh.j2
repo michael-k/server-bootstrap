@@ -15,6 +15,7 @@ NFTABLES_CONFIG="/etc/nftables.conf"
 SSH_PORT="{{ emergency_access_ssh_port }}"
 TAILSCALE_INTERFACE="{{ emergency_access_tailscale_interface }}"
 TAILSCALE_IPV4="{{ emergency_access_tailscale_ipv4 }}"
+TAILSCALE_IPV6="{{ emergency_access_tailscale_ipv6 }}"
 
 # Color output for better readability
 RED='\033[0;31m'
@@ -83,12 +84,10 @@ unrestrict_ssh() {
     # Modify SSHD configuration to listen on all interfaces
     log_info "Updating SSHD configuration to listen on all interfaces..."
     
-    # Replace Tailscale IPv4 address with 0.0.0.0
-    sed -i "s|^ListenAddress ${TAILSCALE_IPV4}|ListenAddress 0.0.0.0\nListenAddress ::|g" "$SSHD_CONFIG"
-    
-    # Remove any duplicate IPv6 ListenAddress lines that might have been created
-    # Keep only the first occurrence
-    awk '!seen[$0]++ || !/^ListenAddress ::/' "$SSHD_CONFIG" > "${SSHD_CONFIG}.tmp" && mv "${SSHD_CONFIG}.tmp" "$SSHD_CONFIG"
+    # Remove all Tailscale-specific ListenAddress directives and replace with public
+    sed -i '/^ListenAddress /d' "$SSHD_CONFIG"
+    sed -i "/^Port ${SSH_PORT}/a ListenAddress ::" "$SSHD_CONFIG"
+    sed -i "/^Port ${SSH_PORT}/a ListenAddress 0.0.0.0" "$SSHD_CONFIG"
 
     # Modify NFTables configuration to allow SSH from all interfaces
     log_info "Updating NFTables configuration to allow SSH from all interfaces..."
@@ -124,6 +123,7 @@ restore_ssh() {
 
     # Check current state for idempotency
     if grep -q "^ListenAddress ${TAILSCALE_IPV4}" "$SSHD_CONFIG" && \
+       grep -q "^ListenAddress ${TAILSCALE_IPV6}" "$SSHD_CONFIG" && \
        ! grep -q "^ListenAddress 0.0.0.0" "$SSHD_CONFIG" && \
        ! grep -q "^ListenAddress ::" "$SSHD_CONFIG" && \
        grep -q "iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept" "$NFTABLES_CONFIG"; then
@@ -140,7 +140,8 @@ restore_ssh() {
     # Remove all ListenAddress directives and replace with Tailscale IP
     sed -i '/^ListenAddress /d' "$SSHD_CONFIG"
     
-    # Add the Tailscale ListenAddress after the Port directive
+    # Add the Tailscale ListenAddress directives after the Port directive
+    sed -i "/^Port ${SSH_PORT}/a ListenAddress ${TAILSCALE_IPV6}" "$SSHD_CONFIG"
     sed -i "/^Port ${SSH_PORT}/a ListenAddress ${TAILSCALE_IPV4}" "$SSHD_CONFIG"
 
     # Modify NFTables configuration to restrict SSH to Tailscale interface

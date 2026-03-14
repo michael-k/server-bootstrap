@@ -43,7 +43,7 @@
     - tailscale
     - verification
 
-- name: Get Tailscale IP address
+- name: Get Tailscale IPv4 address
   ansible.builtin.command:
     cmd: tailscale ip -4
   register: tailscale_ip
@@ -52,20 +52,40 @@
     - tailscale
     - verification
 
-- name: Set Tailscale IP fact
-  ansible.builtin.set_fact:
-    tailscale_ipv4: "{{ tailscale_ip.stdout | trim }}"
+- name: Get Tailscale IPv6 address
+  ansible.builtin.command:
+    cmd: tailscale ip -6
+  register: tailscale_ip6
+  changed_when: false
   tags:
     - tailscale
     - verification
 
-- name: Fail if Tailscale IP is not assigned
+- name: Set Tailscale IP facts
+  ansible.builtin.set_fact:
+    tailscale_ipv4: "{{ tailscale_ip.stdout | trim }}"
+    tailscale_ipv6: "{{ tailscale_ip6.stdout | trim }}"
+  tags:
+    - tailscale
+    - verification
+
+- name: Fail if Tailscale IPv4 is not assigned
   ansible.builtin.fail:
     msg: >
       Tailscale interface {{ tailscale_interface }} does not have an IPv4 address assigned.
       Cannot proceed with SSH restriction to prevent lockout.
       Please verify Tailscale configuration and network connectivity.
   when: tailscale_ipv4 == ""
+  tags:
+    - tailscale
+    - verification
+
+- name: Fail if Tailscale IPv6 is not assigned
+  ansible.builtin.fail:
+    msg: >
+      Tailscale interface {{ tailscale_interface }} does not have an IPv6 address assigned.
+      Cannot proceed with SSH restriction to prevent lockout.
+  when: tailscale_ipv6 == ""
   tags:
     - tailscale
     - verification

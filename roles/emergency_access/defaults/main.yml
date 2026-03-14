@@ -11,9 +11,10 @@ emergency_access_ssh_port: "{{ ssh_port | default(22) }}"
 # Tailscale interface name for SSH restriction
 emergency_access_tailscale_interface: "{{ tailscale_interface | default('tailscale0') }}"
 
-# Tailscale IPv4 address for SSH restriction
+# Tailscale IP addresses for SSH restriction
 # Set by tailscale role's verify.yml tasks
 emergency_access_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
+emergency_access_tailscale_ipv6: "{{ tailscale_ipv6 | default('') }}"
 
 # Emergency script deployment path (Requirement 9.1)
 emergency_access_script_path: "/root/emergency-ssh-access.sh"
