@@ -35,9 +35,8 @@ ssh_allowed_users:
   - "{{ manual_user_name }}"
   - "{{ deploy_user_name }}"
 
-# Interface restriction (Requirements 5.2, 5.3)
-# When Tailscale is enabled, SSH listens only on Tailscale interface
-# When disabled, SSH listens on all interfaces
-# Note: tailscale_ipv4 is set by the tailscale role's verify.yml tasks
-ssh_listen_address_ipv4: "{{ tailscale_ipv4 | default('0.0.0.0') if tailscale_enabled else '0.0.0.0' }}"
+# Default listen addresses (Requirements 5.2, 5.3)
+# Used when Tailscale is disabled; when enabled, the sshd_config
+# template uses tailscale_ipv4/tailscale_ipv6 directly.
+ssh_listen_address_ipv4: "0.0.0.0"
 ssh_listen_address_ipv6: "::"

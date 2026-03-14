@@ -157,33 +157,18 @@ class TestSSHInterfaceRestrictionProperties:
             "Verification failure messages should warn about lockout prevention"
         )
 
-        # Read the SSH hardening defaults to verify interface configuration
+        # Read the SSH hardening defaults to verify fallback listen addresses
         defaults_path = Path("roles/ssh_hardening/defaults/main.yml")
         assert defaults_path.exists(), "SSH hardening defaults must exist"
 
         defaults_content = defaults_path.read_text()
 
-        # Verify ssh_listen_address variables are defined
+        # Verify default listen addresses for non-tailscale path
         assert "ssh_listen_address_ipv4:" in defaults_content, (
             "ssh_listen_address_ipv4 must be defined in defaults"
         )
-
-        # Verify conditional logic for interface restriction
-        assert "tailscale_ipv4" in defaults_content, (
-            "Defaults must reference tailscale_ipv4 for conditional interface restriction"
-        )
-        assert "tailscale_enabled" in defaults_content, (
-            "Defaults must check tailscale_enabled for conditional interface restriction"
-        )
-
-        # Verify default fallback to all interfaces (0.0.0.0)
         assert "0.0.0.0" in defaults_content, (
             "Must default to listening on all interfaces when Tailscale is not enabled"
-        )
-
-        # Verify the conditional uses default filter for safety
-        assert "default(" in defaults_content, (
-            "Must use default filter to handle undefined tailscale_ipv4 safely"
         )
 
         # Read the main tasks to verify execution order
@@ -316,23 +301,9 @@ class TestSSHInterfaceRestrictionProperties:
             "Default IPv6 listen address should be :: (all interfaces)"
         )
 
-        # Verify conditional logic defaults to all interfaces when Tailscale is disabled
-        # The ssh_listen_address_ipv4 should use conditional logic
-        assert "if tailscale_enabled else" in defaults_content or (
-            "default('0.0.0.0')" in defaults_content
-        ), (
-            "ssh_listen_address_ipv4 must default to 0.0.0.0 when Tailscale is disabled "
-            "(Requirement 5.3)"
-        )
-
-        # Verify the conditional checks tailscale_enabled variable
-        assert "tailscale_enabled" in defaults_content, (
-            "Defaults must check tailscale_enabled variable for interface configuration"
-        )
-
-        # Verify 0.0.0.0 is used for all interfaces
-        assert "0.0.0.0" in defaults_content, (
-            "Must use 0.0.0.0 for listening on all IPv4 interfaces (Requirement 5.3)"
+        # Verify defaults provide simple fallback values for non-tailscale path
+        assert '0.0.0.0' in defaults_content, (
+            "Must default to 0.0.0.0 for listening on all IPv4 interfaces (Requirement 5.3)"
         )
 
         # Read the Tailscale defaults to verify default disabled state
@@ -487,22 +458,8 @@ class TestSSHInterfaceRestrictionIntegrationProperties:
             "SSH template must check if tailscale_ipv4 is defined before using it"
         )
 
-        # Read the SSH hardening defaults
-        defaults_path = Path("roles/ssh_hardening/defaults/main.yml")
-        assert defaults_path.exists(), "SSH hardening defaults must exist"
-
-        defaults_content = defaults_path.read_text()
-
-        # Verify defaults reference tailscale_ipv4 with proper fallback
-        assert "tailscale_ipv4" in defaults_content, (
-            "Defaults must reference tailscale_ipv4 variable"
-        )
-        assert "default(" in defaults_content, (
-            "Defaults must provide fallback for undefined tailscale_ipv4"
-        )
-
         # Property verified: Variable propagation is properly configured
         # - Tailscale verification sets tailscale_ipv4 fact
-        # - SSH hardening uses tailscale_ipv4 variable
-        # - Proper fallback handling for undefined variable
+        # - SSH hardening template uses tailscale_ipv4 with is-defined guard
+        # - Tailscale role runs before ssh_hardening in site.yml
         # - This ensures interface restriction works correctly
