@@ -48,6 +48,13 @@
 
 # Requirement 4.2, 4.3: Authenticate with Headscale using pre-auth key
 
+- name: Check Tailscale authentication status
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: tailscale_auth_check
+  changed_when: false
+  failed_when: false
+
 - name: Authenticate Tailscale with Headscale control server
   ansible.builtin.command:
     cmd: >
@@ -56,9 +63,10 @@
       --authkey={{ tailscale_pre_auth_key }}
       --accept-routes
       --accept-dns=false
-    creates: /var/lib/tailscale/tailscaled.state
   register: tailscale_auth
   changed_when: tailscale_auth.rc == 0
+  when: >
+    (tailscale_auth_check.stdout | default('{}') | from_json).BackendState | default('') != 'Running'
   tags:
     - tailscale
     - configuration
