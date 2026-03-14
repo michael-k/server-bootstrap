@@ -1,10 +1,12 @@
 """Incus VM lifecycle management for integration testing."""
 
 
+import contextlib
 import json
 import secrets
 import subprocess
 import time
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -249,15 +251,25 @@ class IncusVM:
             ports = [7000, 8500, 9100]
 
         for port in ports:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            try:
-                sock.connect((self.ip_address, port))
-            except (ConnectionRefusedError, TimeoutError, OSError):
-                pass
-            finally:
-                sock.close()
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1)
+                try:
+                    sock.connect((self.ip_address, port))
+                except (ConnectionRefusedError, TimeoutError, OSError):
+                    pass
             time.sleep(delay)
+
+    @contextlib.contextmanager
+    def background_service(
+        self, start_cmd: str, stop_cmd: str, settle: float = 1,
+    ) -> Generator[None]:
+        """Run a background service on the VM, ensuring cleanup on exit."""
+        self.exec(start_cmd)
+        time.sleep(settle)
+        try:
+            yield
+        finally:
+            self.exec(stop_cmd)
 
     def put_file(self, src: str | Path, dst: str) -> None:
         """Push a local file into the VM."""

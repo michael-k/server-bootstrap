@@ -126,26 +126,21 @@ class TestPortKnocking:
 
     def test_ssh_blocked_without_knock(self, bootstrap_vm):
         """SSH should be unreachable without performing the knock sequence."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3)
-        try:
-            sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
-            sock.close()
-            pytest.fail("SSH port is open without port knocking")
-        except (ConnectionRefusedError, TimeoutError, OSError):
-            pass  # Expected: port is filtered/blocked
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(3)
+            with pytest.raises((ConnectionRefusedError, TimeoutError, OSError)):
+                sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
 
     def test_ssh_accessible_after_knock(self, bootstrap_vm):
         """SSH should be reachable after performing the correct knock sequence."""
         bootstrap_vm.knock()
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        try:
-            sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
-            sock.close()
-        except (ConnectionRefusedError, TimeoutError, OSError):
-            pytest.fail("SSH port not accessible after port knocking")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(5)
+            try:
+                sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
+            except (ConnectionRefusedError, TimeoutError, OSError) as exc:
+                pytest.fail(f"SSH port not accessible after port knocking: {exc}")
 
     def test_port_knocking_rules_in_nftables(self, bootstrap_vm):
         """NFTables ruleset should contain port knocking sets and rules."""
@@ -169,59 +164,38 @@ class TestFirewallBehavior:
         This proves the firewall blocks traffic — a connection failure to a port
         with no service behind it doesn't prove anything.
         """
-        # Start a TCP listener inside the VM
-        bootstrap_vm.exec(
-            "nohup python3 -m http.server 8080 > /dev/null 2>&1 &"
-        )
-        time.sleep(1)
+        with bootstrap_vm.background_service(
+            start_cmd="nohup python3 -m http.server 8080 > /dev/null 2>&1 &",
+            stop_cmd="pkill -f 'http.server 8080'",
+        ):
+            # Confirm the service is actually listening inside the VM
+            result = bootstrap_vm.exec("ss -tln | grep :8080")
+            assert ":8080" in result.stdout, "Listener failed to start inside VM"
 
-        # Confirm the service is actually listening inside the VM
-        result = bootstrap_vm.exec("ss -tln | grep :8080")
-        assert ":8080" in result.stdout, "Listener failed to start inside VM"
-
-        try:
             # Try to connect from outside — should be blocked by the firewall
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            try:
-                sock.connect((bootstrap_vm.ip_address, 8080))
-                sock.close()
-                pytest.fail(
-                    "Connected to port 8080 — firewall did not block it"
-                )
-            except (ConnectionRefusedError, TimeoutError, OSError):
-                pass  # Expected: firewall drops the packet
-            finally:
-                sock.close()
-        finally:
-            bootstrap_vm.exec("pkill -f 'http.server 8080'")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(5)
+                with pytest.raises((ConnectionRefusedError, TimeoutError, OSError)):
+                    sock.connect((bootstrap_vm.ip_address, 8080))
 
     def test_only_ssh_reachable_after_knock(self, bootstrap_vm):
         """After knocking, only the SSH port accepts connections."""
         bootstrap_vm.knock()
 
         # SSH port should be open
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        try:
-            sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
-        except (ConnectionRefusedError, TimeoutError, OSError):
-            pytest.fail("SSH port not reachable after knock")
-        finally:
-            sock.close()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(5)
+            try:
+                sock.connect((bootstrap_vm.ip_address, bootstrap_vm.ssh_port))
+            except (ConnectionRefusedError, TimeoutError, OSError) as exc:
+                pytest.fail(f"SSH port not reachable after knock: {exc}")
 
         # Other common ports should all be blocked
         for port in [21, 23, 25, 80, 443, 3306, 5432, 8080, 8443, 9090]:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            try:
-                sock.connect((bootstrap_vm.ip_address, port))
-                sock.close()
-                pytest.fail(f"Port {port} is reachable — should be blocked")
-            except (ConnectionRefusedError, TimeoutError, OSError):
-                pass  # Expected
-            finally:
-                sock.close()
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(2)
+                with pytest.raises((ConnectionRefusedError, TimeoutError, OSError)):
+                    sock.connect((bootstrap_vm.ip_address, port))
 
 
 # ===========================================================================
@@ -232,50 +206,21 @@ class TestFirewallBehavior:
 class TestFilesystemHardeningBehavior:
     """Verify mount options actually prevent dangerous operations."""
 
-    def test_tmp_noexec_blocks_execution(self, bootstrap_vm):
-        """A script on /tmp should not be executable (noexec mount option)."""
+    @pytest.mark.parametrize("mount_point", ["/tmp", "/dev/shm", "/var/tmp"])
+    def test_noexec_blocks_execution(self, bootstrap_vm, mount_point):
+        """A script on a noexec mount should not be executable."""
+        script = f"{mount_point}/test_noexec.sh"
         bootstrap_vm.exec(
-            "echo '#!/bin/sh\necho EXECUTED' > /tmp/test_noexec.sh "
-            "&& chmod +x /tmp/test_noexec.sh"
+            f"echo '#!/bin/sh\necho EXECUTED' > {script} && chmod +x {script}"
         )
         try:
-            result = bootstrap_vm.exec("/tmp/test_noexec.sh")
+            result = bootstrap_vm.exec(script)
             assert result.returncode != 0, (
-                "Script executed from /tmp — noexec is not working"
+                f"Script executed from {mount_point} — noexec is not working"
             )
             assert "EXECUTED" not in result.stdout
         finally:
-            bootstrap_vm.exec("rm -f /tmp/test_noexec.sh")
-
-    def test_dev_shm_noexec_blocks_execution(self, bootstrap_vm):
-        """A script on /dev/shm should not be executable."""
-        bootstrap_vm.exec(
-            "echo '#!/bin/sh\necho EXECUTED' > /dev/shm/test_noexec.sh "
-            "&& chmod +x /dev/shm/test_noexec.sh"
-        )
-        try:
-            result = bootstrap_vm.exec("/dev/shm/test_noexec.sh")
-            assert result.returncode != 0, (
-                "Script executed from /dev/shm — noexec is not working"
-            )
-            assert "EXECUTED" not in result.stdout
-        finally:
-            bootstrap_vm.exec("rm -f /dev/shm/test_noexec.sh")
-
-    def test_var_tmp_noexec_blocks_execution(self, bootstrap_vm):
-        """A script on /var/tmp should not be executable."""
-        bootstrap_vm.exec(
-            "echo '#!/bin/sh\necho EXECUTED' > /var/tmp/test_noexec.sh "
-            "&& chmod +x /var/tmp/test_noexec.sh"
-        )
-        try:
-            result = bootstrap_vm.exec("/var/tmp/test_noexec.sh")
-            assert result.returncode != 0, (
-                "Script executed from /var/tmp — noexec is not working"
-            )
-            assert "EXECUTED" not in result.stdout
-        finally:
-            bootstrap_vm.exec("rm -f /var/tmp/test_noexec.sh")
+            bootstrap_vm.exec(f"rm -f {script}")
 
 
 # ===========================================================================
@@ -648,15 +593,14 @@ class TestFail2banBehavior:
 
             # Verify SSH is now blocked even after knocking
             bootstrap_vm.knock()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            try:
-                sock.connect(
-                    (bootstrap_vm.ip_address, bootstrap_vm.ssh_port)
-                )
-                sock.close()
-            except (ConnectionRefusedError, TimeoutError, OSError):
-                pass  # Expected: banned IP can't connect
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(5)
+                with pytest.raises(
+                    (ConnectionRefusedError, TimeoutError, OSError),
+                ):
+                    sock.connect(
+                        (bootstrap_vm.ip_address, bootstrap_vm.ssh_port)
+                    )
         finally:
             # Always unban to avoid breaking anything after the test suite
             bootstrap_vm.exec("fail2ban-client unban --all")
