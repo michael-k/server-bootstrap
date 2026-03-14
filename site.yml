@@ -112,14 +112,16 @@
     - role: users
       tags: ["users", "access"]
 
-    # Harden SSH configuration (but don't restrict interface yet)
-    - role: ssh_hardening
-      tags: ["ssh", "hardening", "access"]
-
     # Install and configure Tailscale VPN (if enabled)
+    # Must run before ssh_hardening so tailscale_ipv4/ipv6 facts are
+    # available for sshd ListenAddress binding
     - role: tailscale
       tags: ["tailscale", "vpn", "network"]
       when: tailscale_enabled | default(false) | bool
+
+    # Harden SSH configuration (restricts to Tailscale interface if enabled)
+    - role: ssh_hardening
+      tags: ["ssh", "hardening", "access"]
 
     # Configure firewall rules based on Tailscale status
     - role: firewall

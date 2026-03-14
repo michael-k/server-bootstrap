@@ -5,9 +5,10 @@
 # Network Configuration
 Port {{ ssh_port }}
 AddressFamily any
-{% if tailscale_enabled and tailscale_ipv4 is defined %}
+{% if tailscale_enabled and tailscale_ipv4 is defined and tailscale_ipv6 is defined %}
 # SSH restricted to Tailscale interface (Requirement 5.2)
 ListenAddress {{ tailscale_ipv4 }}
+ListenAddress {{ tailscale_ipv6 }}
 {% else %}
 # SSH listening on all interfaces (Requirement 5.3)
 ListenAddress {{ ssh_listen_address_ipv4 }}
