@@ -126,20 +126,67 @@ Purpose repos should be aware that executables cannot run from `/tmp`, `/var/tmp
 - **Zram** (if enabled): compressed RAM swap using LZ4, priority 100
 - **Disk swap** (if configured): swapfile at `/swapfile`, priority 10 (used after zram is exhausted)
 
+## Ansible Connection Model
+
+Purpose-specific playbooks connect as the automation user with `become: true`:
+
+```yaml
+- name: Configure headscale server
+  hosts: headscale
+  become: true
+  remote_user: ansible  # or whatever deploy_user_name was set to
+
+  roles:
+    - role: headscale
+```
+
+- The automation user has passwordless sudo — no `become_password` needed
+- SSH key auth only — the playbook runner must have the matching private key
+- If Tailscale is enabled, the target is only reachable via its Tailscale IP
+
+## Bootstrap-Owned Files
+
+Bootstrap overwrites these on every run. Purpose repos must not modify them.
+
+- `/etc/nftables.conf`
+- `/etc/ssh/sshd_config`
+- `/etc/fail2ban/jail.local`
+- `/etc/systemd/journald.conf`
+- `/etc/hostname`
+- `/etc/chrony/chrony.conf` (or `/etc/systemd/timesyncd.conf`)
+- `/etc/login.defs`
+- `/etc/securetty`
+- `/etc/sudoers.d/00-sudo-security`
+- `/etc/sudoers.d/<manual_user_name>`
+- `/etc/sudoers.d/<deploy_user_name>`
+- `/etc/profile.d/shell-timeout.sh`
+- `/etc/security/faillock.conf`
+- `/etc/security/limits.d/50-hardening.conf`
+- `/usr/share/pam-configs/faillock`
+- `/etc/systemd/system/tmp.mount` (or `tmp.mount.d/hardening.conf`)
+- `/etc/systemd/system/dev-shm.mount.d/hardening.conf`
+- `/etc/systemd/system/var-tmp.mount`
+- `/root/emergency-ssh-access.sh` (if Tailscale enabled)
+
 ## What Purpose Repos Must Not Do
 
+- Modify any file in the bootstrap-owned list above
 - Import, reference, or depend on bootstrap roles or role internals
 - Duplicate bootstrap functionality (don't re-configure SSH, don't re-create users)
 - Depend on bootstrap-internal details (nftables chain names, systemd unit internals)
-- Overwrite `/etc/nftables.conf` — bootstrap owns this file and will clobber changes on re-run
-- Overwrite `/etc/ssh/sshd_config` — bootstrap owns this file
 
-## What Purpose Repos Can Safely Do
+## Extension Points
 
-- Install packages via apt
-- Create systemd services (they log to journald automatically)
-- Add fail2ban jails in `/etc/fail2ban/jail.d/`
-- Add firewall rules by dropping `*.nft` files into `/etc/nftables.d/` (survives reboots and bootstrap re-runs)
+These are the designated places where purpose repos integrate with the bootstrapped system:
+
+| Extension point | How to use | Survives bootstrap re-run? |
+|---|---|---|
+| `/etc/nftables.d/*.nft` | Drop firewall rules using `add rule` syntax, then reload nftables | Yes |
+| `/etc/fail2ban/jail.d/*.conf` | Drop jail configs for service-specific intrusion prevention | Yes |
+| systemd units | Create new services — they log to journald automatically | Yes |
+| apt packages | Install any package (bootstrap runs `dist-upgrade` on re-run, which may update them) | Yes |
+
+Beyond the extension points above, purpose repos can also:
 - Use the automation user (`ansible` by default) for Ansible-driven configuration
 - Assume the Tailscale interface exists if `tailscale_enabled` was set
 
