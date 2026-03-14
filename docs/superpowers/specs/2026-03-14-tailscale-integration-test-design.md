@@ -2,7 +2,7 @@
 
 ## Goal
 
-Verify that the bootstrap playbook's Tailscale integration works end-to-end: SSH restricted to the tailnet by firewall rules, port knocking unable to bypass that restriction, and the emergency script able to toggle public access without breaking tailnet access.
+Verify that the bootstrap playbook's Tailscale integration works end-to-end: SSH restricted to the tailnet via both sshd binding and firewall rules, port knocking unable to bypass that restriction, and the emergency script able to toggle public access without breaking tailnet access.
 
 ## Overview
 
@@ -15,16 +15,6 @@ The test spins up three Incus VMs on the shared bridge network:
 | VM3 — target | Bootstrap target | Full `run_bootstrap_playbook()` with Tailscale enabled, pointing at VM1, using pre-auth key 2 |
 
 After setup, VM2 and VM3 are peers on the same tailnet. The host machine sits outside the tailnet and can only reach VMs via their bridge IPs.
-
-## Known Issue: sshd ListenAddress Ordering
-
-The `ssh_hardening` role renders `sshd_config` before the `tailscale` role sets `tailscale_ipv4`. Because `tailscale_ipv4` is undefined at template time, the Jinja2 conditional falls through and sshd ends up with `ListenAddress 0.0.0.0` — listening on all interfaces. SSH restriction is enforced **solely by nftables firewall rules**, not by sshd bind address.
-
-This means:
-- The emergency script's unrestrict mode is a no-op on sshd_config (the sed pattern for `ListenAddress <tailscale_ip>` does not match), but it correctly opens the firewall.
-- The emergency script's `--restore` mode deletes all `ListenAddress` lines and writes `ListenAddress <tailscale_ip>`, actually *fixing* the sshd binding. After a restore cycle, the system is more secure than the initial bootstrap state.
-
-This is a pre-existing playbook bug, not something this test addresses. The tests must reflect actual post-bootstrap behavior.
 
 ## Headscale Helper — `tests/infra/headscale.py`
 
@@ -88,13 +78,14 @@ Run `run_bootstrap_playbook()` with these extra vars:
 The default `tailscale_interface: "tailscale0"` applies — this is the standard interface name when Tailscale connects to headscale.
 
 After the playbook completes:
-- sshd listens on `0.0.0.0` (see known issue above), but the nftables firewall allows SSH only on the `tailscale0` interface.
+- sshd listens only on the Tailscale IP addresses (IPv4 and IPv6).
+- The nftables firewall allows SSH only on the `tailscale0` interface.
 - Port knocking rules are active.
 - The emergency script is deployed at `/root/emergency-ssh-access.sh`.
 
-### Discovering VM3's Tailscale IP
+### Discovering VM3's Tailscale IPs
 
-After bootstrap, run `tailscale ip -4` on VM3 via `vm.exec()` to get its Tailscale IPv4 address (e.g., `100.64.0.x`). Store this in the fixture's return value for use in test assertions.
+After bootstrap, run `tailscale ip -4` and `tailscale ip -6` on VM3 via `vm.exec()` to get its Tailscale addresses. Store both in the fixture's return value for use in test assertions.
 
 ## Fixture — `tailscale_env`
 
@@ -106,7 +97,8 @@ class TailscaleEnv:
     headscale: IncusVM
     peer: IncusVM          # VM2
     target: IncusVM        # VM3
-    target_ts_ip: str      # VM3's Tailscale IPv4
+    target_ts_ipv4: str    # VM3's Tailscale IPv4
+    target_ts_ipv6: str    # VM3's Tailscale IPv6
     peer_ssh_key: str      # path to private key on VM2
     manual_user: str       # manual user name on VM3
 ```
@@ -117,9 +109,10 @@ class TailscaleEnv:
 2. Run `HeadscaleServer.setup()` on VM1; generate two pre-auth keys.
 3. Raw-install tailscale on VM2; join the tailnet with key 1.
 4. Run the bootstrap playbook on VM3 with key 2.
-5. Discover VM3's Tailscale IP via `vm.exec("tailscale ip -4")`.
+5. Discover VM3's Tailscale IPs via `vm.exec("tailscale ip -4")` and `vm.exec("tailscale ip -6")`.
 6. Push VM3's SSH private key onto VM2 at `/root/.ssh/vm3_key`.
-7. Verify peer connectivity: run `tailscale ping <vm3_ts_ip>` from VM2 via `vm.exec()`, retry for up to 60s. A successful ping confirms the peers can route traffic through the tailnet (direct or via DERP relay).
+7. Verify IPv4 peer connectivity: run `tailscale ping <vm3_ts_ipv4>` from VM2 via `vm.exec()`, retry for up to 60s. A successful ping confirms the peers can route traffic through the tailnet (direct or via DERP relay).
+8. Verify IPv6 peer connectivity: run `tailscale ping <vm3_ts_ipv6>` from VM2 via `vm.exec()`, retry for up to 60s.
 
 ### Teardown
 
@@ -136,7 +129,9 @@ On fixture setup failure, collect and print:
 
 ## Test Class — `TestTailscaleIntegration`
 
-Five ordered test methods. Pytest executes methods in definition order within a class, which is sufficient here. No `pytest-ordering` dependency needed.
+Six ordered test methods. Pytest executes methods in definition order within a class, which is sufficient here. No `pytest-ordering` dependency needed.
+
+All "should succeed" SSH attempts from VM2 test both IPv4 and IPv6 tailscale addresses to verify dual-stack connectivity.
 
 ### 1. `test_ssh_closed_from_host`
 
@@ -152,19 +147,27 @@ From VM2, run via `incus exec`:
 ```
 ssh -i /root/.ssh/vm3_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
     -o ConnectTimeout=10 -o BatchMode=yes \
-    <manual_user>@<vm3_tailscale_ip> echo ok
+    <manual_user>@<vm3_tailscale_ipv4> echo ok
 ```
-Assert exit code 0. The default Debian SSH client supports the hardened algorithms (curve25519, chacha20-poly1305).
+Assert exit code 0. Repeat with `<vm3_tailscale_ipv6>`. Both must succeed. The default Debian SSH client supports the hardened algorithms (curve25519, chacha20-poly1305).
 
 ### 4. `test_emergency_script_unrestricts_ssh`
 
 Run `/root/emergency-ssh-access.sh` on VM3 via `incus exec`. Then:
 - SSH from the host to VM3's bridge IP as the manual user succeeds.
-- SSH from VM2 to VM3's Tailscale IP as the manual user still succeeds.
+- SSH from VM2 to VM3's Tailscale IPv4 as the manual user still succeeds.
+- SSH from VM2 to VM3's Tailscale IPv6 as the manual user still succeeds.
 
 ### 5. `test_emergency_script_restore`
 
-Run `/root/emergency-ssh-access.sh --restore` on VM3 via `incus exec`. SSH from the host to VM3's bridge IP fails again. After this restore, sshd is bound to the Tailscale IP (the script fixes the ListenAddress), so the system is in a tighter state than post-bootstrap.
+Run `/root/emergency-ssh-access.sh --restore` on VM3 via `incus exec`. Then:
+- SSH from the host to VM3's bridge IP fails again.
+- SSH from VM2 to VM3's Tailscale IPv4 still succeeds.
+- SSH from VM2 to VM3's Tailscale IPv6 still succeeds.
+
+### 6. `test_tailscale_services_running`
+
+Verify `tailscaled` is enabled and running on VM3 via `incus exec`. A basic smoke check that the service survived the full bootstrap and is stable.
 
 ## Timeout Strategy
 
@@ -182,5 +185,5 @@ Run `/root/emergency-ssh-access.sh --restore` on VM3 via `incus exec`. SSH from 
 | File | Change |
 |---|---|
 | `tests/infra/headscale.py` | New — `HeadscaleServer` class |
-| `tests/integration/test_tailscale_integration.py` | New — fixture + 5 tests |
+| `tests/integration/test_tailscale_integration.py` | New — fixture + 6 tests |
 | `tests/infra/__init__.py` | Export `HeadscaleServer` if needed |
