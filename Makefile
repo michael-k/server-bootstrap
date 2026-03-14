@@ -29,15 +29,15 @@ verify:
 
 test:
 	@echo "Running all tests..."
-	uv run pytest
+	uv run pytest $(ARGS)
 
 test-unit:
 	@echo "Running unit tests..."
-	uv run pytest -m unit
+	uv run pytest -m unit $(ARGS)
 
 test-property:
 	@echo "Running property-based tests..."
-	uv run pytest -m property
+	uv run pytest -m property $(ARGS)
 
 test-integration:
 	@echo "Running integration tests..."
