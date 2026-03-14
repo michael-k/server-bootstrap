@@ -1,26 +1,74 @@
 """Headscale server lifecycle management for integration testing."""
 
 import json
-import os
+import shutil
+import subprocess
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from tests.infra.vm import IncusVM
 
-# Headscale GitHub API endpoint for latest release
-_GITHUB_RELEASES_URL = (
-    "https://api.github.com/repos/juanfont/headscale/releases/latest"
-)
+_HEADSCALE_REPO = "juanfont/headscale"
+
+_HEADSCALE_CACHE_DIR = Path("/tmp/bootstrap-test-headscale-cache")
 
 _HEADSCALE_CONFIG = """\
 server_url: http://{server_ip}:8080
 listen_addr: 0.0.0.0:8080
+noise:
+  private_key_path: /etc/headscale/noise_private.key
 prefixes:
   v4: 100.64.0.0/10
   v6: fd7a:115c:a1e0::/48
 database:
-  type: sqlite
+  type: sqlite3
+  sqlite.path: /etc/headscale/db.sqlite
+dns:
+  override_local_dns: false
+  base_domain: test.headscale.net
+derp:
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
 """
+
+
+def _fetch_headscale_binary() -> Path:
+    """Download the latest headscale binary to a host-local cache.
+
+    Uses `gh release download` (authenticated, no rate limits) and caches
+    the binary in /tmp so repeated test runs don't re-download.
+
+    Returns the path to the cached binary.
+    """
+    if not shutil.which("gh"):
+        raise RuntimeError("GitHub CLI (gh) is required but not found on PATH")
+
+    # Get the latest release tag
+    result = subprocess.run(
+        ["gh", "release", "view", "--repo", _HEADSCALE_REPO,
+         "--json", "tagName", "--jq", ".tagName"],
+        capture_output=True, text=True, check=True, timeout=30,
+    )
+    tag = result.stdout.strip()
+    if not tag:
+        raise RuntimeError("Failed to get latest headscale release tag")
+
+    cache_dir = _HEADSCALE_CACHE_DIR / tag
+    cached_binary = cache_dir / "headscale"
+
+    if cached_binary.exists():
+        return cached_binary
+
+    # Download the binary asset (pattern: headscale_*_linux_amd64, not .deb)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["gh", "release", "download", tag, "--repo", _HEADSCALE_REPO,
+         "--pattern", "headscale_*_linux_amd64", "--output", str(cached_binary)],
+        capture_output=True, text=True, check=True, timeout=120,
+    )
+    cached_binary.chmod(0o755)
+    return cached_binary
 
 
 @dataclass
@@ -28,13 +76,13 @@ class HeadscaleServer:
     """Manages a headscale control server on an Incus VM."""
 
     vm: IncusVM
-    _user_created: bool = field(default=False, repr=False)
+    _user_id: int | None = field(default=None, repr=False)
 
     def setup(self, timeout: int = 120) -> None:
         """Download, configure, and start headscale.
 
-        1. Fetch the latest release URL from GitHub API.
-        2. Download the linux_amd64 binary onto the VM.
+        1. Fetch the latest binary (cached on host via gh CLI).
+        2. Push it into the VM.
         3. Write a minimal config file.
         4. Start headscale via systemd-run.
         5. Wait for the CLI to respond.
@@ -42,41 +90,20 @@ class HeadscaleServer:
         """
         deadline = time.monotonic() + timeout
 
-        # 1. Fetch latest release download URL
-        # Note: unauthenticated GitHub API allows 60 requests/hour per IP.
-        # Set GITHUB_TOKEN env var on the host if rate-limited in CI.
-        self.vm.exec("apt-get update -qq && apt-get install -y -qq curl jq", timeout=60)
-        auth_header = ""
-        token = os.environ.get("GITHUB_TOKEN", "")
-        if token:
-            auth_header = f"-H 'Authorization: Bearer {token}'"
-        result = self.vm.exec(
-            f"curl -sL {auth_header} {_GITHUB_RELEASES_URL}"
-            " | jq -r '.assets[] | select(.name | test(\"linux_amd64\")) | .browser_download_url'"
-            " | head -1",
-            timeout=30,
-        )
-        download_url = result.stdout.strip()
-        if not download_url or download_url == "null":
-            raise RuntimeError(
-                f"Failed to find headscale download URL.\n"
-                f"stdout: {result.stdout}\nstderr: {result.stderr}"
-            )
+        # 1. Fetch binary (downloads once, then uses cache)
+        binary_path = _fetch_headscale_binary()
 
-        # 2. Download binary
-        self.vm.exec(
-            f"curl -sL -o /usr/local/bin/headscale '{download_url}'"
-            " && chmod +x /usr/local/bin/headscale",
-            timeout=60,
-        )
+        # 2. Push binary into VM
+        self.vm.put_file(binary_path, "/usr/local/bin/headscale")
+        self.vm.exec("chmod +x /usr/local/bin/headscale")
 
-        # 3. Write config
+        # 3. Write config and generate noise private key
         self.vm.exec("mkdir -p /etc/headscale")
         config = _HEADSCALE_CONFIG.format(server_ip=self.vm.ip_address)
-        # Use heredoc via sh to avoid quoting issues
         self.vm.exec(
             f"cat > /etc/headscale/config.yaml << 'HEADSCALE_EOF'\n{config}HEADSCALE_EOF"
         )
+        self.vm.exec("headscale generate private-key > /etc/headscale/noise_private.key")
 
         # 4. Start headscale
         self.vm.exec(
@@ -99,25 +126,32 @@ class HeadscaleServer:
                 f"journal: {journal.stdout}"
             )
 
-        # 6. Create test user
-        result = self.vm.exec("headscale users create testuser")
+        # 6. Create test user and capture its numeric ID
+        result = self.vm.exec("headscale users create testuser -o json")
         if result.returncode != 0:
             raise RuntimeError(
                 f"Failed to create headscale user.\n"
                 f"stdout: {result.stdout}\nstderr: {result.stderr}"
             )
-        self._user_created = True
+        user_data = json.loads(result.stdout)
+        if isinstance(user_data, dict):
+            self._user_id = user_data.get("id")
+        if self._user_id is None:
+            raise RuntimeError(
+                f"Could not parse user ID from output.\n"
+                f"stdout: {result.stdout}"
+            )
 
     def create_preauth_key(self) -> str:
         """Generate a pre-authentication key for the test user.
 
         Returns the key string (e.g., 'tskey-auth-...').
         """
-        if not self._user_created:
+        if self._user_id is None:
             raise RuntimeError("Call setup() before creating pre-auth keys")
 
         result = self.vm.exec(
-            "headscale preauthkeys create --user testuser -o json"
+            f"headscale preauthkeys create --user {self._user_id} -o json"
         )
         if result.returncode != 0:
             raise RuntimeError(
