@@ -24,11 +24,14 @@
     - tailscale
     - verification
 
-- name: Get Tailscale status
+- name: Wait for Tailscale to reach Running state
   ansible.builtin.command:
     cmd: tailscale status --json
   register: tailscale_status
   changed_when: false
+  retries: 15
+  delay: 2
+  until: (tailscale_status.stdout | from_json).BackendState == "Running"
   tags:
     - tailscale
     - verification
@@ -36,17 +39,6 @@
 - name: Parse Tailscale status
   ansible.builtin.set_fact:
     tailscale_status_json: "{{ tailscale_status.stdout | from_json }}"
-  tags:
-    - tailscale
-    - verification
-
-- name: Fail if Tailscale is not connected
-  ansible.builtin.fail:
-    msg: >
-      Tailscale is not in a connected state (BackendState: {{ tailscale_status_json.BackendState }}).
-      Cannot proceed with SSH restriction to prevent lockout.
-      Please verify Tailscale authentication and network connectivity.
-  when: tailscale_status_json.BackendState != "Running"
   tags:
     - tailscale
     - verification
