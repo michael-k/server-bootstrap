@@ -29,7 +29,9 @@ enabled = {{ 'true' if fail2ban_ssh_enabled else 'false' }}
 
 # Monitor SSH authentication logs via journald
 # This works with systemd-based systems using journald for logging
-filter = sshd
+# Use aggressive mode to catch all failure patterns including
+# "Connection closed by authenticating user" from modern OpenSSH clients
+filter = sshd[mode=aggressive]
 
 # Log path - journald backend reads from systemd journal
 # No explicit logpath needed when using systemd backend
