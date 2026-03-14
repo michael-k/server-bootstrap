@@ -175,24 +175,23 @@ class TestTailscaleConnectivityVerification:
     def test_get_tailscale_status_task_exists(self):
         """Req 5.1: A task to get Tailscale status JSON must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
-        task = find_task(tasks, "get tailscale status")
+        task = find_task(tasks, "wait for tailscale to reach running state")
         assert task is not None, "Could not find status task"
         cmd_params = task["ansible.builtin.command"]
         cmd = cmd_params.get("cmd", "")
         assert "tailscale status" in cmd
 
     def test_fail_if_not_connected(self):
-        """Req 5.1: A fail task exists when Tailscale is not in Running state."""
+        """Req 5.1: The status task retries until Tailscale reaches Running state."""
         tasks = load_tasks("tailscale", "verify.yml")
-        task = find_task(tasks, "fail if tailscale is not connected")
-        assert task is not None, "Could not find not-connected fail task"
-        fail_params = task["ansible.builtin.fail"]
-        assert "tailscale" in fail_params.get("msg", "").lower()
+        task = find_task(tasks, "wait for tailscale to reach running state")
+        assert task is not None, "Could not find status task"
+        assert task.get("retries", 0) > 0, "Status task should have retries"
 
     def test_get_tailscale_ip_task_exists(self):
         """Req 5.1: A task to retrieve the Tailscale IPv4 address must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
-        task = find_task(tasks, "get tailscale ip address")
+        task = find_task(tasks, "get tailscale ipv4 address")
         assert task is not None, "Could not find IP address task"
         cmd_params = task["ansible.builtin.command"]
         cmd = cmd_params.get("cmd", "")
@@ -201,7 +200,7 @@ class TestTailscaleConnectivityVerification:
     def test_set_tailscale_ip_fact(self):
         """Req 5.1: A task to set the tailscale_ipv4 fact must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
-        task = find_task(tasks, "set tailscale ip fact")
+        task = find_task(tasks, "set tailscale ip facts")
         assert task is not None, "Could not find set_fact task for tailscale_ipv4"
         set_fact_params = task["ansible.builtin.set_fact"]
         assert "tailscale_ipv4" in set_fact_params

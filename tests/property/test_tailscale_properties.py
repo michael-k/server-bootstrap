@@ -159,9 +159,9 @@ class TestTailscaleInstallationProperties:
             "Must use pre-auth key from tailscale_pre_auth_key variable (Requirement 4.2)"
         )
 
-        # Verify authentication command uses creates parameter for idempotency
-        assert "creates: /var/lib/tailscale/tailscaled.state" in install_tasks_content, (
-            "Authentication command must use creates parameter for idempotency"
+        # Verify authentication is guarded by a status check for idempotency
+        assert "tailscale_auth_check" in install_tasks_content, (
+            "Authentication must check current status before running tailscale up"
         )
 
         # Verify authentication task registers result
@@ -354,8 +354,8 @@ class TestTailscaleConnectivityVerificationProperties:
         assert "Running" in verify_tasks_content, (
             "Must verify BackendState is Running"
         )
-        assert 'when: tailscale_status_json.BackendState != "Running"' in verify_tasks_content, (
-            "Must fail if BackendState is not Running"
+        assert 'BackendState == "Running"' in verify_tasks_content, (
+            "Must retry until BackendState is Running"
         )
 
         # Verify IP address retrieval
