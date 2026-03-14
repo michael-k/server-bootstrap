@@ -97,12 +97,12 @@
 # Uses remount (not restart) to preserve /tmp contents — restarting a
 # tmpfs mount wipes it, which destroys Ansible's in-flight module payloads.
 - name: Remount /tmp to apply drop-in override
-  ansible.builtin.command: mount -o remount /tmp
+  ansible.builtin.command: mount -o remount,noexec,nosuid,nodev /tmp
   when: tmp_dropin is defined and tmp_dropin.changed
   changed_when: true
 
 - name: Remount /dev/shm with hardened options
-  ansible.builtin.command: mount -o remount /dev/shm
+  ansible.builtin.command: mount -o remount,noexec,nosuid,nodev /dev/shm
   when: shm_override.changed
   changed_when: true
 
