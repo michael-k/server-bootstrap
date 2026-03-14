@@ -42,6 +42,16 @@ class TestBuildInventory:
         inv = yaml.safe_load(content)
         assert inv["all"]["hosts"]["testvm"]["ansible_port"] == 2222
 
+    def test_uses_custom_user(self):
+        vm = MagicMock()
+        vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 22
+        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
+
+        content = build_inventory(vm, user="ansible")
+        inv = yaml.safe_load(content)
+        assert inv["all"]["hosts"]["testvm"]["ansible_user"] == "ansible"
+
 
 class TestBuildSingleRolePlaybook:
     def test_generates_playbook_with_single_role(self):

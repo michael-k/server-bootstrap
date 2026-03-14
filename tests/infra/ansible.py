@@ -18,18 +18,19 @@ if TYPE_CHECKING:
 WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 
 
-def build_inventory(vm: IncusVM) -> str:
+def build_inventory(vm: IncusVM, user: str = "root") -> str:
     """Generate a YAML inventory string pointing at the VM."""
     inventory = {
         "all": {
             "hosts": {
                 "testvm": {
                     "ansible_host": vm.ip_address,
-                    "ansible_user": "root",
+                    "ansible_user": user,
                     "ansible_port": vm.ssh_port,
                     "ansible_ssh_private_key_file": str(vm.ssh_key.private_key_path),
                     "ansible_ssh_common_args": (
                         "-o PubkeyAuthentication=yes "
+                        "-o IdentitiesOnly=yes "
                         "-o StrictHostKeyChecking=no "
                         "-o UserKnownHostsFile=/dev/null"
                     ),
@@ -72,6 +73,7 @@ def run_bootstrap_playbook(
     limit_to_role: str | list[str] | None = None,
     timeout: int = 600,
     check_mode: bool = False,
+    user: str = "root",
 ) -> subprocess.CompletedProcess:
     """Run site.yml (or a single role) against the VM."""
     pub_key_path = _get_ssh_public_key_file(vm)
@@ -86,7 +88,7 @@ def run_bootstrap_playbook(
     tmp_path = Path(tmp_dir)
 
     inv_path = tmp_path / "inventory.yml"
-    inv_path.write_text(build_inventory(vm))
+    inv_path.write_text(build_inventory(vm, user=user))
 
     vars_path = tmp_path / "extra_vars.json"
     vars_path.write_text(json.dumps(merged_vars))
@@ -135,8 +137,13 @@ def run_verify_playbook(
     vm: IncusVM,
     extra_vars: dict | None = None,
     timeout: int = 300,
+    user: str = "ansible",
 ) -> subprocess.CompletedProcess:
-    """Run verify_bootstrap.yml against the VM."""
+    """Run verify_bootstrap.yml against the VM.
+
+    Defaults to the deploy user (ansible) since root SSH is disabled
+    after bootstrap hardening.
+    """
     pub_key_path = _get_ssh_public_key_file(vm)
 
     merged_vars = dict(DEFAULT_TEST_VARS)
@@ -149,7 +156,7 @@ def run_verify_playbook(
     tmp_path = Path(tmp_dir)
 
     inv_path = tmp_path / "inventory.yml"
-    inv_path.write_text(build_inventory(vm))
+    inv_path.write_text(build_inventory(vm, user=user))
 
     vars_path = tmp_path / "extra_vars.json"
     vars_path.write_text(json.dumps(merged_vars))
