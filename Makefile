@@ -1,4 +1,4 @@
-.PHONY: help bootstrap verify test test-unit test-property test-integration clean python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh
+.PHONY: help bootstrap verify test test-unit test-property test-integration clean lint python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh
 
 help:
 	@echo "VPS Bootstrap Playbook - Available targets:"
@@ -8,6 +8,7 @@ help:
 	@echo "  test-unit          Run unit tests only"
 	@echo "  test-property      Run property-based tests only"
 	@echo "  test-integration   Run integration tests only"
+	@echo "  lint               Run all linters (python-lint, python-typecheck, ansible-lint)"
 	@echo "  python-lint        Check Python code with ruff"
 	@echo "  python-lint-fix    Fix Python code issues with ruff"
 	@echo "  python-typecheck   Type-check Python code with ty"
@@ -21,7 +22,7 @@ help:
 
 bootstrap:
 	@echo "Running VPS bootstrap playbook..."
-	uv run ansible-playbook -i inventory/hosts.yml playbook.yml --ask-vault-pass
+	uv run ansible-playbook -i inventory/hosts.yml site.yml --ask-vault-pass
 
 verify:
 	@echo "Running verification test suite..."
@@ -42,6 +43,8 @@ test-property:
 test-integration:
 	@echo "Running integration tests..."
 	uv run pytest -m integration $(ARGS)
+
+lint: python-lint python-typecheck ansible-lint
 
 python-lint:
 	@echo "Checking Python code with ruff..."

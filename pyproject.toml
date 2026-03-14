@@ -21,7 +21,6 @@ lint = [
 test = [
     "hypothesis>=6.151.9",
     "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
     "pytest-ansible>=26.2.0",
 ]
 

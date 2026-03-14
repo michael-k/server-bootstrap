@@ -29,8 +29,6 @@ htmlcov/
 
 # Ansible
 *.retry
-ansible.log
-/tmp/ansible_facts/
 
 # Sensitive files
 inventory/hosts.yml
