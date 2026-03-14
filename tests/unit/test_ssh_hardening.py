@@ -265,17 +265,21 @@ class TestSSHInterfaceRestriction:
         assert "ListenAddress ::" in config
 
     def test_listen_tailscale_only_when_enabled(self, ssh_env, base_vars):
-        """Req 5.2: When Tailscale enabled, SSH listens only on Tailscale IP."""
+        """Req 5.2: When Tailscale enabled, SSH listens only on Tailscale IPs."""
         base_vars["tailscale_enabled"] = True
         base_vars["tailscale_ipv4"] = "100.64.0.1"
+        base_vars["tailscale_ipv6"] = "fd7a:115c:a1e0::1"
         config = render_sshd_config(ssh_env, base_vars)
         assert "ListenAddress 100.64.0.1" in config
+        assert "ListenAddress fd7a:115c:a1e0::1" in config
         assert "ListenAddress 0.0.0.0" not in config
         assert "ListenAddress ::" not in config
 
     def test_tailscale_ip_reflected_in_listen_address(self, ssh_env, base_vars):
-        """Req 5.2: The specific Tailscale IP is used in ListenAddress."""
+        """Req 5.2: The specific Tailscale IPs are used in ListenAddress."""
         base_vars["tailscale_enabled"] = True
         base_vars["tailscale_ipv4"] = "100.100.42.7"
+        base_vars["tailscale_ipv6"] = "fd7a:115c:a1e0::7"
         config = render_sshd_config(ssh_env, base_vars)
         assert "ListenAddress 100.100.42.7" in config
+        assert "ListenAddress fd7a:115c:a1e0::7" in config
