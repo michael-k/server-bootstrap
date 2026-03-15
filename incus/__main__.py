@@ -18,7 +18,15 @@ import subprocess
 import sys
 import tempfile
 
-from incus.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX, VM_NAME_PREFIX
+from incus.ansible import run_bootstrap_playbook
+from incus.constants import (
+    DEFAULT_DEBIAN_VERSION,
+    IMAGE_ALIAS_PREFIX,
+    IMAGE_PREFIX,
+    IMAGE_VARIANTS,
+    VM_NAME_PREFIX,
+    VM_STOP_TIMEOUT_SECONDS,
+)
 from incus.vm import IncusVM
 
 
@@ -137,6 +145,115 @@ def cmd_ssh(args: argparse.Namespace) -> None:
     os.execvp("incus", ["incus", "exec", args.name, "--", "/bin/bash"])
 
 
+def _delete_image(alias: str) -> None:
+    """Delete an Incus image by alias, if it exists."""
+    result = subprocess.run(
+        ["incus", "image", "delete", alias],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        print(f"  Deleted existing image '{alias}'.")
+
+
+def _stop_vm(name: str) -> None:
+    """Stop a VM, falling back to --force if graceful stop hangs."""
+    result = subprocess.run(
+        ["incus", "stop", name, f"--timeout={VM_STOP_TIMEOUT_SECONDS}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        print("  Graceful stop failed, forcing...")
+        subprocess.run(
+            ["incus", "stop", name, "--force"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+
+def cmd_publish(args: argparse.Namespace) -> None:
+    """Build and publish bootstrapped VM images."""
+    version = args.debian
+
+    for variant, extra_vars in IMAGE_VARIANTS.items():
+        alias = f"{IMAGE_ALIAS_PREFIX}{variant}-{version}"
+        print(f"Building image '{alias}'...")
+
+        image = f"{IMAGE_PREFIX}{version}"
+        vm = IncusVM.create(image=image, name_hint=f"publish-{variant}")
+        try:
+            print(f"  Waiting for VM '{vm.name}'...")
+            vm.wait_ready()
+
+            print("  Running bootstrap playbook...")
+            result = run_bootstrap_playbook(vm, extra_vars=dict(extra_vars))
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"Bootstrap failed for '{variant}'.\n"
+                    f"stdout: {result.stdout[-3000:]}\n"
+                    f"stderr: {result.stderr[-1000:]}"
+                )
+
+            print("  Stopping VM...")
+            _stop_vm(vm.name)
+
+            _delete_image(alias)
+
+            print(f"  Publishing as '{alias}'...")
+            subprocess.run(
+                ["incus", "publish", vm.name, f"--alias={alias}"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            print(f"  Published '{alias}'.")
+        except Exception:
+            print(f"  Error building '{variant}', cleaning up VM...")
+            raise
+        finally:
+            # Always destroy the source VM (published image is independent)
+            subprocess.run(
+                ["incus", "delete", vm.name, "--force"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            vm.ssh_key.cleanup()
+
+    print("All images published.")
+
+
+def cmd_images_clean(args: argparse.Namespace) -> None:
+    """Delete all bootstrap/* images from the local Incus store."""
+    result = subprocess.run(
+        ["incus", "image", "list", "--format=json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    images = json.loads(result.stdout)
+    deleted = 0
+    for img in images:
+        for a in img.get("aliases", []):
+            if a.get("name", "").startswith(IMAGE_ALIAS_PREFIX):
+                subprocess.run(
+                    ["incus", "image", "delete", img["fingerprint"]],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                print(f"  Deleted {a['name']}")
+                deleted += 1
+    if deleted:
+        print(f"Deleted {deleted} image(s).")
+    else:
+        print("No bootstrap images found.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Manage Incus VMs for integration testing",
@@ -162,6 +279,16 @@ def main() -> None:
     p_ssh = subparsers.add_parser("ssh", help="SSH into a test VM")
     p_ssh.add_argument("name", help="VM name")
 
+    # publish
+    p_publish = subparsers.add_parser("publish", help="Build and publish bootstrapped VM images")
+    p_publish.add_argument(
+        "--debian", default=DEFAULT_DEBIAN_VERSION,
+        help=f"Debian version (default: {DEFAULT_DEBIAN_VERSION})",
+    )
+
+    # images-clean
+    subparsers.add_parser("images-clean", help="Delete all bootstrap/* images")
+
     args = parser.parse_args()
 
     commands = {
@@ -169,6 +296,8 @@ def main() -> None:
         "list": cmd_list,
         "destroy": cmd_destroy,
         "ssh": cmd_ssh,
+        "publish": cmd_publish,
+        "images-clean": cmd_images_clean,
     }
     commands[args.command](args)
 

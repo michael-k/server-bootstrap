@@ -36,3 +36,18 @@ DEFAULT_TEST_VARS: dict[str, str | int | bool | list[int]] = {
     # PAM hardening defaults (must match roles/users/defaults/main.yml)
     "pam_faillock_deny": 5,
 }
+
+IMAGE_ALIAS_PREFIX = "bootstrap/"
+
+IMAGE_VARIANTS: dict[str, dict[str, str | int | bool | list[int]]] = {
+    "knocking": {
+        "tailscale_enabled": False,
+        "firewall_port_knocking_enabled": True,
+    },
+    "open": {
+        "tailscale_enabled": False,
+        "firewall_port_knocking_enabled": False,
+    },
+}
+
+VM_STOP_TIMEOUT_SECONDS = 60
