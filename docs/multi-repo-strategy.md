@@ -182,6 +182,7 @@ These are the designated places where purpose repos integrate with the bootstrap
 | Extension point | How to use | Survives bootstrap re-run? |
 |---|---|---|
 | `ssh-users` group | Add users to this group to grant SSH access | Yes |
+| `/etc/sudoers.d/<name>` | Drop sudoers rules for service users (don't overwrite `00-sudo-security`, `<manual_user>`, or `<deploy_user>`) | Yes |
 | `/etc/nftables.d/*.nft` | Drop firewall rules using `add rule` syntax, then reload nftables | Yes |
 | `/etc/fail2ban/jail.d/*.conf` | Drop jail configs for service-specific intrusion prevention | Yes |
 | systemd units | Create new services — they log to journald automatically | Yes |
