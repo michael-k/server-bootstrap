@@ -29,11 +29,10 @@ ssh_macs:
   - hmac-sha2-512-etm@openssh.com
   - hmac-sha2-256-etm@openssh.com
 
-# User access restriction (Requirement 3.10)
-# These should be overridden with actual usernames from inventory
-ssh_allowed_users:
-  - "{{ manual_user_name }}"
-  - "{{ deploy_user_name }}"
+# SSH access group (Requirement 3.10)
+# Members of this group can SSH into the server.
+# Bootstrap adds the manual and deploy users; purpose repos add their own.
+ssh_access_group: "ssh-users"
 
 # Default listen addresses (Requirements 5.2, 5.3)
 # Used when Tailscale is disabled; when enabled, the sshd_config

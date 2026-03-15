@@ -193,9 +193,9 @@ class TestConfigurationVerificationProperties:
             "Verification playbook must test SSH port configuration (Requirement 14.7)"
         )
 
-        # Test 14.8: AllowUsers restricted
-        assert any("allowusers" in name.lower() for name in task_names), (
-            "Verification playbook must test SSH AllowUsers restriction (Requirement 14.8)"
+        # Test 14.8: AllowGroups restricted
+        assert any("allowgroups" in name.lower() for name in task_names), (
+            "Verification playbook must test SSH AllowGroups restriction (Requirement 14.8)"
         )
 
         # Test 14.9: Key exchange algorithms

@@ -74,7 +74,7 @@ def default_ssh_vars() -> dict:
             "hmac-sha2-512-etm@openssh.com",
             "hmac-sha2-256-etm@openssh.com",
         ],
-        "ssh_allowed_users": ["admin", "ansible"],
+        "ssh_access_group": "ssh-users",
         "ssh_listen_address_ipv4": "0.0.0.0",
         "ssh_listen_address_ipv6": "::",
         "tailscale_enabled": False,

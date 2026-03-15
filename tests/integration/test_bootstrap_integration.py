@@ -282,7 +282,7 @@ class TestSSHHardeningBehavior:
         assert "SUCCESS" not in result.stdout
 
     def test_unknown_user_rejected(self, bootstrap_vm):
-        """AllowUsers — a user not in the allow list must be rejected."""
+        """AllowGroups — a user not in the allowed group must be rejected."""
         bootstrap_vm.knock()
         result = _ssh_attempt(
             bootstrap_vm,
@@ -290,7 +290,7 @@ class TestSSHHardeningBehavior:
             key_path=str(bootstrap_vm.ssh_key.private_key_path),
         )
         assert result.returncode != 0, (
-            "SSH login as 'nobody' succeeded — AllowUsers is not effective"
+            "SSH login as 'nobody' succeeded — AllowGroups is not effective"
         )
         assert "SUCCESS" not in result.stdout
 

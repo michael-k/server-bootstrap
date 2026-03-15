@@ -217,17 +217,15 @@ class TestSSHHardeningProperties:
         """
         Feature: vps-bootstrap-playbook, Property 6: SSH Access Restriction
 
-        For any execution of the bootstrap playbook with configured user names,
-        the SSHD AllowUsers directive SHALL contain only the manual access user
-        and Ansible user.
+        For any execution of the bootstrap playbook with configured group name,
+        the SSHD AllowGroups directive SHALL contain the ssh access group.
 
         Validates: Requirements 3.10
 
         This property test verifies that:
-        1. AllowUsers directive is present in configuration
-        2. AllowUsers references manual_user_name variable
-        3. AllowUsers references deploy_user_name variable
-        4. AllowUsers is configurable through variables
+        1. AllowGroups directive is present in configuration
+        2. AllowGroups references ssh_access_group variable
+        3. AllowGroups is configurable through variables
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -243,35 +241,25 @@ class TestSSHHardeningProperties:
 
         template_content = template_path.read_text()
 
-        # Verify AllowUsers directive is present (Requirement 3.10)
-        assert "AllowUsers" in template_content, (
-            "Template must include AllowUsers directive"
+        # Verify AllowGroups directive is present (Requirement 3.10)
+        assert "AllowGroups" in template_content, (
+            "Template must include AllowGroups directive"
         )
 
-        # Verify AllowUsers uses variable for user list
-        assert "{{ ssh_allowed_users" in template_content or (
-            "{{ manual_user_name }}" in template_content
-            and "{{ deploy_user_name }}" in template_content
-        ), "Template must use variables for allowed users"
+        # Verify AllowGroups uses variable for group name
+        assert "ssh_access_group" in template_content, (
+            "Template must use ssh_access_group variable"
+        )
 
-        # Verify defaults file defines allowed users
+        # Verify defaults file defines ssh access group
         defaults_path = role_path / "defaults" / "main.yml"
         assert defaults_path.exists(), "SSH hardening role must have defaults file"
 
         defaults_content = defaults_path.read_text()
 
-        # Verify ssh_allowed_users is defined
-        assert "ssh_allowed_users:" in defaults_content, (
-            "Defaults must define ssh_allowed_users"
-        )
-
-        # Verify allowed users references manual and Ansible users
-        assert "manual_user_name" in defaults_content, (
-            "Allowed users must reference manual_user_name"
-        )
-
-        assert "deploy_user_name" in defaults_content, (
-            "Allowed users must reference deploy_user_name"
+        # Verify ssh_access_group is defined
+        assert "ssh_access_group:" in defaults_content, (
+            "Defaults must define ssh_access_group"
         )
 
     @pytest.mark.property

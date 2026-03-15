@@ -117,7 +117,7 @@ class TestConfigurationProperties:
             "PasswordAuthentication",
             "PermitRootLogin",
             "PubkeyAuthentication",
-            "AllowUsers",
+            "AllowGroups",
             "Port",
             "KexAlgorithms",
             "Ciphers",

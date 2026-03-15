@@ -2,7 +2,7 @@
 Unit tests for the ssh_hardening role.
 
 Tests specific SSHD configuration directives, algorithm restriction lists,
-AllowUsers directive content, and SSH interface restriction based on Tailscale status.
+AllowGroups directive content, and SSH interface restriction based on Tailscale status.
 
 Approach: render the sshd_config.j2 Jinja2 template with known variable sets
 and assert on the rendered output content.
@@ -51,7 +51,7 @@ def base_vars() -> dict:
             "hmac-sha2-512-etm@openssh.com",
             "hmac-sha2-256-etm@openssh.com",
         ],
-        "ssh_allowed_users": ["admin", "ansible"],
+        "ssh_access_group": "ssh-users",
         "ssh_listen_address_ipv4": "0.0.0.0",
         "ssh_listen_address_ipv6": "::",
         "tailscale_enabled": False,
@@ -186,36 +186,29 @@ class TestAlgorithmRestrictions:
         assert "hmac-md5" not in config
 
 
-class TestAllowUsersDirective:
-    """Tests for AllowUsers directive (Requirement 3.10)."""
+class TestAllowGroupsDirective:
+    """Tests for AllowGroups directive (Requirement 3.10)."""
 
-    def test_allow_users_contains_manual_user(self, ssh_env, base_vars):
-        """Req 3.10: AllowUsers must include the manual access user."""
+    def test_allow_groups_contains_ssh_access_group(self, ssh_env, base_vars):
+        """Req 3.10: AllowGroups must include the ssh access group."""
         config = render_sshd_config(ssh_env, base_vars)
-        assert "AllowUsers" in config
-        allow_line = next(line for line in config.splitlines() if line.startswith("AllowUsers "))
-        assert "admin" in allow_line
+        assert "AllowGroups" in config
+        allow_line = next(line for line in config.splitlines() if line.startswith("AllowGroups "))
+        assert "ssh-users" in allow_line
 
-    def test_allow_users_contains_ansible_user(self, ssh_env, base_vars):
-        """Req 3.10: AllowUsers must include the Ansible user."""
+    def test_allow_groups_with_custom_group(self, ssh_env, base_vars):
+        """Req 3.10: AllowGroups reflects custom configured group name."""
+        base_vars["ssh_access_group"] = "custom-ssh"
         config = render_sshd_config(ssh_env, base_vars)
-        allow_line = next(line for line in config.splitlines() if line.startswith("AllowUsers "))
-        assert "ansible" in allow_line
+        allow_line = next(line for line in config.splitlines() if line.startswith("AllowGroups "))
+        assert "custom-ssh" in allow_line
 
-    def test_allow_users_with_custom_names(self, ssh_env, base_vars):
-        """Req 3.10: AllowUsers reflects custom configured usernames."""
-        base_vars["ssh_allowed_users"] = ["sysadmin", "deploy"]
+    def test_allow_groups_single_group_by_default(self, ssh_env, base_vars):
+        """Req 3.10: AllowGroups contains exactly one group."""
         config = render_sshd_config(ssh_env, base_vars)
-        allow_line = next(line for line in config.splitlines() if line.startswith("AllowUsers "))
-        assert "sysadmin" in allow_line
-        assert "deploy" in allow_line
-
-    def test_allow_users_only_two_users_by_default(self, ssh_env, base_vars):
-        """Req 3.10: AllowUsers contains exactly the two configured users."""
-        config = render_sshd_config(ssh_env, base_vars)
-        allow_line = next(line for line in config.splitlines() if line.startswith("AllowUsers "))
-        users = allow_line.replace("AllowUsers ", "").split()
-        assert len(users) == 2
+        allow_line = next(line for line in config.splitlines() if line.startswith("AllowGroups "))
+        groups = allow_line.replace("AllowGroups ", "").split()
+        assert len(groups) == 1
 
 
 class TestSessionSecurity:

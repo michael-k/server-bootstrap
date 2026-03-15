@@ -64,7 +64,7 @@ After a successful bootstrap run, a coding agent working on a purpose-specific r
 - Max 3 auth attempts, 30s login grace time
 - Client alive interval: 300s, max 2 missed keepalives
 - X11/TCP/agent forwarding: disabled
-- `AllowUsers` restricted to the two configured users only
+- `AllowGroups ssh-users` — only members of the `ssh-users` group can log in
 - Strong algorithms only:
   - **KEX**: curve25519-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512
   - **Ciphers**: chacha20-poly1305, aes256-gcm, aes128-gcm
@@ -181,6 +181,7 @@ These are the designated places where purpose repos integrate with the bootstrap
 
 | Extension point | How to use | Survives bootstrap re-run? |
 |---|---|---|
+| `ssh-users` group | Add users to this group to grant SSH access | Yes |
 | `/etc/nftables.d/*.nft` | Drop firewall rules using `add rule` syntax, then reload nftables | Yes |
 | `/etc/fail2ban/jail.d/*.conf` | Drop jail configs for service-specific intrusion prevention | Yes |
 | systemd units | Create new services — they log to journald automatically | Yes |

@@ -137,6 +137,28 @@
 # Sudo Hardening
 # Harden sudo with environment sanitization, logging, timeouts, and su restriction
 
+- name: Create SSH access group
+  ansible.builtin.group:
+    name: "{{ ssh_access_group | default('ssh-users') }}"
+    state: present
+  tags:
+    - users
+    - ssh
+
+- name: Add bootstrap users to SSH access group
+  ansible.builtin.user:
+    name: "{{ user_name }}"
+    groups: "{{ ssh_access_group | default('ssh-users') }}"
+    append: true
+  loop:
+    - "{{ manual_user_name }}"
+    - "{{ deploy_user_name }}"
+  loop_control:
+    loop_var: user_name
+  tags:
+    - users
+    - ssh
+
 - name: Create wheel group for su restriction
   ansible.builtin.group:
     name: wheel

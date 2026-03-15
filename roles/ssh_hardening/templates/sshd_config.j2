@@ -23,8 +23,9 @@ PermitEmptyPasswords no
 ChallengeResponseAuthentication no
 UsePAM yes
 
-# User Access Restriction (Requirement 3.10)
-AllowUsers {{ ssh_allowed_users | join(' ') }}
+# Group-based Access Restriction (Requirement 3.10)
+# Purpose-specific repos can grant SSH access by adding users to this group
+AllowGroups {{ ssh_access_group }}
 
 # Session Security (Requirements 3.15, 3.16, 3.17)
 MaxAuthTries {{ ssh_max_auth_tries }}

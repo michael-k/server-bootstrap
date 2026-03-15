@@ -203,21 +203,20 @@
             fail_msg: "SSHD is not listening on port {{ ssh_port }}"
             success_msg: "✓ SSHD is listening on port {{ ssh_port }}"
 
-    - name: "Test 14.8: Verify SSHD AllowUsers is restricted"
+    - name: "Test 14.8: Verify SSHD AllowGroups is restricted"
       block:
-        - name: Check SSHD AllowUsers setting
+        - name: Check SSHD AllowGroups setting
           ansible.builtin.command: sshd -T
           register: sshd_config
           changed_when: false
 
-        - name: Verify AllowUsers restriction
+        - name: Verify AllowGroups restriction
           ansible.builtin.assert:
             that:
-              - sshd_config.stdout is search('allowusers')
-              - sshd_config.stdout is search(manual_user_name)
-              - sshd_config.stdout is search(deploy_user_name)
-            fail_msg: "SSHD AllowUsers is not properly restricted"
-            success_msg: "✓ SSHD AllowUsers is restricted to {{ manual_user_name }} and {{ deploy_user_name }}"
+              - sshd_config.stdout is search('allowgroups')
+              - sshd_config.stdout is search(ssh_access_group | default('ssh-users'))
+            fail_msg: "SSHD AllowGroups is not properly restricted"
+            success_msg: "✓ SSHD AllowGroups is restricted to {{ ssh_access_group | default('ssh-users') }}"
 
     - name: "Test 14.9: Verify SSHD key exchange algorithms"
       block:
