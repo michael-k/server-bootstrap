@@ -7,7 +7,6 @@ import subprocess
 
 import pytest
 
-from incus.ansible import run_bootstrap_playbook
 from incus.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX
 from incus.vm import IncusVM
 
@@ -29,7 +28,6 @@ def _should_keep(request: pytest.FixtureRequest) -> bool:
     """Check if VMs should be preserved on failure."""
     if not os.environ.get("KEEP_VM_ON_FAIL"):
         return False
-    # Check if any test in the session failed or errored
     failed = getattr(request.session, "testsfailed", 0)
     errored = getattr(request.session, "testserrors", 0)
     return (failed + errored) > 0
@@ -45,89 +43,8 @@ def print_debug_info(vm: IncusVM) -> None:
 
 
 @pytest.fixture(scope="session")
-def bootstrap_vm(request):
-    """Fresh Debian VM with bootstrap playbook already applied.
-
-    Session-scoped: shared across all tests that use this fixture.
-    """
-    if not incus_available():
-        pytest.skip("Incus not available")
-
-    version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
-    image = f"{IMAGE_PREFIX}{version}"
-
-    vm = IncusVM.create(image=image)
-    try:
-        vm.wait_ready()
-        result = run_bootstrap_playbook(vm)
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Bootstrap playbook failed on VM '{vm.name}'.\n"
-                f"stdout: {result.stdout[-3000:]}\n"
-                f"stderr: {result.stderr[-1000:]}"
-            )
-    except Exception:
-        if os.environ.get("KEEP_VM_ON_FAIL"):
-            print_debug_info(vm)
-        else:
-            vm.destroy()
-        raise
-
-    yield vm
-
-    if _should_keep(request):
-        print_debug_info(vm)
-    else:
-        vm.destroy()
-
-
-@pytest.fixture(scope="session")
-def swap_vm(request):
-    """Fresh Debian VM with bootstrap applied and swap enabled (zram + disk).
-
-    Session-scoped: shared across all swap integration tests.
-    """
-    if not incus_available():
-        pytest.skip("Incus not available")
-
-    version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
-    image = f"{IMAGE_PREFIX}{version}"
-
-    vm = IncusVM.create(image=image)
-    try:
-        vm.wait_ready()
-        result = run_bootstrap_playbook(vm, extra_vars={
-            "zram_enabled": True,
-            "zram_size": "50%",
-            "disk_swap_size": "512M",
-        })
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"Bootstrap playbook (swap) failed on VM '{vm.name}'.\n"
-                f"stdout: {result.stdout[-3000:]}\n"
-                f"stderr: {result.stderr[-1000:]}"
-            )
-    except Exception:
-        if os.environ.get("KEEP_VM_ON_FAIL"):
-            print_debug_info(vm)
-        else:
-            vm.destroy()
-        raise
-
-    yield vm
-
-    if _should_keep(request):
-        print_debug_info(vm)
-    else:
-        vm.destroy()
-
-
-@pytest.fixture(scope="session")
 def clean_vm(request):
-    """Fresh Debian VM without bootstrap applied.
-
-    Session-scoped: shared across tests that need to control which roles run.
-    """
+    """Fresh Debian VM without bootstrap applied."""
     if not incus_available():
         pytest.skip("Incus not available")
 
