@@ -3,7 +3,7 @@
 
 import pytest
 
-from tests.infra.ansible import run_bootstrap_playbook
+from incus.ansible import run_bootstrap_playbook
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 

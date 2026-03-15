@@ -22,8 +22,8 @@ import time
 
 import pytest
 
-from tests.infra.ansible import run_bootstrap_playbook, run_verify_playbook
-from tests.infra.constants import SSH_CONNECT_TIMEOUT_SECONDS
+from incus.ansible import run_bootstrap_playbook, run_verify_playbook
+from incus.constants import SSH_CONNECT_TIMEOUT_SECONDS
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 

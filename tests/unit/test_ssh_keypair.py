@@ -3,7 +3,7 @@
 
 import pytest
 
-from tests.infra.ssh import SSHKeyPair
+from incus.ssh import SSHKeyPair
 
 pytestmark = pytest.mark.unit
 

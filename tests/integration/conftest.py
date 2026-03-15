@@ -4,7 +4,7 @@
 import pytest
 
 # Import fixtures so pytest discovers them
-from tests.infra.fixtures import bootstrap_vm, clean_vm, swap_vm  # noqa: F401
+from incus.fixtures import bootstrap_vm, clean_vm, swap_vm  # noqa: F401
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

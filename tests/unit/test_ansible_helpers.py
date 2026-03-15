@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
-from tests.infra.ansible import (
+from incus.ansible import (
     build_inventory,
     build_single_role_playbook,
     run_bootstrap_playbook,
@@ -74,8 +74,8 @@ class TestBuildSingleRolePlaybook:
 
 
 class TestRunBootstrapPlaybook:
-    @patch("tests.infra.ansible._get_ssh_public_key_file")
-    @patch("tests.infra.ansible.subprocess.run")
+    @patch("incus.ansible._get_ssh_public_key_file")
+    @patch("incus.ansible.subprocess.run")
     def test_uses_site_yml_by_default(self, mock_run, mock_write_key):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
         mock_write_key.return_value = Path("/tmp/fake/id_ed25519.pub")
@@ -93,8 +93,8 @@ class TestRunBootstrapPlaybook:
         cmd_str = " ".join(str(c) for c in cmd)
         assert "site.yml" in cmd_str
 
-    @patch("tests.infra.ansible._get_ssh_public_key_file")
-    @patch("tests.infra.ansible.subprocess.run")
+    @patch("incus.ansible._get_ssh_public_key_file")
+    @patch("incus.ansible.subprocess.run")
     def test_passes_extra_vars_via_json_file(self, mock_run, mock_write_key):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
         mock_write_key.return_value = Path("/tmp/fake/id_ed25519.pub")
@@ -116,7 +116,7 @@ class TestRunBootstrapPlaybook:
 
 
 class TestRunVerifyPlaybook:
-    @patch("tests.infra.ansible.subprocess.run")
+    @patch("incus.ansible.subprocess.run")
     def test_uses_verify_playbook(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
         vm = MagicMock()
@@ -127,7 +127,7 @@ class TestRunVerifyPlaybook:
             public_key="ssh-ed25519 AAAA test",
         )
 
-        from tests.infra.ansible import run_verify_playbook
+        from incus.ansible import run_verify_playbook
         run_verify_playbook(vm)
 
         cmd = mock_run.call_args[0][0]

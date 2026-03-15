@@ -6,14 +6,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.infra.vm import IncusVM
+from incus.vm import IncusVM
 
 pytestmark = pytest.mark.unit
 
 
 class TestIncusVMCreate:
-    @patch("tests.infra.vm.subprocess.run")
-    @patch("tests.infra.vm.SSHKeyPair.create")
+    @patch("incus.vm.subprocess.run")
+    @patch("incus.vm.SSHKeyPair.create")
     def test_create_calls_incus_launch_with_vm_flag(self, mock_keypair, mock_run):
         mock_keypair.return_value = MagicMock(
             public_key="ssh-ed25519 AAAA test",
@@ -31,8 +31,8 @@ class TestIncusVMCreate:
         assert "images:debian/13" in cmd
         assert vm.name.startswith("bootstrap-test-")
 
-    @patch("tests.infra.vm.subprocess.run")
-    @patch("tests.infra.vm.SSHKeyPair.create")
+    @patch("incus.vm.subprocess.run")
+    @patch("incus.vm.SSHKeyPair.create")
     def test_create_does_not_use_cloud_init(self, mock_keypair, mock_run):
         mock_keypair.return_value = MagicMock(
             public_key="ssh-ed25519 AAAA test",
@@ -50,8 +50,8 @@ class TestIncusVMCreate:
 
 
 class TestIncusVMName:
-    @patch("tests.infra.vm.subprocess.run")
-    @patch("tests.infra.vm.SSHKeyPair.create")
+    @patch("incus.vm.subprocess.run")
+    @patch("incus.vm.SSHKeyPair.create")
     def test_name_uses_prefix_and_random_suffix(self, mock_keypair, mock_run):
         mock_keypair.return_value = MagicMock(
             public_key="ssh-ed25519 AAAA test",
@@ -64,8 +64,8 @@ class TestIncusVMName:
         suffix = vm.name[len("bootstrap-test-"):]
         assert len(suffix) > 0
 
-    @patch("tests.infra.vm.subprocess.run")
-    @patch("tests.infra.vm.SSHKeyPair.create")
+    @patch("incus.vm.subprocess.run")
+    @patch("incus.vm.SSHKeyPair.create")
     def test_name_hint_is_incorporated(self, mock_keypair, mock_run):
         mock_keypair.return_value = MagicMock(
             public_key="ssh-ed25519 AAAA test",
@@ -84,7 +84,7 @@ class TestIncusVMDestroy:
         vm.ssh_key = MagicMock()
         vm._image = "images:debian/13"
 
-        with patch("tests.infra.vm.subprocess.run") as mock_run:
+        with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
             vm.destroy()
 
@@ -113,7 +113,7 @@ class TestIncusVMGetIP:
             }
         }])
 
-        with patch("tests.infra.vm.subprocess.run") as mock_run:
+        with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout=mock_output)
             ip = vm.get_ip()
 
@@ -127,7 +127,7 @@ class TestIncusVMExec:
         vm.ssh_key = MagicMock()
         vm._image = "images:debian/13"
 
-        with patch("tests.infra.vm.subprocess.run") as mock_run:
+        with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
             vm.exec("whoami")
 
@@ -143,7 +143,7 @@ class TestIncusVMSSH:
         vm.ip_address = "10.0.0.42"
         vm._image = "images:debian/13"
 
-        with patch("tests.infra.vm.subprocess.run") as mock_run:
+        with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
             vm.ssh("whoami")
 
