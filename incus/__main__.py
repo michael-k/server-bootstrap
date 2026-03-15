@@ -7,6 +7,7 @@ Usage:
     uv run python -m incus destroy --all
     uv run python -m incus ssh <name>
     uv run python -m incus publish [--debian VERSION]
+    uv run python -m incus images-clean
 """
 
 
@@ -248,6 +249,7 @@ def cmd_images_clean(args: argparse.Namespace) -> None:
                 )
                 print(f"  Deleted {a['name']}")
                 deleted += 1
+                break  # image already deleted, skip remaining aliases
     if deleted:
         print(f"Deleted {deleted} image(s).")
     else:
