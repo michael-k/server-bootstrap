@@ -190,6 +190,26 @@ wheels = [
 ]
 
 [[package]]
+name = "incus"
+version = "0.1.0"
+source = { editable = "incus" }
+dependencies = [
+    { name = "pyyaml", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+
+[package.optional-dependencies]
+fixtures = [
+    { name = "pytest", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pytest", marker = "extra == 'fixtures'", specifier = ">=9.0" },
+    { name = "pyyaml", specifier = ">=6.0" },
+]
+provides-extras = ["fixtures"]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -495,6 +515,7 @@ dependencies = [
 dev = [
     { name = "ansible-lint", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "hypothesis", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "incus", extra = ["fixtures"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pytest", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pytest-ansible", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "ruff", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -507,6 +528,7 @@ lint = [
 ]
 test = [
     { name = "hypothesis", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "incus", extra = ["fixtures"], marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pytest", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pytest-ansible", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
 ]
@@ -521,6 +543,7 @@ requires-dist = [
 dev = [
     { name = "ansible-lint", specifier = ">=26.1.1" },
     { name = "hypothesis", specifier = ">=6.151.9" },
+    { name = "incus", extras = ["fixtures"], editable = "incus" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-ansible", specifier = ">=26.2.0" },
     { name = "ruff", specifier = ">=0.15.2" },
@@ -533,6 +556,7 @@ lint = [
 ]
 test = [
     { name = "hypothesis", specifier = ">=6.151.9" },
+    { name = "incus", extras = ["fixtures"], editable = "incus" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-ansible", specifier = ">=26.2.0" },
 ]

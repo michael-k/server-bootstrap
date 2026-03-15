@@ -50,11 +50,11 @@ lint: python-lint python-typecheck ansible-lint
 
 python-lint:
 	@echo "Checking Python code with ruff..."
-	uv run ruff check tests/ incus/
+	uv run ruff check tests/ incus/src/
 
 python-lint-fix:
 	@echo "Fixing Python code with ruff..."
-	uv run ruff check --fix tests/ incus/
+	uv run ruff check --fix tests/ incus/src/
 
 python-typecheck:
 	@echo "Type-checking Python code with ty..."
