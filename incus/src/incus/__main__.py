@@ -6,6 +6,8 @@ Usage:
     uv run python -m incus destroy <name>
     uv run python -m incus destroy --all
     uv run python -m incus ssh <name>
+
+Bootstrap-specific (only available when site.yml exists):
     uv run python -m incus publish [--debian VERSION]
     uv run python -m incus images-clean
 """
@@ -18,17 +20,49 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
-from incus.ansible import run_bootstrap_playbook
-from incus.constants import (
-    DEFAULT_DEBIAN_VERSION,
-    IMAGE_ALIAS_PREFIX,
-    IMAGE_PREFIX,
-    IMAGE_VARIANTS,
-    VM_NAME_PREFIX,
-    VM_STOP_TIMEOUT_SECONDS,
-)
+from incus.ansible import _get_ssh_public_key_file, run_playbook
+from incus.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX, VM_NAME_PREFIX
 from incus.vm import IncusVM
+
+# --- Bootstrap-specific constants (only used by guarded commands) ---
+
+_PUBLISH_VARS: dict[str, str | int | bool | list[int]] = {
+    "manual_user_name": "testuser",
+    # SHA-512 hash of "TestPassword123!" — test-only, not used for real servers
+    "manual_user_password": (
+        "$6$testsalt$5P2FnhrAYcA6OcEmW5HOdQx2s/g5RDF/pjLq9r43iwy.jOyY9Ap0uReLp0zSd"
+        "/WR6.609JYtDYaQVnBIlY3zG/"
+    ),
+    "manual_user_ssh_key_file": "",  # Set dynamically
+    "deploy_user_name": "ansible",
+    "deploy_user_ssh_key_file": "",  # Set dynamically
+    "ssh_port": 22,
+    "target_hostname": "bootstrap-test",
+    "port_knocking_sequence": [7000, 8500, 9100],
+    "tailscale_enabled": False,
+    "swap_enabled": False,
+    "login_policy_umask": "027",
+    "login_policy_retries": 3,
+    "login_policy_timeout": 30,
+    "pam_faillock_deny": 5,
+}
+
+IMAGE_ALIAS_PREFIX = "bootstrap/"
+
+IMAGE_VARIANTS: dict[str, dict[str, str | int | bool | list[int]]] = {
+    "knocking": {
+        "tailscale_enabled": False,
+        "firewall_port_knocking_enabled": True,
+    },
+    "open": {
+        "tailscale_enabled": False,
+        "firewall_port_knocking_enabled": False,
+    },
+}
+
+VM_STOP_TIMEOUT_SECONDS = 60
 
 
 def cmd_create(args: argparse.Namespace) -> None:
@@ -180,7 +214,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
     """Build and publish bootstrapped VM images."""
     version = args.debian
 
-    for variant, extra_vars in IMAGE_VARIANTS.items():
+    for variant, variant_vars in IMAGE_VARIANTS.items():
         alias = f"{IMAGE_ALIAS_PREFIX}{variant}-{version}"
         print(f"Building image '{alias}'...")
 
@@ -190,8 +224,19 @@ def cmd_publish(args: argparse.Namespace) -> None:
             print(f"  Waiting for VM '{vm.name}'...")
             vm.wait_ready()
 
+            pub_key_path = _get_ssh_public_key_file(vm)
+            merged_vars = dict(_PUBLISH_VARS)
+            merged_vars["manual_user_ssh_key_file"] = str(pub_key_path)
+            merged_vars["deploy_user_ssh_key_file"] = str(pub_key_path)
+            merged_vars.update(variant_vars)
+
             print("  Running bootstrap playbook...")
-            result = run_bootstrap_playbook(vm, extra_vars=dict(extra_vars))
+            result = run_playbook(
+                vm,
+                playbook_path=Path("site.yml"),
+                extra_vars=merged_vars,
+                cwd=Path.cwd(),
+            )
             if result.returncode != 0:
                 raise RuntimeError(
                     f"Bootstrap failed for '{variant}'.\n"
@@ -216,7 +261,6 @@ def cmd_publish(args: argparse.Namespace) -> None:
             print(f"  Error building '{variant}', cleaning up VM...")
             raise
         finally:
-            # Always destroy the source VM (published image is independent)
             subprocess.run(
                 ["incus", "delete", vm.name, "--force"],
                 capture_output=True,
@@ -249,7 +293,7 @@ def cmd_images_clean(args: argparse.Namespace) -> None:
                 )
                 print(f"  Deleted {a['name']}")
                 deleted += 1
-                break  # image already deleted, skip remaining aliases
+                break
     if deleted:
         print(f"Deleted {deleted} image(s).")
     else:
@@ -281,26 +325,27 @@ def main() -> None:
     p_ssh = subparsers.add_parser("ssh", help="SSH into a test VM")
     p_ssh.add_argument("name", help="VM name")
 
-    # publish
-    p_publish = subparsers.add_parser("publish", help="Build and publish bootstrapped VM images")
-    p_publish.add_argument(
-        "--debian", default=DEFAULT_DEBIAN_VERSION,
-        help=f"Debian version (default: {DEFAULT_DEBIAN_VERSION})",
-    )
-
-    # images-clean
-    subparsers.add_parser("images-clean", help="Delete all bootstrap/* images")
-
-    args = parser.parse_args()
-
-    commands = {
+    commands: dict[str, object] = {
         "create": cmd_create,
         "list": cmd_list,
         "destroy": cmd_destroy,
         "ssh": cmd_ssh,
-        "publish": cmd_publish,
-        "images-clean": cmd_images_clean,
     }
+
+    # Bootstrap-specific commands — only available when site.yml exists
+    if Path("site.yml").exists():
+        p_publish = subparsers.add_parser(
+            "publish", help="Build and publish bootstrapped VM images",
+        )
+        p_publish.add_argument(
+            "--debian", default=DEFAULT_DEBIAN_VERSION,
+            help=f"Debian version (default: {DEFAULT_DEBIAN_VERSION})",
+        )
+        subparsers.add_parser("images-clean", help="Delete all bootstrap/* images")
+        commands["publish"] = cmd_publish
+        commands["images-clean"] = cmd_images_clean
+
+    args = parser.parse_args()
     commands[args.command](args)
 
 
