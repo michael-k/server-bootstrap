@@ -96,15 +96,16 @@ incus exec bootstrap-test-a1b2c3d4 -- /bin/bash
 ## Test Structure
 
 ```
+incus/                         # VM management infrastructure (top-level module)
+├── __init__.py                # Public exports (IncusVM, SSHKeyPair)
+├── __main__.py                # CLI: python -m incus <command>
+├── ansible.py                 # Ansible playbook execution helpers
+├── constants.py               # Defaults: image, timeouts, test variables
+├── fixtures.py                # Pytest fixtures (bootstrap_vm, clean_vm)
+├── ssh.py                     # Ephemeral SSH keypair generation
+└── vm.py                      # IncusVM class (create/destroy/exec/ssh)
+
 tests/
-├── infra/                  # VM management infrastructure
-│   ├── __init__.py         # Public exports (IncusVM, SSHKeyPair)
-│   ├── __main__.py         # CLI: python -m tests.infra <command>
-│   ├── ansible.py          # Ansible playbook execution helpers
-│   ├── constants.py        # Defaults: image, timeouts, test variables
-│   ├── fixtures.py         # Pytest fixtures (bootstrap_vm, clean_vm)
-│   ├── ssh.py              # Ephemeral SSH keypair generation
-│   └── vm.py               # IncusVM class (create/destroy/exec/ssh)
 ├── integration/
 │   ├── conftest.py         # Registers fixtures and --debian-version
 │   ├── test_bootstrap_integration.py  # Full bootstrap + verification
@@ -113,7 +114,7 @@ tests/
 
 ## Default Test Variables
 
-The bootstrap playbook runs with these defaults (defined in `tests/infra/constants.py`):
+The bootstrap playbook runs with these defaults (defined in `incus/constants.py`):
 
 | Variable | Value | Notes |
 |----------|-------|-------|
