@@ -15,11 +15,11 @@ import time
 
 import pytest
 
-from incus.ansible import run_bootstrap_playbook
 from incus.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX
 from incus.fixtures import incus_available, print_debug_info
 from incus.headscale import HeadscaleServer
 from incus.vm import IncusVM
+from tests.integration.helpers import run_bootstrap_playbook
 
 pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
