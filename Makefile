@@ -1,4 +1,4 @@
-.PHONY: help bootstrap verify test test-unit test-property test-integration clean lint python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh
+.PHONY: help bootstrap verify test test-unit test-property test-integration clean lint python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh images images-clean
 
 help:
 	@echo "VPS Bootstrap Playbook - Available targets:"
@@ -19,6 +19,8 @@ help:
 	@echo "  vm-list            List running test VMs"
 	@echo "  vm-destroy         Destroy test VM(s) (VM=name or all)"
 	@echo "  vm-ssh             SSH into a test VM (VM=name)"
+	@echo "  images             Build bootstrapped VM images for other projects"
+	@echo "  images-clean       Delete all bootstrap/* images from Incus"
 
 bootstrap:
 	@echo "Running VPS bootstrap playbook..."
@@ -86,3 +88,10 @@ vm-destroy:
 vm-ssh:
 	@test -n "$(VM)" || (echo "Usage: make vm-ssh VM=<name>" && exit 1)
 	uv run python -m incus ssh $(VM)
+
+images:
+	@echo "Building bootstrapped VM images..."
+	uv run python -m incus publish --debian $(or $(DEBIAN),13)
+
+images-clean:
+	uv run python -m incus images-clean
