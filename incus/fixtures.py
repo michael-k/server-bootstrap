@@ -7,9 +7,9 @@ import subprocess
 
 import pytest
 
-from tests.infra.ansible import run_bootstrap_playbook
-from tests.infra.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX
-from tests.infra.vm import IncusVM
+from incus.ansible import run_bootstrap_playbook
+from incus.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX
+from incus.vm import IncusVM
 
 
 def incus_available() -> bool:

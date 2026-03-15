@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from tests.infra.constants import DEFAULT_TEST_VARS
+from incus.constants import DEFAULT_TEST_VARS
 
 if TYPE_CHECKING:
-    from tests.infra.vm import IncusVM
+    from incus.vm import IncusVM
 
-WORKSPACE_ROOT = Path(__file__).parent.parent.parent
+WORKSPACE_ROOT = Path(__file__).parent.parent
 
 
 def build_inventory(vm: IncusVM, user: str = "root") -> str:

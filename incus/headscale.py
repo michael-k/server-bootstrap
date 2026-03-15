@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tests.infra.vm import IncusVM
+from incus.vm import IncusVM
 
 _HEADSCALE_REPO = "juanfont/headscale"
 

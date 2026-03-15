@@ -1,11 +1,12 @@
 """CLI entry point for manual Incus VM management.
 
 Usage:
-    uv run python -m tests.infra create [--debian VERSION]
-    uv run python -m tests.infra list
-    uv run python -m tests.infra destroy <name>
-    uv run python -m tests.infra destroy --all
-    uv run python -m tests.infra ssh <name>
+    uv run python -m incus create [--debian VERSION]
+    uv run python -m incus list
+    uv run python -m incus destroy <name>
+    uv run python -m incus destroy --all
+    uv run python -m incus ssh <name>
+    uv run python -m incus publish [--debian VERSION]
 """
 
 
@@ -17,8 +18,8 @@ import subprocess
 import sys
 import tempfile
 
-from tests.infra.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX, VM_NAME_PREFIX
-from tests.infra.vm import IncusVM
+from incus.constants import DEFAULT_DEBIAN_VERSION, IMAGE_PREFIX, VM_NAME_PREFIX
+from incus.vm import IncusVM
 
 
 def cmd_create(args: argparse.Namespace) -> None:

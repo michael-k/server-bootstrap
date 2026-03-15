@@ -10,13 +10,13 @@ from collections.abc import Generator
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tests.infra.constants import (
+from incus.constants import (
     SSH_CONNECT_TIMEOUT_SECONDS,
     SSH_POLL_INTERVAL_SECONDS,
     VM_NAME_PREFIX,
     VM_READY_TIMEOUT_SECONDS,
 )
-from tests.infra.ssh import SSHKeyPair
+from incus.ssh import SSHKeyPair
 
 
 @dataclass
