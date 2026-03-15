@@ -9,7 +9,7 @@ import yaml
 from incus.ansible import (
     build_inventory,
     build_single_role_playbook,
-    run_bootstrap_playbook,
+    run_playbook,
 )
 
 pytestmark = pytest.mark.unit
@@ -73,64 +73,59 @@ class TestBuildSingleRolePlaybook:
         assert {"role": "ssh_hardening"} in play["roles"]
 
 
-class TestRunBootstrapPlaybook:
-    @patch("incus.ansible._get_ssh_public_key_file")
+class TestRunPlaybook:
     @patch("incus.ansible.subprocess.run")
-    def test_uses_site_yml_by_default(self, mock_run, mock_write_key):
+    def test_runs_ansible_playbook_directly(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
-        mock_write_key.return_value = Path("/tmp/fake/id_ed25519.pub")
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
         vm.ssh_port = 22
-        vm.ssh_key = MagicMock(
-            private_key_path=Path("/tmp/fake/id_ed25519"),
-            public_key="ssh-ed25519 AAAA test",
-        )
+        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        run_bootstrap_playbook(vm)
+        run_playbook(vm, playbook_path=Path("/tmp/site.yml"))
 
         cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "ansible-playbook"
         cmd_str = " ".join(str(c) for c in cmd)
-        assert "site.yml" in cmd_str
+        assert "/tmp/site.yml" in cmd_str
 
-    @patch("incus.ansible._get_ssh_public_key_file")
     @patch("incus.ansible.subprocess.run")
-    def test_passes_extra_vars_via_json_file(self, mock_run, mock_write_key):
+    def test_passes_extra_vars_via_json_file(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
-        mock_write_key.return_value = Path("/tmp/fake/id_ed25519.pub")
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
         vm.ssh_port = 22
-        vm.ssh_key = MagicMock(
-            private_key_path=Path("/tmp/fake/id_ed25519"),
-            public_key="ssh-ed25519 AAAA test",
-        )
+        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        run_bootstrap_playbook(vm, extra_vars={"ssh_port": 2222})
+        run_playbook(vm, playbook_path=Path("/tmp/site.yml"), extra_vars={"ssh_port": 2222})
 
         cmd = mock_run.call_args[0][0]
-        # Extra vars are passed via @<json_file>
         extra_var_args = [c for c in cmd if str(c).startswith("@")]
         assert len(extra_var_args) == 1
         assert "-e" in cmd
 
-
-class TestRunVerifyPlaybook:
     @patch("incus.ansible.subprocess.run")
-    def test_uses_verify_playbook(self, mock_run):
+    def test_passes_cwd(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
         vm = MagicMock()
         vm.ip_address = "10.0.0.42"
         vm.ssh_port = 22
-        vm.ssh_key = MagicMock(
-            private_key_path=Path("/tmp/fake/id_ed25519"),
-            public_key="ssh-ed25519 AAAA test",
-        )
+        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        from incus.ansible import run_verify_playbook
-        run_verify_playbook(vm)
+        run_playbook(vm, playbook_path=Path("/tmp/site.yml"), cwd="/some/dir")
 
-        cmd = mock_run.call_args[0][0]
-        cmd_str = " ".join(str(c) for c in cmd)
-        assert "verify_bootstrap.yml" in cmd_str
-        assert "-e" in cmd
+        kwargs = mock_run.call_args[1]
+        assert kwargs["cwd"] == "/some/dir"
+
+    @patch("incus.ansible.subprocess.run")
+    def test_does_not_mutate_vm_ssh_port(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+        vm = MagicMock()
+        vm.ip_address = "10.0.0.42"
+        vm.ssh_port = 22
+        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
+
+        run_playbook(vm, playbook_path=Path("/tmp/site.yml"), extra_vars={"ssh_port": 2222})
+
+        # run_playbook should NOT mutate vm.ssh_port
+        assert vm.ssh_port == 22
