@@ -48,11 +48,11 @@ lint: python-lint python-typecheck ansible-lint
 
 python-lint:
 	@echo "Checking Python code with ruff..."
-	uv run ruff check tests/
+	uv run ruff check tests/ incus/
 
 python-lint-fix:
 	@echo "Fixing Python code with ruff..."
-	uv run ruff check --fix tests/
+	uv run ruff check --fix tests/ incus/
 
 python-typecheck:
 	@echo "Type-checking Python code with ty..."
@@ -74,15 +74,15 @@ clean:
 
 vm-create:
 	@echo "Creating test VM..."
-	uv run python -m tests.infra create --debian $(or $(DEBIAN),13)
+	uv run python -m incus create --debian $(or $(DEBIAN),13)
 
 vm-list:
 	@echo "Test VMs:"
-	uv run python -m tests.infra list
+	uv run python -m incus list
 
 vm-destroy:
-	uv run python -m tests.infra destroy $(if $(VM),$(VM),--all)
+	uv run python -m incus destroy $(if $(VM),$(VM),--all)
 
 vm-ssh:
 	@test -n "$(VM)" || (echo "Usage: make vm-ssh VM=<name>" && exit 1)
-	uv run python -m tests.infra ssh $(VM)
+	uv run python -m incus ssh $(VM)
