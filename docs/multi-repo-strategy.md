@@ -192,6 +192,123 @@ Beyond the extension points above, purpose repos can also:
 - Use the automation user (`ansible` by default) for Ansible-driven configuration
 - Assume the Tailscale interface exists if `tailscale_enabled` was set
 
+## Integration Testing
+
+Bootstrap provides two things for purpose-repo integration tests: pre-built VM images and a shared test toolkit.
+
+### Pre-Built VM Images
+
+Two Incus VM images are available locally, built with `make images` in server-bootstrap:
+
+| Image alias | Description |
+|---|---|
+| `bootstrap/knocking-13` | Fully bootstrapped Debian 13 with port-knocking enabled, Tailscale disabled |
+| `bootstrap/open-13` | Fully bootstrapped Debian 13 with port-knocking and Tailscale both disabled (SSH directly accessible) |
+
+These images are the bootstrapped machine state frozen into a reusable snapshot. Launching a VM from one of these images is equivalent to running the bootstrap playbook from scratch, but takes seconds instead of minutes.
+
+Rebuild them after bootstrap playbook changes:
+
+```bash
+cd server-bootstrap
+make images
+```
+
+### Shared Test Toolkit (`incus` package)
+
+The `incus/` directory in server-bootstrap is an installable Python package that provides VM lifecycle management for integration tests. Purpose repos install it as a dev dependency:
+
+```bash
+# Local path (recommended during development)
+uv add --dev --editable --path ../server-bootstrap/incus "incus[fixtures]"
+
+# Or from git
+uv add --dev "incus[fixtures] @ git+https://github.com/michael-k/server-bootstrap.git#subdirectory=incus"
+```
+
+The `[fixtures]` extra includes pytest as a dependency for projects that use the test fixtures.
+
+### What the Package Provides
+
+| Import | Purpose |
+|---|---|
+| `incus.vm.IncusVM` | Create, destroy, exec, SSH into Incus VMs |
+| `incus.ssh.SSHKeyPair` | Ephemeral ed25519 keypair generation |
+| `incus.ansible.run_playbook` | Run any Ansible playbook against a VM |
+| `incus.fixtures.clean_vm` | Pytest fixture: fresh VM (no playbook applied) |
+| `incus.fixtures.incus_available` | Check if Incus is available (for skipping tests) |
+
+### Writing Integration Tests
+
+A purpose repo's integration test launches a VM from a pre-built bootstrap image, runs its own playbook on top, and verifies the result:
+
+```python
+# tests/integration/conftest.py
+import pytest
+from pathlib import Path
+from incus.vm import IncusVM
+from incus.ansible import run_playbook
+from incus.fixtures import incus_available
+
+WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture(scope="session")
+def server_vm(request):
+    """VM with bootstrap + purpose-specific playbook applied."""
+    if not incus_available():
+        pytest.skip("Incus not available")
+
+    # Launch from pre-built bootstrap image (seconds, not minutes)
+    vm = IncusVM.create(image="bootstrap/open-13")
+    try:
+        vm.wait_ready()
+
+        # Run purpose-specific playbook on top of bootstrap
+        result = run_playbook(
+            vm,
+            playbook_path=WORKSPACE_ROOT / "site.yml",
+            extra_vars={"my_setting": "value"},
+            cwd=WORKSPACE_ROOT,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Playbook failed:\n{result.stderr[-1000:]}")
+    except Exception:
+        vm.destroy()
+        raise
+
+    yield vm
+    vm.destroy()
+```
+
+```python
+# tests/integration/test_my_service.py
+def test_service_is_running(server_vm):
+    result = server_vm.ssh("systemctl is-active my-service")
+    assert result.returncode == 0
+
+def test_port_is_listening(server_vm):
+    result = server_vm.ssh("ss -tlnp | grep :8080")
+    assert result.returncode == 0
+```
+
+### Choosing an Image
+
+- Use `bootstrap/open-13` when your tests need direct SSH access to the VM (most cases).
+- Use `bootstrap/knocking-13` when your tests need to verify behavior behind port-knocking. Use `vm.knock()` to unlock SSH access before connecting.
+
+### CLI Tools
+
+The package also provides VM management commands, useful for debugging:
+
+```bash
+uv run python -m incus create              # Create a bare Debian VM
+uv run python -m incus create --debian 13  # Specify Debian version
+uv run python -m incus list                # List test VMs
+uv run python -m incus ssh <name>          # SSH into a VM
+uv run python -m incus destroy --all       # Clean up all test VMs
+```
+
 ## Workflows
 
 ### New VPS

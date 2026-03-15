@@ -165,7 +165,7 @@ Other projects add the package and use it:
 uv add --dev --editable --path ../server-bootstrap/incus
 
 # Or from git
-uv add --dev "incus @ git+https://github.com/org/server-bootstrap.git#subdirectory=incus"
+uv add --dev "incus @ git+https://github.com/michael-k/server-bootstrap.git#subdirectory=incus"
 ```
 
 Consumer test code:

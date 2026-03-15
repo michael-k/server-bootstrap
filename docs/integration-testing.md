@@ -96,25 +96,28 @@ incus exec bootstrap-test-a1b2c3d4 -- /bin/bash
 ## Test Structure
 
 ```
-incus/                         # VM management infrastructure (top-level module)
-├── __init__.py                # Public exports (IncusVM, SSHKeyPair)
-├── __main__.py                # CLI: python -m incus <command>
-├── ansible.py                 # Ansible playbook execution helpers
-├── constants.py               # Defaults: image, timeouts, test variables
-├── fixtures.py                # Pytest fixtures (bootstrap_vm, clean_vm)
-├── ssh.py                     # Ephemeral SSH keypair generation
-└── vm.py                      # IncusVM class (create/destroy/exec/ssh)
+incus/                             # Shared package (installable by other projects)
+├── pyproject.toml                 # Package metadata
+└── src/incus/
+    ├── __init__.py                # Public API: IncusVM, SSHKeyPair
+    ├── __main__.py                # CLI: python -m incus <command>
+    ├── ansible.py                 # Generic run_playbook() helper
+    ├── constants.py               # Defaults: image prefix, timeouts
+    ├── fixtures.py                # Generic fixtures: clean_vm, incus_available()
+    ├── ssh.py                     # Ephemeral SSH keypair generation
+    └── vm.py                      # IncusVM class (create/destroy/exec/ssh)
 
 tests/
 ├── integration/
-│   ├── conftest.py         # Registers fixtures and --debian-version
+│   ├── helpers.py          # Bootstrap-specific: run_bootstrap_playbook, DEFAULT_TEST_VARS
+│   ├── conftest.py         # Bootstrap fixtures (bootstrap_vm, swap_vm) + --debian-version
 │   ├── test_bootstrap_integration.py  # Full bootstrap + verification
 │   └── test_single_role.py           # Individual role tests
 ```
 
 ## Default Test Variables
 
-The bootstrap playbook runs with these defaults (defined in `incus/constants.py`):
+The bootstrap playbook runs with these defaults (defined in `tests/integration/helpers.py`):
 
 | Variable | Value | Notes |
 |----------|-------|-------|
