@@ -27,7 +27,10 @@ class IncusVM:
     ssh_key: SSHKeyPair
     ip_address: str = ""
     ssh_port: int = 22
+    ssh_user: str = "root"
+    knock_sequence: list[int] | None = None
     _image: str = field(default="", repr=False, compare=False)
+    _last_knock_time: float = field(default=0.0, repr=False, compare=False)
 
     @classmethod
     def create(cls, image: str, name_hint: str = "") -> IncusVM:
@@ -219,7 +222,15 @@ class IncusVM:
         )
 
     def ssh(self, cmd: str, timeout: int = 30) -> subprocess.CompletedProcess:
-        """Run a command on the VM via SSH using the ephemeral key."""
+        """Run a command on the VM via SSH using the ephemeral key.
+
+        If a knock_sequence is configured, automatically port-knocks when the
+        last knock was more than 20 seconds ago.
+        """
+        if self.knock_sequence is not None:
+            elapsed = time.monotonic() - self._last_knock_time
+            if elapsed > 20:
+                self.knock()
         return subprocess.run(
             [
                 "ssh",
@@ -230,7 +241,7 @@ class IncusVM:
                 "-o", "BatchMode=yes",
                 "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
                 "-i", str(self.ssh_key.private_key_path),
-                f"root@{self.ip_address}",
+                f"{self.ssh_user}@{self.ip_address}",
                 cmd,
             ],
             capture_output=True,
@@ -243,12 +254,13 @@ class IncusVM:
         """Perform a port knock sequence to unlock SSH access.
 
         Sends a TCP SYN to each port in sequence with a short delay between.
-        Default sequence matches the firewall role default: [7000, 8500, 9100].
+        Uses *ports* if given, otherwise falls back to ``knock_sequence``,
+        otherwise the firewall role default ``[7000, 8500, 9100]``.
         """
         import socket
 
         if ports is None:
-            ports = [7000, 8500, 9100]
+            ports = self.knock_sequence if self.knock_sequence is not None else [7000, 8500, 9100]
 
         for port in ports:
             with (
@@ -258,6 +270,8 @@ class IncusVM:
                 sock.settimeout(1)
                 sock.connect((self.ip_address, port))
             time.sleep(delay)
+
+        self._last_knock_time = time.monotonic()
 
     @contextlib.contextmanager
     def background_service(
