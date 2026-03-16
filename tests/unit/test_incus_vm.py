@@ -79,10 +79,7 @@ class TestIncusVMName:
 
 class TestIncusVMDestroy:
     def test_destroy_calls_incus_delete_force(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock()
-        vm._image = "images:debian/13"
+        vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock())
 
         with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
@@ -95,10 +92,7 @@ class TestIncusVMDestroy:
 
 class TestIncusVMGetIP:
     def test_get_ip_parses_json_output(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock()
-        vm._image = "images:debian/13"
+        vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock())
 
         mock_output = json.dumps([{
             "name": "bootstrap-test-abc123",
@@ -122,10 +116,7 @@ class TestIncusVMGetIP:
 
 class TestIncusVMExec:
     def test_exec_builds_correct_command(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock()
-        vm._image = "images:debian/13"
+        vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock())
 
         with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
@@ -135,17 +126,14 @@ class TestIncusVMExec:
         assert cmd == ["incus", "exec", "bootstrap-test-abc123", "--", "sh", "-c", "whoami"]
 
 
+_SSH_KEY = MagicMock(private_key_path="/tmp/fake/id_ed25519")
+
+
 class TestIncusVMSSH:
     def test_ssh_builds_correct_command(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_user = "root"
-        vm.ssh_port = 22
-        vm.knock_sequence = None
-        vm._image = "images:debian/13"
-        vm._last_knock_time = 0.0
+        vm = IncusVM(
+            name="bootstrap-test-abc123", ssh_key=_SSH_KEY, ip_address="10.0.0.42",
+        )
 
         with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
@@ -159,15 +147,10 @@ class TestIncusVMSSH:
         assert "whoami" in cmd
 
     def test_ssh_uses_configured_user(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_user = "deploy"
-        vm.ssh_port = 22
-        vm.knock_sequence = None
-        vm._image = "images:debian/13"
-        vm._last_knock_time = 0.0
+        vm = IncusVM(
+            name="bootstrap-test-abc123", ssh_key=_SSH_KEY, ip_address="10.0.0.42",
+            ssh_user="deploy",
+        )
 
         with patch("incus.vm.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
@@ -177,15 +160,10 @@ class TestIncusVMSSH:
         assert "deploy@10.0.0.42" in cmd
 
     def test_ssh_auto_knocks_when_sequence_set_and_stale(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_user = "root"
-        vm.ssh_port = 22
-        vm.knock_sequence = [7000, 8500, 9100]
-        vm._image = "images:debian/13"
-        vm._last_knock_time = 0.0  # epoch → always stale
+        vm = IncusVM(
+            name="bootstrap-test-abc123", ssh_key=_SSH_KEY, ip_address="10.0.0.42",
+            knock_sequence=[7000, 8500, 9100],
+        )
 
         with (
             patch("incus.vm.subprocess.run") as mock_run,
@@ -199,14 +177,10 @@ class TestIncusVMSSH:
     def test_ssh_skips_knock_when_recent(self):
         import time as _time
 
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_user = "root"
-        vm.ssh_port = 22
-        vm.knock_sequence = [7000, 8500, 9100]
-        vm._image = "images:debian/13"
+        vm = IncusVM(
+            name="bootstrap-test-abc123", ssh_key=_SSH_KEY, ip_address="10.0.0.42",
+            knock_sequence=[7000, 8500, 9100],
+        )
         vm._last_knock_time = _time.monotonic()  # just knocked
 
         with (
@@ -219,15 +193,9 @@ class TestIncusVMSSH:
         mock_knock.assert_not_called()
 
     def test_ssh_no_knock_without_sequence(self):
-        vm = IncusVM.__new__(IncusVM)
-        vm.name = "bootstrap-test-abc123"
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_user = "root"
-        vm.ssh_port = 22
-        vm.knock_sequence = None
-        vm._image = "images:debian/13"
-        vm._last_knock_time = 0.0
+        vm = IncusVM(
+            name="bootstrap-test-abc123", ssh_key=_SSH_KEY, ip_address="10.0.0.42",
+        )
 
         with (
             patch("incus.vm.subprocess.run") as mock_run,
