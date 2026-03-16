@@ -17,6 +17,37 @@
 #   This playbook is designed for single execution against a fresh VPS.
 #   It is idempotent and safe to re-run for configuration updates.
 
+# When port knocking is active, Ansible must knock before opening SSH connections.
+# This play runs locally (no SSH needed) and sends TCP SYN packets to the knock
+# sequence ports, unlocking SSH for the configured timeout window.
+- name: Port knock for SSH access
+  hosts: all
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Knock on ports to unlock SSH
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import contextlib, socket, time, sys
+            host, ports = sys.argv[1], [int(p) for p in sys.argv[2:]]
+            for port in ports:
+                with contextlib.suppress(OSError):
+                    socket.create_connection((host, port), timeout=0.5)
+                time.sleep(0.2)
+          - "{{ ansible_host | default(inventory_hostname) }}"
+          - "{{ knock_sequence[0] }}"
+          - "{{ knock_sequence[1] }}"
+          - "{{ knock_sequence[2] }}"
+      vars:
+        knock_sequence: "{{ port_knocking_sequence | default([7000, 8500, 9100]) }}"
+      when:
+        - not (tailscale_enabled | default(false) | bool)
+        - port_knocking_enabled | default(true) | bool
+      changed_when: false
+
 - name: Bootstrap VPS with secure configuration
   hosts: all
   become: true

@@ -61,6 +61,10 @@ done
 ssh user@<host>
 ```
 
+## Ansible Re-runs
+
+The playbook automatically knocks before connecting. A separate play at the top of `site.yml` runs locally on the controller and sends the knock sequence to each host, so `make bootstrap` and `make verify` work against already-bootstrapped servers without any extra steps. The knock play is skipped when Tailscale is enabled or port knocking is disabled.
+
 ## Customizing the Sequence
 
 Edit your inventory variables:

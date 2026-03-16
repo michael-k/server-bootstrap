@@ -1048,3 +1048,69 @@ class TestNFTablesPortKnockingProperties:
             "firewall_port_knocking_stage_timeout must be defined in defaults"
         )
         # - Rules persist across system reboots through systemd service
+
+
+class TestPortKnockPrePlayProperties:
+    """Property-based tests for the port-knock pre-play in site.yml."""
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_knock_play_exists_before_bootstrap_play(self):
+        """
+        The site.yml playbook SHALL contain a local port-knock play before the
+        bootstrap play so that Ansible can reach hosts behind port knocking.
+        """
+        import yaml
+
+        playbook_path = Path("site.yml")
+        assert playbook_path.exists(), "site.yml must exist"
+
+        plays = yaml.safe_load(playbook_path.read_text())
+        assert len(plays) >= 2, "site.yml must have at least two plays"
+
+        knock_play = plays[0]
+        assert knock_play["name"] == "Port knock for SSH access", (
+            "First play must be the port-knock play"
+        )
+        assert knock_play.get("gather_facts") is False, (
+            "Knock play must not gather facts (no SSH needed)"
+        )
+        assert knock_play.get("connection") == "local", (
+            "Knock play must use local connection (runs on controller)"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_knock_play_is_conditional(self):
+        """
+        The knock task SHALL be skipped when Tailscale is enabled or when
+        port knocking is disabled.
+        """
+        import yaml
+
+        plays = yaml.safe_load(Path("site.yml").read_text())
+        knock_task = plays[0]["tasks"][0]
+        when = knock_task["when"]
+
+        assert any("tailscale_enabled" in str(c) for c in when), (
+            "Knock task must check tailscale_enabled"
+        )
+        assert any("port_knocking_enabled" in str(c) for c in when), (
+            "Knock task must check port_knocking_enabled"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_knock_play_never_reports_changed(self):
+        """
+        The knock task SHALL set changed_when: false because knocking is
+        idempotent and produces no state change.
+        """
+        import yaml
+
+        plays = yaml.safe_load(Path("site.yml").read_text())
+        knock_task = plays[0]["tasks"][0]
+
+        assert knock_task.get("changed_when") is False, (
+            "Knock task must set changed_when: false"
+        )
