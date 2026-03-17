@@ -37,8 +37,8 @@ class TestIncusVMLaunch:
         assert "cloud-init" not in cmd_str
         assert "user.user-data" not in cmd_str
 
-    def test_launch_raises_without_image(self):
-        vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock())
+    def test_launch_raises_with_empty_image(self):
+        vm = IncusVM(image="", name="bootstrap-test-abc123", ssh_key=MagicMock())
         with pytest.raises(ValueError, match="image is required"):
             vm.launch()
 

@@ -11,6 +11,8 @@ from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 
 from incus.constants import (
+    DEFAULT_DEBIAN_VERSION,
+    IMAGE_PREFIX,
     SSH_CONNECT_TIMEOUT_SECONDS,
     SSH_POLL_INTERVAL_SECONDS,
     VM_NAME_PREFIX,
@@ -23,7 +25,7 @@ from incus.ssh import SSHKeyPair
 class IncusVM:
     """Manages a single Incus VM for testing."""
 
-    image: str = ""
+    image: str = f"{IMAGE_PREFIX}{DEFAULT_DEBIAN_VERSION}"
     name: str = ""
     ssh_key: InitVar[SSHKeyPair | None] = None
     ip_address: str = ""
