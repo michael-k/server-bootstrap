@@ -165,7 +165,7 @@ class IncusVM:
                     "-o", "BatchMode=yes",
                     "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
                     "-i", str(self.private_key_path),
-                    f"root@{self.ip_address}",
+                    f"{self.ssh_user}@{self.ip_address}",
                     "echo ready",
                 ],
                 capture_output=True,
@@ -182,7 +182,7 @@ class IncusVM:
         )
 
     def _setup_ssh(self) -> None:
-        """Install openssh-server and inject the ephemeral SSH key."""
+        """Install openssh-server and inject the ephemeral SSH key for ssh_user."""
         # Install openssh-server if not already present
         result = self.exec("dpkg -s openssh-server 2>/dev/null", timeout=10)
         if result.returncode != 0:
@@ -191,18 +191,21 @@ class IncusVM:
                 timeout=120,
             )
 
-        # Ensure root login is permitted (Debian defaults may vary)
-        self.exec(
-            "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' "
-            "/etc/ssh/sshd_config"
-        )
+        if self.ssh_user == "root":
+            self.exec(
+                "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' "
+                "/etc/ssh/sshd_config"
+            )
 
-        # Inject SSH public key
-        self.exec("mkdir -p /root/.ssh && chmod 700 /root/.ssh")
+        # Resolve home directory and inject key
+        home = self.exec(f"eval echo ~{self.ssh_user}").stdout.strip()
+        ssh_dir = f"{home}/.ssh"
+        self.exec(f"mkdir -p {ssh_dir} && chmod 700 {ssh_dir}")
         self.exec(
-            f"echo '{self.public_key}' >> /root/.ssh/authorized_keys "
-            "&& chmod 600 /root/.ssh/authorized_keys"
+            f"echo '{self.public_key}' >> {ssh_dir}/authorized_keys "
+            f"&& chmod 600 {ssh_dir}/authorized_keys"
         )
+        self.exec(f"chown -R {self.ssh_user}:{self.ssh_user} {ssh_dir}")
 
         # Restart sshd to pick up config changes
         self.exec("systemctl restart ssh || systemctl restart sshd")
