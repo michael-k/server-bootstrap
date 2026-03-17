@@ -24,7 +24,7 @@ def build_inventory(vm: IncusVM, user: str = "root") -> str:
                     "ansible_host": vm.ip_address,
                     "ansible_user": user,
                     "ansible_port": vm.ssh_port,
-                    "ansible_ssh_private_key_file": str(vm.ssh_key.private_key_path),
+                    "ansible_ssh_private_key_file": str(vm.private_key_path),
                     "ansible_ssh_common_args": (
                         "-o PubkeyAuthentication=yes "
                         "-o IdentitiesOnly=yes "
@@ -57,7 +57,7 @@ def build_single_role_playbook(roles: str | list[str]) -> str:
 
 def _get_ssh_public_key_file(vm: IncusVM) -> Path:
     """Return the path to the VM's SSH public key file."""
-    return vm.ssh_key.private_key_path.with_suffix(".pub")
+    return vm.private_key_path.with_suffix(".pub")
 
 
 def run_playbook(

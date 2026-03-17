@@ -12,6 +12,7 @@ import dataclasses
 import os
 import subprocess
 import time
+from pathlib import Path
 
 import pytest
 
@@ -50,7 +51,7 @@ def _ssh_from_host(
     ip: str,
     port: int,
     user: str,
-    key_path: str,
+    key_path: str | Path,
     timeout: int = _SSH_FAIL_TIMEOUT,
 ) -> subprocess.CompletedProcess:
     """Attempt SSH from the host machine to an IP. Returns CompletedProcess."""
@@ -64,7 +65,7 @@ def _ssh_from_host(
             "-o", "BatchMode=yes",
             "-o", "IdentitiesOnly=yes",
             "-o", f"ConnectTimeout={timeout}",
-            "-i", key_path,
+            "-i", str(key_path),
             f"{user}@{ip}",
             "echo SUCCESS",
         ],
@@ -200,9 +201,9 @@ def tailscale_env(request):
     image = f"{IMAGE_PREFIX}{version}"
 
     # Step 1: Create all three VMs
-    headscale_vm = IncusVM.create(image=image, name_hint="headscale")
-    peer_vm = IncusVM.create(image=image, name_hint="ts-peer")
-    target_vm = IncusVM.create(image=image, name_hint="ts-target")
+    headscale_vm = IncusVM(image=image, name_hint="headscale", auto_launch=True)
+    peer_vm = IncusVM(image=image, name_hint="ts-peer", auto_launch=True)
+    target_vm = IncusVM(image=image, name_hint="ts-target", auto_launch=True)
     all_vms = [headscale_vm, peer_vm, target_vm]
 
     def _cleanup(preserve: bool = False) -> None:
@@ -259,7 +260,7 @@ def tailscale_env(request):
         # Step 6: Push target's SSH private key onto peer
         peer_vm.exec("mkdir -p /root/.ssh && chmod 700 /root/.ssh")
         peer_vm.put_file(
-            target_vm.ssh_key.private_key_path, _PEER_KEY_PATH
+            target_vm.private_key_path, _PEER_KEY_PATH
         )
         peer_vm.exec(f"chmod 600 {_PEER_KEY_PATH}")
 
@@ -309,7 +310,7 @@ class TestTailscaleIntegration:
             ip=env.target.ip_address,
             port=env.target.ssh_port,
             user=env.manual_user,
-            key_path=str(env.target.ssh_key.private_key_path),
+            key_path=env.target.private_key_path,
             timeout=_SSH_FAIL_TIMEOUT,
         )
         assert result.returncode != 0, (
@@ -329,7 +330,7 @@ class TestTailscaleIntegration:
             ip=env.target.ip_address,
             port=env.target.ssh_port,
             user=env.manual_user,
-            key_path=str(env.target.ssh_key.private_key_path),
+            key_path=env.target.private_key_path,
             timeout=_SSH_FAIL_TIMEOUT,
         )
         assert result.returncode != 0, (
@@ -358,7 +359,7 @@ class TestTailscaleIntegration:
                 ip=env.target.ip_address,
                 port=env.target.ssh_port,
                 user=env.manual_user,
-                key_path=str(env.target.ssh_key.private_key_path),
+                key_path=env.target.private_key_path,
                 timeout=_SSH_FAIL_TIMEOUT,
             )
             assert result.returncode != 0, (
@@ -413,7 +414,7 @@ class TestTailscaleIntegration:
             ip=env.target.ip_address,
             port=env.target.ssh_port,
             user=env.manual_user,
-            key_path=str(env.target.ssh_key.private_key_path),
+            key_path=env.target.private_key_path,
             timeout=_SSH_OK_TIMEOUT,
         )
         assert result.returncode == 0, (
@@ -459,7 +460,7 @@ class TestTailscaleIntegration:
             ip=env.target.ip_address,
             port=env.target.ssh_port,
             user=env.manual_user,
-            key_path=str(env.target.ssh_key.private_key_path),
+            key_path=env.target.private_key_path,
             timeout=_SSH_FAIL_TIMEOUT,
         )
         assert result.returncode != 0, (

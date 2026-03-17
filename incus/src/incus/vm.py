@@ -7,7 +7,7 @@ import secrets
 import subprocess
 import time
 from collections.abc import Generator
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 
 from incus.constants import (
@@ -23,35 +23,56 @@ from incus.ssh import SSHKeyPair
 class IncusVM:
     """Manages a single Incus VM for testing."""
 
-    name: str
-    ssh_key: SSHKeyPair
+    image: str = ""
+    name: str = ""
+    ssh_key: InitVar[SSHKeyPair | None] = None
     ip_address: str = ""
     ssh_port: int = 22
     ssh_user: str = "root"
     knock_sequence: list[int] | None = None
-    _image: str = field(default="", repr=False, compare=False)
+    name_hint: InitVar[str] = ""
+    auto_launch: InitVar[bool] = False
+    _ssh_key: SSHKeyPair = field(init=False, repr=False, compare=False)
     _last_knock_time: float = field(default=0.0, repr=False, compare=False)
 
-    @classmethod
-    def create(cls, image: str, name_hint: str = "") -> IncusVM:
-        """Launch a new Incus VM.
+    def __post_init__(
+        self,
+        ssh_key: SSHKeyPair | None,
+        name_hint: str,
+        auto_launch: bool,
+    ) -> None:
+        if not self.name:
+            suffix = secrets.token_hex(4)
+            hint = f"{name_hint}-" if name_hint else ""
+            self.name = f"{VM_NAME_PREFIX}{hint}{suffix}"
+        self._ssh_key = ssh_key if ssh_key is not None else SSHKeyPair.create(self.name)
+        if auto_launch:
+            self.launch()
+
+    @property
+    def private_key_path(self) -> Path:
+        """Path to the ephemeral SSH private key."""
+        return self._ssh_key.private_key_path
+
+    @property
+    def public_key(self) -> str:
+        """The SSH public key string."""
+        return self._ssh_key.public_key
+
+    def launch(self) -> None:
+        """Launch the VM in Incus.
 
         The Debian cloud images don't include cloud-init, so SSH setup
         is handled in wait_ready() via incus exec after the VM boots.
         """
-        suffix = secrets.token_hex(4)
-        name = f"{VM_NAME_PREFIX}{name_hint + '-' if name_hint else ''}{suffix}"
-
-        ssh_key = SSHKeyPair.create(name)
-
+        if not self.image:
+            raise ValueError("image is required to launch a VM")
         subprocess.run(
-            ["incus", "launch", image, name, "--vm"],
+            ["incus", "launch", self.image, self.name, "--vm"],
             capture_output=True,
             text=True,
             check=True,
         )
-
-        return cls(name=name, ssh_key=ssh_key, _image=image)
 
     def destroy(self) -> None:
         """Force-delete the VM and clean up SSH keys."""
@@ -69,7 +90,7 @@ class IncusVM:
                 f"{result.stderr.strip()}",
                 file=sys.stderr,
             )
-        self.ssh_key.cleanup()
+        self._ssh_key.cleanup()
 
     def wait_ready(self, timeout: int = VM_READY_TIMEOUT_SECONDS) -> None:
         """Wait until the VM is running and SSH is reachable.
@@ -141,7 +162,7 @@ class IncusVM:
                     "-o", "UserKnownHostsFile=/dev/null",
                     "-o", "BatchMode=yes",
                     "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
-                    "-i", str(self.ssh_key.private_key_path),
+                    "-i", str(self.private_key_path),
                     f"root@{self.ip_address}",
                     "echo ready",
                 ],
@@ -177,7 +198,7 @@ class IncusVM:
         # Inject SSH public key
         self.exec("mkdir -p /root/.ssh && chmod 700 /root/.ssh")
         self.exec(
-            f"echo '{self.ssh_key.public_key}' >> /root/.ssh/authorized_keys "
+            f"echo '{self.public_key}' >> /root/.ssh/authorized_keys "
             "&& chmod 600 /root/.ssh/authorized_keys"
         )
 
@@ -240,7 +261,7 @@ class IncusVM:
                 "-o", "UserKnownHostsFile=/dev/null",
                 "-o", "BatchMode=yes",
                 "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
-                "-i", str(self.ssh_key.private_key_path),
+                "-i", str(self.private_key_path),
                 f"{self.ssh_user}@{self.ip_address}",
                 cmd,
             ],

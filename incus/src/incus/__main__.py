@@ -69,20 +69,20 @@ def cmd_create(args: argparse.Namespace) -> None:
     """Create a new test VM."""
     image = f"{IMAGE_PREFIX}{args.debian}"
     print(f"Creating VM with image {image}...")
-    vm = IncusVM.create(image=image)
+    vm = IncusVM(image=image, auto_launch=True)
     print(f"VM '{vm.name}' launched. Waiting for SSH...")
     vm.wait_ready()
     print(f"VM '{vm.name}' ready.")
     print(f"  IP: {vm.ip_address}")
-    print(f"  SSH: ssh -i {vm.ssh_key.private_key_path} root@{vm.ip_address}")
+    print(f"  SSH: ssh -i {vm.private_key_path} root@{vm.ip_address}")
     print(f"  Destroy: make vm-destroy VM={vm.name}")
 
     # Save VM info for vm-ssh to find later
-    info_path = vm.ssh_key.private_key_path.parent / "vm-info.json"
+    info_path = vm.private_key_path.parent / "vm-info.json"
     info_path.write_text(json.dumps({
         "name": vm.name,
         "ip_address": vm.ip_address,
-        "ssh_key": str(vm.ssh_key.private_key_path),
+        "ssh_key": str(vm.private_key_path),
     }))
 
 
@@ -219,7 +219,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
         print(f"Building image '{alias}'...")
 
         image = f"{IMAGE_PREFIX}{version}"
-        vm = IncusVM.create(image=image, name_hint=f"publish-{variant}")
+        vm = IncusVM(image=image, name_hint=f"publish-{variant}", auto_launch=True)
         try:
             print(f"  Waiting for VM '{vm.name}'...")
             vm.wait_ready()
@@ -261,13 +261,7 @@ def cmd_publish(args: argparse.Namespace) -> None:
             print(f"  Error building '{variant}', cleaning up VM...")
             raise
         finally:
-            subprocess.run(
-                ["incus", "delete", vm.name, "--force"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            vm.ssh_key.cleanup()
+            vm.destroy()
 
     print("All images published.")
 

@@ -19,6 +19,7 @@ import contextlib
 import socket
 import subprocess
 import time
+from pathlib import Path
 
 import pytest
 
@@ -37,7 +38,7 @@ def _ssh_attempt(
     vm,
     *,
     user: str = "root",
-    key_path: str | None = None,
+    key_path: str | Path | None = None,
     extra_opts: list[str] | None = None,
     timeout: int = 10,
 ) -> subprocess.CompletedProcess:
@@ -58,7 +59,7 @@ def _ssh_attempt(
         "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT_SECONDS}",
     ]
     if key_path:
-        cmd += ["-i", key_path]
+        cmd += ["-i", str(key_path)]
     if extra_opts:
         cmd += extra_opts
     cmd += [f"{user}@{vm.ip_address}", "echo SUCCESS"]
@@ -258,7 +259,7 @@ class TestSSHHardeningBehavior:
         result = _ssh_attempt(
             bootstrap_vm,
             user="root",
-            key_path=str(bootstrap_vm.ssh_key.private_key_path),
+            key_path=bootstrap_vm.private_key_path,
         )
         assert result.returncode != 0, (
             "Root SSH login succeeded — PermitRootLogin is not effective"
@@ -287,7 +288,7 @@ class TestSSHHardeningBehavior:
         result = _ssh_attempt(
             bootstrap_vm,
             user="nobody",
-            key_path=str(bootstrap_vm.ssh_key.private_key_path),
+            key_path=bootstrap_vm.private_key_path,
         )
         assert result.returncode != 0, (
             "SSH login as 'nobody' succeeded — AllowGroups is not effective"
@@ -298,7 +299,7 @@ class TestSSHHardeningBehavior:
         """An allowed user with the correct key can SSH in."""
         # Verify the key is actually in authorized_keys (diagnostic)
         ak = bootstrap_vm.exec("cat /home/testuser/.ssh/authorized_keys")
-        pub = bootstrap_vm.ssh_key.public_key.split()[1]  # just the key data
+        pub = bootstrap_vm.public_key.split()[1]  # just the key data
         assert pub in ak.stdout, (
             f"Test SSH key not found in testuser's authorized_keys.\n"
             f"authorized_keys: {ak.stdout[:200]}\n"
@@ -309,7 +310,7 @@ class TestSSHHardeningBehavior:
         result = _ssh_attempt(
             bootstrap_vm,
             user="testuser",
-            key_path=str(bootstrap_vm.ssh_key.private_key_path),
+            key_path=bootstrap_vm.private_key_path,
         )
         assert result.returncode == 0, (
             f"Allowed user 'testuser' cannot SSH in.\n"

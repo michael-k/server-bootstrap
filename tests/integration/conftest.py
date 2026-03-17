@@ -39,7 +39,7 @@ def bootstrap_vm(request):
     version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
     image = f"{IMAGE_PREFIX}{version}"
 
-    vm = IncusVM.create(image=image)
+    vm = IncusVM(image=image, auto_launch=True)
     try:
         vm.wait_ready()
         result = run_bootstrap_playbook(vm)
@@ -73,7 +73,7 @@ def swap_vm(request):
     version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
     image = f"{IMAGE_PREFIX}{version}"
 
-    vm = IncusVM.create(image=image)
+    vm = IncusVM(image=image, auto_launch=True)
     try:
         vm.wait_ready()
         result = run_bootstrap_playbook(vm, extra_vars={

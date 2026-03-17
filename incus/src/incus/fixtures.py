@@ -37,7 +37,7 @@ def print_debug_info(vm: IncusVM) -> None:
     """Print connection info for a preserved VM."""
     print(
         f"\nVM '{vm.name}' preserved for debugging.\n"
-        f"  SSH: ssh -i {vm.ssh_key.private_key_path} root@{vm.ip_address}\n"
+        f"  SSH: ssh -i {vm.private_key_path} root@{vm.ip_address}\n"
         f"  Cleanup: make vm-destroy VM={vm.name}\n"
     )
 
@@ -51,7 +51,7 @@ def clean_vm(request):
     version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
     image = f"{IMAGE_PREFIX}{version}"
 
-    vm = IncusVM.create(image=image)
+    vm = IncusVM(image=image, auto_launch=True)
     try:
         vm.wait_ready()
     except Exception:

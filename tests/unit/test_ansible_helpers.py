@@ -11,18 +11,17 @@ from incus.ansible import (
     build_single_role_playbook,
     run_playbook,
 )
+from incus.vm import IncusVM
 
 pytestmark = pytest.mark.unit
+
+_SSH_KEY = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
+_VM = IncusVM(name="bootstrap-test-abc123", ssh_key=_SSH_KEY, ip_address="10.0.0.42")
 
 
 class TestBuildInventory:
     def test_generates_valid_yaml_inventory(self):
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 22
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-
-        content = build_inventory(vm)
+        content = build_inventory(_VM)
         inv = yaml.safe_load(content)
 
         assert "all" in inv
@@ -33,22 +32,17 @@ class TestBuildInventory:
         assert host_vars["ansible_port"] == 22
 
     def test_uses_vm_ssh_port(self):
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 2222
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
+        vm = IncusVM(
+            name="bootstrap-test-abc123", ssh_key=_SSH_KEY,
+            ip_address="10.0.0.42", ssh_port=2222,
+        )
 
         content = build_inventory(vm)
         inv = yaml.safe_load(content)
         assert inv["all"]["hosts"]["testvm"]["ansible_port"] == 2222
 
     def test_uses_custom_user(self):
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 22
-        vm.ssh_key = MagicMock(private_key_path="/tmp/fake/id_ed25519")
-
-        content = build_inventory(vm, user="ansible")
+        content = build_inventory(_VM, user="ansible")
         inv = yaml.safe_load(content)
         assert inv["all"]["hosts"]["testvm"]["ansible_user"] == "ansible"
 
@@ -77,12 +71,8 @@ class TestRunPlaybook:
     @patch("incus.ansible.subprocess.run")
     def test_runs_ansible_playbook_directly(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 22
-        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        run_playbook(vm, playbook_path=Path("/tmp/site.yml"))
+        run_playbook(_VM, playbook_path=Path("/tmp/site.yml"))
 
         cmd = mock_run.call_args[0][0]
         assert cmd[0] == "ansible-playbook"
@@ -92,12 +82,8 @@ class TestRunPlaybook:
     @patch("incus.ansible.subprocess.run")
     def test_passes_extra_vars_via_json_file(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 22
-        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        run_playbook(vm, playbook_path=Path("/tmp/site.yml"), extra_vars={"ssh_port": 2222})
+        run_playbook(_VM, playbook_path=Path("/tmp/site.yml"), extra_vars={"ssh_port": 2222})
 
         cmd = mock_run.call_args[0][0]
         extra_var_args = [c for c in cmd if str(c).startswith("@")]
@@ -107,12 +93,8 @@ class TestRunPlaybook:
     @patch("incus.ansible.subprocess.run")
     def test_passes_cwd(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 22
-        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        run_playbook(vm, playbook_path=Path("/tmp/site.yml"), cwd="/some/dir")
+        run_playbook(_VM, playbook_path=Path("/tmp/site.yml"), cwd="/some/dir")
 
         kwargs = mock_run.call_args[1]
         assert kwargs["cwd"] == "/some/dir"
@@ -120,12 +102,8 @@ class TestRunPlaybook:
     @patch("incus.ansible.subprocess.run")
     def test_does_not_mutate_vm_ssh_port(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
-        vm = MagicMock()
-        vm.ip_address = "10.0.0.42"
-        vm.ssh_port = 22
-        vm.ssh_key = MagicMock(private_key_path=Path("/tmp/fake/id_ed25519"))
 
-        run_playbook(vm, playbook_path=Path("/tmp/site.yml"), extra_vars={"ssh_port": 2222})
+        run_playbook(_VM, playbook_path=Path("/tmp/site.yml"), extra_vars={"ssh_port": 2222})
 
         # run_playbook should NOT mutate vm.ssh_port
-        assert vm.ssh_port == 22
+        assert _VM.ssh_port == 22
