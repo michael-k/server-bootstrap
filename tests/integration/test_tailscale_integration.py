@@ -179,7 +179,7 @@ def _collect_diagnostics(
     ]:
         lines.append(f"\n--- {label} ({vm.name}) ---")
         for cmd in cmds:
-            result = vm.exec(cmd, timeout=10)
+            result = vm.exec(cmd, timeout=30)
             lines.append(f"$ {cmd}")
             lines.append(result.stdout[:500] if result.stdout else "(empty stdout)")
             if result.stderr:

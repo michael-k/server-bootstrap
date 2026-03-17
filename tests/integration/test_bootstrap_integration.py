@@ -420,15 +420,24 @@ class TestTimeSyncBehavior:
 
     def test_chrony_is_tracking_a_source(self, bootstrap_vm):
         """Chrony should be actively tracking an NTP source."""
-        result = bootstrap_vm.exec("chronyc -n tracking")
-        assert result.returncode == 0, (
-            f"chronyc tracking failed.\n"
-            f"stdout: {result.stdout}\nstderr: {result.stderr}"
-        )
-        # "Reference ID" line shows the NTP source; 00000000 means no source
-        assert "Reference ID    : 00000000" not in result.stdout, (
-            "Chrony is not tracking any NTP source"
-        )
+        # Chrony needs time after boot to poll sources and select one.
+        # Retry for up to 60 seconds before giving up.
+        import time
+
+        deadline = time.monotonic() + 60
+        while True:
+            result = bootstrap_vm.exec("chronyc -n tracking")
+            assert result.returncode == 0, (
+                f"chronyc tracking failed.\n"
+                f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            )
+            if "Reference ID    : 00000000" not in result.stdout:
+                return
+            if time.monotonic() > deadline:
+                break
+            time.sleep(3)
+
+        pytest.fail("Chrony is not tracking any NTP source after 60s")
 
 
 # ===========================================================================
