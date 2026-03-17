@@ -260,7 +260,7 @@ def server_vm(request):
         pytest.skip("Incus not available")
 
     # Launch from pre-built bootstrap image (seconds, not minutes)
-    vm = IncusVM.create(image="bootstrap/open-13")
+    vm = IncusVM(image="bootstrap/open-13", auto_launch=True)
     try:
         vm.wait_ready()
 
