@@ -407,7 +407,7 @@ class TestTimeSyncBehavior:
 
     def test_chrony_sources_configured(self, bootstrap_vm):
         """Chrony has NTP sources configured and can reach at least one."""
-        result = bootstrap_vm.exec("chronyc sources")
+        result = bootstrap_vm.exec("chronyc -n sources")
         # chronyc may return non-zero if a source is temporarily unreachable
         # ("503 No such source") while still showing valid sources, so we
         # check the output content rather than the return code.
@@ -420,7 +420,7 @@ class TestTimeSyncBehavior:
 
     def test_chrony_is_tracking_a_source(self, bootstrap_vm):
         """Chrony should be actively tracking an NTP source."""
-        result = bootstrap_vm.exec("chronyc tracking")
+        result = bootstrap_vm.exec("chronyc -n tracking")
         assert result.returncode == 0, (
             f"chronyc tracking failed.\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
