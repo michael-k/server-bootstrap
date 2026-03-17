@@ -25,6 +25,7 @@ def build_inventory(vm: IncusVM, user: str = "root") -> str:
                     "ansible_user": user,
                     "ansible_port": vm.ssh_port,
                     "ansible_ssh_private_key_file": str(vm.private_key_path),
+                    "ansible_python_interpreter": "/usr/bin/python3",
                     "ansible_ssh_common_args": (
                         "-o PubkeyAuthentication=yes "
                         "-o IdentitiesOnly=yes "
