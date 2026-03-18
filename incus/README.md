@@ -22,7 +22,7 @@ fixtures.
 ```python
 from incus.vm import IncusVM
 
-vm = IncusVM(image="bootstrap/open-13", auto_launch=True)
+vm = IncusVM(image="bootstrap/open-13", ssh_port=2222, auto_launch=True)
 vm.wait_ready()
 
 result = vm.ssh("systemctl is-active nginx")
@@ -37,13 +37,13 @@ vm.destroy()
 
 ```python
 # Minimal — auto-generates name and SSH keypair
-vm = IncusVM(image="bootstrap/open-13", auto_launch=True)
+vm = IncusVM(image="bootstrap/open-13", ssh_port=2222, auto_launch=True)
 
 # With name hint for identification
-vm = IncusVM(image="bootstrap/open-13", name_hint="webserver", auto_launch=True)
+vm = IncusVM(image="bootstrap/open-13", ssh_port=2222, name_hint="webserver", auto_launch=True)
 
 # Two-step: construct first, launch later
-vm = IncusVM(image="bootstrap/open-13")
+vm = IncusVM(image="bootstrap/open-13", ssh_port=2222)
 vm.launch()
 
 # Port-knocking image
@@ -55,7 +55,7 @@ vm = IncusVM(
 )
 
 # Non-root SSH user
-vm = IncusVM(image="bootstrap/open-13", ssh_user="admin", auto_launch=True)
+vm = IncusVM(image="bootstrap/open-13", ssh_port=2222, ssh_user="admin", auto_launch=True)
 ```
 
 | Parameter | Type | Default | Description |
@@ -162,7 +162,7 @@ def my_vm(request):
     if not incus_available():
         pytest.skip("Incus not available")
 
-    vm = IncusVM(image="bootstrap/open-13", auto_launch=True)
+    vm = IncusVM(image="bootstrap/open-13", ssh_port=2222, auto_launch=True)
     vm.wait_ready()
     yield vm
     vm.destroy()

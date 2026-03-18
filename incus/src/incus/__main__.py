@@ -38,7 +38,7 @@ _PUBLISH_VARS: dict[str, str | int | bool | list[int]] = {
     "manual_user_ssh_key_file": "",  # Set dynamically
     "deploy_user_name": "ansible",
     "deploy_user_ssh_key_file": "",  # Set dynamically
-    "ssh_port": 22,
+    "ssh_port": 2222,
     "target_hostname": "bootstrap-test",
     "port_knocking_sequence": [7000, 8500, 9100],
     "tailscale_enabled": False,

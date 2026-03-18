@@ -9,7 +9,7 @@ Quick start::
 
     from incus.vm import IncusVM
 
-    vm = IncusVM(image="bootstrap/open-13", auto_launch=True)
+    vm = IncusVM(image="bootstrap/open-13", ssh_port=2222, auto_launch=True)
     vm.wait_ready()
 
     result = vm.ssh("systemctl is-active nginx")
