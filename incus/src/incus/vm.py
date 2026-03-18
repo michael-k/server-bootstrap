@@ -11,6 +11,7 @@ from dataclasses import InitVar, dataclass, field
 from pathlib import Path
 
 from incus.constants import (
+    BASE_IMAGE_PREFIX,
     DEFAULT_DEBIAN_VERSION,
     IMAGE_PREFIX,
     SSH_CONNECT_TIMEOUT_SECONDS,
@@ -19,6 +20,124 @@ from incus.constants import (
     VM_READY_TIMEOUT_SECONDS,
 )
 from incus.ssh import SSHKeyPair
+
+
+def ensure_base_image(version: str = DEFAULT_DEBIAN_VERSION) -> str:
+    """Ensure a pre-baked base image exists for the given Debian version.
+
+    The base image contains openssh-server, curl, and PermitRootLogin enabled.
+    It is rebuilt automatically when the upstream images:debian/{version}
+    fingerprint changes.
+
+    Returns the image alias (e.g. ``bootstrap/internal-base-13``).
+    """
+    alias = f"{BASE_IMAGE_PREFIX}{version}"
+    upstream_image = f"{IMAGE_PREFIX}{version}"
+
+    # Get upstream fingerprint
+    result = subprocess.run(
+        ["incus", "image", "info", upstream_image, "--format=json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    upstream_fp = json.loads(result.stdout)["fingerprint"]
+
+    # Check if base image already exists
+    result = subprocess.run(
+        ["incus", "image", "list", alias, "--format=json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    existing = json.loads(result.stdout)
+    if existing:
+        stored_fp = existing[0].get("properties", {}).get("user.upstream_fingerprint")
+        if stored_fp == upstream_fp:
+            return alias
+        # Stale — delete old image
+        subprocess.run(
+            ["incus", "image", "delete", existing[0]["fingerprint"]],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    # Build new base image
+    vm_name = f"{VM_NAME_PREFIX}base-build-{secrets.token_hex(4)}"
+    subprocess.run(
+        ["incus", "launch", upstream_image, vm_name, "--vm"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    try:
+        # Wait for agent
+        for _ in range(60):
+            result = subprocess.run(
+                ["incus", "exec", vm_name, "--", "echo", "agent-ready"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0 and "agent-ready" in result.stdout:
+                break
+            time.sleep(SSH_POLL_INTERVAL_SECONDS)
+        else:
+            raise TimeoutError(f"Agent not ready on '{vm_name}' within 120s")
+
+        # Install packages
+        subprocess.run(
+            [
+                "incus", "exec", vm_name, "--", "sh", "-c",
+                "apt-get update -qq && apt-get install -y -qq openssh-server curl",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=True,
+        )
+
+        # Enable PermitRootLogin
+        subprocess.run(
+            [
+                "incus", "exec", vm_name, "--", "sh", "-c",
+                "sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Stop VM before publishing
+        subprocess.run(
+            ["incus", "stop", vm_name],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=120,
+        )
+
+        # Publish with upstream fingerprint property
+        subprocess.run(
+            [
+                "incus", "publish", vm_name,
+                f"--alias={alias}",
+                f"user.upstream_fingerprint={upstream_fp}",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    finally:
+        subprocess.run(
+            ["incus", "delete", vm_name, "--force"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    return alias
 
 
 @dataclass
@@ -64,13 +183,18 @@ class IncusVM:
     def launch(self) -> None:
         """Launch the VM in Incus.
 
-        The Debian cloud images don't include cloud-init, so SSH setup
-        is handled in wait_ready() via incus exec after the VM boots.
+        If the image is a raw upstream Debian image (``images:debian/…``),
+        transparently swaps to a pre-baked base image with openssh-server
+        and curl already installed.
         """
         if not self.image:
             raise ValueError("image is required to launch a VM")
+        image = self.image
+        if image.startswith(IMAGE_PREFIX):
+            version = image[len(IMAGE_PREFIX):]
+            image = ensure_base_image(version)
         subprocess.run(
-            ["incus", "launch", self.image, self.name, "--vm"],
+            ["incus", "launch", image, self.name, "--vm"],
             capture_output=True,
             text=True,
             check=True,

@@ -6,13 +6,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from incus.vm import IncusVM
+from incus.vm import IncusVM, ensure_base_image
 
 pytestmark = pytest.mark.unit
 
 
 class TestIncusVMLaunch:
-    def test_launch_calls_incus_launch_with_vm_flag(self):
+    @patch("incus.vm.ensure_base_image", return_value="bootstrap/internal-base-13")
+    def test_launch_calls_incus_launch_with_vm_flag(self, _mock_ensure):
         vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock(), image="images:debian/13")
 
         with patch("incus.vm.subprocess.run") as mock_run:
@@ -23,9 +24,9 @@ class TestIncusVMLaunch:
         assert "incus" in cmd[0]
         assert "launch" in cmd
         assert "--vm" in cmd
-        assert "images:debian/13" in cmd
 
-    def test_launch_does_not_use_cloud_init(self):
+    @patch("incus.vm.ensure_base_image", return_value="bootstrap/internal-base-13")
+    def test_launch_does_not_use_cloud_init(self, _mock_ensure):
         vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock(), image="images:debian/13")
 
         with patch("incus.vm.subprocess.run") as mock_run:
@@ -42,9 +43,10 @@ class TestIncusVMLaunch:
         with pytest.raises(ValueError, match="image is required"):
             vm.launch()
 
+    @patch("incus.vm.ensure_base_image", return_value="bootstrap/internal-base-13")
     @patch("incus.vm.subprocess.run")
     @patch("incus.vm.SSHKeyPair.create")
-    def test_auto_launch_calls_launch(self, mock_keypair, mock_run):
+    def test_auto_launch_calls_launch(self, mock_keypair, mock_run, _mock_ensure):
         mock_keypair.return_value = MagicMock()
         mock_run.return_value = MagicMock(returncode=0)
 
@@ -53,6 +55,32 @@ class TestIncusVMLaunch:
         cmd = mock_run.call_args[0][0]
         assert "launch" in cmd
         assert vm.name.startswith("bootstrap-test-")
+
+    @patch("incus.vm.ensure_base_image")
+    @patch("incus.vm.subprocess.run")
+    def test_launch_swaps_debian_image_for_base(self, mock_run, mock_ensure):
+        mock_ensure.return_value = "bootstrap/internal-base-13"
+        mock_run.return_value = MagicMock(returncode=0)
+
+        vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock(), image="images:debian/13")
+        vm.launch()
+
+        mock_ensure.assert_called_once_with("13")
+        cmd = mock_run.call_args[0][0]
+        assert "bootstrap/internal-base-13" in cmd
+        assert "images:debian/13" not in cmd
+
+    @patch("incus.vm.ensure_base_image")
+    @patch("incus.vm.subprocess.run")
+    def test_launch_skips_swap_for_bootstrap_images(self, mock_run, mock_ensure):
+        mock_run.return_value = MagicMock(returncode=0)
+
+        vm = IncusVM(name="bootstrap-test-abc123", ssh_key=MagicMock(), image="bootstrap/open-13")
+        vm.launch()
+
+        mock_ensure.assert_not_called()
+        cmd = mock_run.call_args[0][0]
+        assert "bootstrap/open-13" in cmd
 
 
 class TestIncusVMName:
@@ -201,3 +229,96 @@ class TestIncusVMSSH:
             vm.ssh("whoami")
 
         mock_knock.assert_not_called()
+
+
+class TestEnsureBaseImage:
+    @patch("incus.vm.subprocess.run")
+    def test_returns_existing_when_fingerprint_matches(self, mock_run):
+        upstream_fp = "abc123"
+
+        def side_effect(cmd, **kwargs):
+            cmd_str = " ".join(str(c) for c in cmd)
+            if "image" in cmd and "info" in cmd and "images:debian" in cmd_str:
+                return MagicMock(
+                    returncode=0,
+                    stdout=json.dumps({"fingerprint": upstream_fp}),
+                )
+            if "image" in cmd and "list" in cmd and "internal-base" in cmd_str:
+                return MagicMock(returncode=0, stdout=json.dumps([{
+                    "fingerprint": "localfp",
+                    "aliases": [{"name": "bootstrap/internal-base-13"}],
+                    "properties": {"user.upstream_fingerprint": upstream_fp},
+                }]))
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = side_effect
+        assert ensure_base_image("13") == "bootstrap/internal-base-13"
+
+        # No launch or publish should have happened
+        launched = [c for c in mock_run.call_args_list if "launch" in c[0][0]]
+        assert len(launched) == 0
+
+    @patch("incus.vm.subprocess.run")
+    def test_builds_when_missing(self, mock_run):
+        upstream_fp = "abc123"
+
+        def side_effect(cmd, **kwargs):
+            cmd_str = " ".join(str(c) for c in cmd)
+            if "image" in cmd and "info" in cmd and "images:debian" in cmd_str:
+                return MagicMock(
+                    returncode=0,
+                    stdout=json.dumps({"fingerprint": upstream_fp}),
+                )
+            if "image" in cmd and "list" in cmd and "internal-base" in cmd_str:
+                return MagicMock(returncode=0, stdout="[]")
+            if "exec" in cmd and "agent-ready" in cmd:
+                return MagicMock(returncode=0, stdout="agent-ready")
+            if "exec" in cmd:
+                return MagicMock(returncode=0, stdout="", stderr="")
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = side_effect
+        assert ensure_base_image("13") == "bootstrap/internal-base-13"
+
+        publish_calls = [c for c in mock_run.call_args_list if "publish" in c[0][0]]
+        assert len(publish_calls) == 1
+        assert f"user.upstream_fingerprint={upstream_fp}" in publish_calls[0][0][0]
+
+    @patch("incus.vm.subprocess.run")
+    def test_rebuilds_when_fingerprint_stale(self, mock_run):
+        old_fp = "old123"
+        new_fp = "new456"
+
+        def side_effect(cmd, **kwargs):
+            cmd_str = " ".join(str(c) for c in cmd)
+            if "image" in cmd and "info" in cmd and "images:debian" in cmd_str:
+                return MagicMock(
+                    returncode=0,
+                    stdout=json.dumps({"fingerprint": new_fp}),
+                )
+            if "image" in cmd and "list" in cmd and "internal-base" in cmd_str:
+                return MagicMock(returncode=0, stdout=json.dumps([{
+                    "fingerprint": "localfp",
+                    "aliases": [{"name": "bootstrap/internal-base-13"}],
+                    "properties": {"user.upstream_fingerprint": old_fp},
+                }]))
+            if "exec" in cmd and "agent-ready" in cmd:
+                return MagicMock(returncode=0, stdout="agent-ready")
+            if "exec" in cmd:
+                return MagicMock(returncode=0, stdout="", stderr="")
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = side_effect
+        assert ensure_base_image("13") == "bootstrap/internal-base-13"
+
+        # Old image should have been deleted
+        image_deletes = [
+            c for c in mock_run.call_args_list
+            if "image" in c[0][0] and "delete" in c[0][0]
+        ]
+        assert len(image_deletes) == 1
+
+        # New image published with new fingerprint
+        publish_calls = [c for c in mock_run.call_args_list if "publish" in c[0][0]]
+        assert len(publish_calls) == 1
+        assert f"user.upstream_fingerprint={new_fp}" in publish_calls[0][0][0]
