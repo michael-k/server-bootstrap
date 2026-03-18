@@ -154,11 +154,14 @@ class IncusVM:
         # Phase 4: Install openssh-server and inject SSH key via incus exec
         self._setup_ssh()
 
-        # Phase 5: Wait for SSH to accept connections
+        # Phase 5: Port knock (if configured) then wait for SSH to accept connections
         while time.monotonic() < deadline:
+            if self.knock_sequence is not None and (time.monotonic() - self._last_knock_time) > 20:
+                self.knock()
             result = subprocess.run(
                 [
                     "ssh",
+                    "-p", str(self.ssh_port),
                     "-o", "PubkeyAuthentication=yes",
                     "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null",
