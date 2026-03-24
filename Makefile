@@ -24,10 +24,12 @@ help:
 
 INVENTORY ?= inventory/hosts.yml
 LIMIT ?=
+VAULT_PASSWORD_FILE ?=
+VAULT_ARGS = $(if $(VAULT_PASSWORD_FILE),--vault-password-file $(VAULT_PASSWORD_FILE),--ask-vault-pass)
 
 bootstrap:
 	@echo "Running VPS bootstrap playbook..."
-	uv run ansible-playbook -i $(INVENTORY) site.yml --ask-vault-pass $(if $(LIMIT),--limit $(LIMIT))
+	uv run ansible-playbook -i $(INVENTORY) site.yml $(VAULT_ARGS) $(if $(LIMIT),--limit $(LIMIT))
 
 verify:
 	@echo "Running verification test suite..."
