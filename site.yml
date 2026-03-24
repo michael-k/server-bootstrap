@@ -58,17 +58,17 @@
     - name: Pre-flight - Verify target is Debian
       ansible.builtin.assert:
         that:
-          - ansible_os_family == "Debian"
+          - ansible_facts['os_family'] == "Debian"
         fail_msg: "This playbook only supports Debian-based systems"
         success_msg: "Target system is Debian-based"
 
     - name: Pre-flight - Verify Debian stable (bookworm)
       ansible.builtin.assert:
         that:
-          - ansible_distribution == "Debian"
-          - ansible_distribution_major_version | int >= 13
+          - ansible_facts['distribution'] == "Debian"
+          - ansible_facts['distribution_major_version'] | int >= 13
         fail_msg: "This playbook requires Debian 13 (trixie) or newer"
-        success_msg: "Target system is running Debian {{ ansible_distribution_version }}"
+        success_msg: "Target system is running Debian {{ ansible_facts['distribution_version'] }}"
 
     - name: Pre-flight - Verify required variables are defined
       ansible.builtin.assert:
@@ -115,7 +115,7 @@
         msg:
           - "=== VPS Bootstrap Configuration Summary ==="
           - "Target: {{ ansible_host | default(inventory_hostname) }}"
-          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "OS: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
           - "Manual User: {{ manual_user_name }} (uid 1000)"
           - "Ansible User: {{ deploy_user_name }} (uid 1999)"
           - "SSH Port: {{ ssh_port | default(22) }}"
