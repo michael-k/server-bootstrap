@@ -30,6 +30,33 @@ def _should_keep_vm(request: pytest.FixtureRequest) -> bool:
     return (failed + errored) > 0
 
 
+@pytest.fixture(scope="class")
+def isolated_vm(request):
+    """Fresh Debian VM scoped to a single test class."""
+    if not incus_available():
+        pytest.skip("Incus not available")
+
+    version = request.config.getoption("--debian-version", DEFAULT_DEBIAN_VERSION)
+    image = f"{IMAGE_PREFIX}{version}"
+
+    vm = IncusVM(image=image, auto_launch=True)
+    try:
+        vm.wait_ready()
+    except Exception:
+        if os.environ.get("KEEP_VM_ON_FAIL"):
+            print_debug_info(vm)
+        else:
+            vm.destroy()
+        raise
+
+    yield vm
+
+    if _should_keep_vm(request):
+        print_debug_info(vm)
+    else:
+        vm.destroy()
+
+
 @pytest.fixture(scope="session")
 def bootstrap_vm(request):
     """Fresh Debian VM with bootstrap playbook already applied."""

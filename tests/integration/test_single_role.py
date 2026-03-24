@@ -11,25 +11,25 @@ pytestmark = [pytest.mark.integration, pytest.mark.slow]
 class TestUsersRole:
     """Test the users role in isolation."""
 
-    def test_creates_manual_user(self, clean_vm):
-        result = run_bootstrap_playbook(clean_vm, limit_to_role="users")
+    def test_creates_manual_user(self, isolated_vm):
+        result = run_bootstrap_playbook(isolated_vm, limit_to_role="users")
         assert result.returncode == 0, (
             f"Users role failed.\nstdout: {result.stdout[-3000:]}\n"
             f"stderr: {result.stderr[-1000:]}"
         )
 
-        check = clean_vm.exec("id testuser")
+        check = isolated_vm.exec("id testuser")
         assert check.returncode == 0
         assert "uid=1000" in check.stdout
 
-    def test_creates_ansible_user(self, clean_vm):
-        result = run_bootstrap_playbook(clean_vm, limit_to_role="users")
+    def test_creates_ansible_user(self, isolated_vm):
+        result = run_bootstrap_playbook(isolated_vm, limit_to_role="users")
         assert result.returncode == 0, (
             f"Users role failed.\nstdout: {result.stdout[-3000:]}\n"
             f"stderr: {result.stderr[-1000:]}"
         )
 
-        check = clean_vm.exec("id ansible")
+        check = isolated_vm.exec("id ansible")
         assert check.returncode == 0
         assert "uid=1999" in check.stdout
 
@@ -37,9 +37,9 @@ class TestUsersRole:
 class TestSSHHardeningRole:
     """Test SSH hardening role (requires users role first)."""
 
-    def test_disables_password_auth(self, clean_vm):
+    def test_disables_password_auth(self, isolated_vm):
         result = run_bootstrap_playbook(
-            clean_vm,
+            isolated_vm,
             limit_to_role=["users", "ssh_hardening"],
         )
         assert result.returncode == 0, (
@@ -47,33 +47,33 @@ class TestSSHHardeningRole:
             f"stderr: {result.stderr[-1000:]}"
         )
 
-        check = clean_vm.exec("sshd -T | grep passwordauthentication")
+        check = isolated_vm.exec("sshd -T | grep passwordauthentication")
         assert "passwordauthentication no" in check.stdout.lower()
 
 
 class TestFirewallRole:
     """Test firewall role in isolation."""
 
-    def test_nftables_configured(self, clean_vm):
-        result = run_bootstrap_playbook(clean_vm, limit_to_role="firewall")
+    def test_nftables_configured(self, isolated_vm):
+        result = run_bootstrap_playbook(isolated_vm, limit_to_role="firewall")
         assert result.returncode == 0, (
             f"Firewall role failed.\nstdout: {result.stdout[-3000:]}\n"
             f"stderr: {result.stderr[-1000:]}"
         )
 
-        check = clean_vm.exec("systemctl is-active nftables")
+        check = isolated_vm.exec("systemctl is-active nftables")
         assert "active" in check.stdout
 
 
 class TestLoggingRole:
     """Test logging role in isolation."""
 
-    def test_journald_persistent(self, clean_vm):
-        result = run_bootstrap_playbook(clean_vm, limit_to_role="logging")
+    def test_journald_persistent(self, isolated_vm):
+        result = run_bootstrap_playbook(isolated_vm, limit_to_role="logging")
         assert result.returncode == 0, (
             f"Logging role failed.\nstdout: {result.stdout[-3000:]}\n"
             f"stderr: {result.stderr[-1000:]}"
         )
 
-        check = clean_vm.exec("test -d /var/log/journal && echo EXISTS")
+        check = isolated_vm.exec("test -d /var/log/journal && echo EXISTS")
         assert "EXISTS" in check.stdout
