@@ -22,13 +22,16 @@ help:
 	@echo "  images             Build bootstrapped VM images for other projects"
 	@echo "  images-clean       Delete all bootstrap/* images from Incus"
 
+INVENTORY ?= inventory/hosts.yml
+LIMIT ?=
+
 bootstrap:
 	@echo "Running VPS bootstrap playbook..."
-	uv run ansible-playbook -i inventory/hosts.yml site.yml --ask-vault-pass
+	uv run ansible-playbook -i $(INVENTORY) site.yml --ask-vault-pass $(if $(LIMIT),--limit $(LIMIT))
 
 verify:
 	@echo "Running verification test suite..."
-	uv run ansible-playbook -i inventory/hosts.yml tests/verify_bootstrap.yml
+	uv run ansible-playbook -i $(INVENTORY) tests/verify_bootstrap.yml $(if $(LIMIT),--limit $(LIMIT))
 
 test:
 	@echo "Running all tests..."
