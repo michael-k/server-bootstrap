@@ -148,30 +148,42 @@ ntp_servers:
 # ==============================================================================
 # SWAP CONFIGURATION (OPTIONAL)
 # ==============================================================================
+#
+# Two types of swap are available:
+#
+#   Zram swap — a compressed block device in RAM. The kernel compresses pages
+#   with lz4 before storing them, so a 1 GB zram device can hold roughly 2-3 GB
+#   of data at the cost of some CPU. Much faster than disk swap because no I/O
+#   is involved. Good default for VPS with limited RAM (< 2 GB).
+#
+#   Disk swap — a traditional swap file on disk (/swapfile). Slower than zram
+#   but not limited by physical RAM. Useful when memory pressure is occasional
+#   but can spike beyond what zram alone can absorb.
+#
+# Both can be enabled at the same time (layered strategy). Zram is used first
+# (priority 100) and the system falls back to disk swap (priority 10) when
+# zram fills up.
+#
+# Strategies:
+#   Zram only      — fast, good for most small VPS
+#   Disk only      — simple, for hosts with enough RAM most of the time
+#   Both (layered) — best headroom for < 2 GB VPS that see occasional spikes
+#
 
-# Enable zram compressed swap in memory
+# Enable zram compressed swap
 # Default: false
-# Purpose: Provide fast compressed swap space in RAM
-# Recommended: Enable for VPS with limited RAM (< 2GB)
 zram_enabled: false
 
 # Zram device size (required if zram_enabled is true)
-# Format: Percentage of RAM (e.g., "50%") or absolute size (e.g., "2G")
-# Purpose: Allocate memory for compressed swap
-# Recommended: 50% of RAM for systems with < 2GB RAM
+# Format: percentage of RAM (e.g., "50%") or absolute size (e.g., "2G")
+# Recommended: "50%" for systems with < 2 GB RAM
 # zram_size: "50%"
 
 # Disk swap file size
 # Default: "" (disabled)
-# Format: Size with unit (e.g., "2G", "4G") or empty string to disable
-# Purpose: Provide traditional disk-based swap space
-# Recommended: 1-2x RAM for systems with < 2GB RAM, or empty for larger systems
+# Format: size with unit (e.g., "2G", "4G") or empty string to disable
+# Recommended: 1-2x RAM for systems with < 2 GB RAM
 disk_swap_size: ""
-
-# Swap Priority Notes:
-# - Zram swap (if enabled): priority 100 (faster, accessed first)
-# - Disk swap (if enabled): priority 10 (slower, accessed second)
-# - Both can be enabled simultaneously for layered swap strategy
 
 # ==============================================================================
 # HOSTNAME CONFIGURATION (OPTIONAL)

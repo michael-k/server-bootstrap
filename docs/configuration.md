@@ -144,39 +144,9 @@ uv run ansible-playbook -i inventory/production site.yml --ask-vault-pass --limi
 uv run ansible-playbook -i inventory/production site.yml --ask-vault-pass --limit db-01
 ```
 
-## Swap Configuration Strategies
+## Swap Configuration
 
-### Zram Only (Fast, Limited by RAM)
-
-```yaml
-zram_enabled: true
-zram_size: "50%"  # 50% of total RAM
-disk_swap_size: ""
-```
-
-Best for: VPS with limited RAM (< 2GB) where speed is critical.
-
-### Disk Swap Only (Slower, Larger Capacity)
-
-```yaml
-zram_enabled: false
-zram_size: ""
-disk_swap_size: "4G"
-```
-
-Best for: VPS with sufficient RAM but occasional memory pressure.
-
-### Layered Strategy (Both)
-
-```yaml
-zram_enabled: true
-zram_size: "1G"
-disk_swap_size: "4G"
-```
-
-Best for: VPS with < 2GB RAM that needs both speed and capacity.
-
-The system will use zram first (priority 100), then fall back to disk swap (priority 10) when needed.
+See the `SWAP CONFIGURATION` section in `inventory/group_vars/all.yml.example` for available variables, strategies, and an explanation of zram vs. disk swap.
 
 ## Time Synchronization
 
