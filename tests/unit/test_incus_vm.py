@@ -241,7 +241,7 @@ class TestEnsureBaseImage:
             if "image" in cmd and "info" in cmd and "images:debian" in cmd_str:
                 return MagicMock(
                     returncode=0,
-                    stdout=json.dumps({"fingerprint": upstream_fp}),
+                    stdout=f"Fingerprint: {upstream_fp}\nSize: 100MiB\n",
                 )
             if "image" in cmd and "list" in cmd and "internal-base" in cmd_str:
                 return MagicMock(returncode=0, stdout=json.dumps([{
@@ -267,7 +267,7 @@ class TestEnsureBaseImage:
             if "image" in cmd and "info" in cmd and "images:debian" in cmd_str:
                 return MagicMock(
                     returncode=0,
-                    stdout=json.dumps({"fingerprint": upstream_fp}),
+                    stdout=f"Fingerprint: {upstream_fp}\nSize: 100MiB\n",
                 )
             if "image" in cmd and "list" in cmd and "internal-base" in cmd_str:
                 return MagicMock(returncode=0, stdout="[]")
@@ -294,7 +294,7 @@ class TestEnsureBaseImage:
             if "image" in cmd and "info" in cmd and "images:debian" in cmd_str:
                 return MagicMock(
                     returncode=0,
-                    stdout=json.dumps({"fingerprint": new_fp}),
+                    stdout=f"Fingerprint: {new_fp}\nSize: 100MiB\n",
                 )
             if "image" in cmd and "list" in cmd and "internal-base" in cmd_str:
                 return MagicMock(returncode=0, stdout=json.dumps([{

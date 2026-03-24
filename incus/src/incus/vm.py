@@ -34,14 +34,22 @@ def ensure_base_image(version: str = DEFAULT_DEBIAN_VERSION) -> str:
     alias = f"{BASE_IMAGE_PREFIX}{version}"
     upstream_image = f"{IMAGE_PREFIX}{version}"
 
-    # Get upstream fingerprint
+    # Get upstream fingerprint (image info doesn't support --format=json
+    # for remote images, so we parse the text output)
     result = subprocess.run(
-        ["incus", "image", "info", upstream_image, "--format=json"],
+        ["incus", "image", "info", upstream_image, "--vm"],
         capture_output=True,
         text=True,
         check=True,
     )
-    upstream_fp = json.loads(result.stdout)["fingerprint"]
+    for line in result.stdout.splitlines():
+        if line.lower().startswith("fingerprint:"):
+            upstream_fp = line.split(":", 1)[1].strip()
+            break
+    else:
+        raise RuntimeError(
+            f"Could not parse fingerprint from 'incus image info {upstream_image}'"
+        )
 
     # Check if base image already exists
     result = subprocess.run(
