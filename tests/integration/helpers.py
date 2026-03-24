@@ -67,10 +67,14 @@ def run_bootstrap_playbook(
         roles_path=WORKSPACE_ROOT / "roles",
     )
 
-    # Update the VM's SSH port to match what the playbook configured
+    # Update the VM's SSH port to match what the playbook configured,
+    # but only when ssh_hardening actually ran (full playbook or explicit)
     if result.returncode == 0:
-        ssh_port = merged_vars.get("ssh_port", 22)
-        vm.ssh_port = ssh_port if isinstance(ssh_port, int) else int(ssh_port)  # type: ignore[arg-type]
+        roles = [limit_to_role] if isinstance(limit_to_role, str) else limit_to_role
+        ssh_changed = roles is None or "ssh_hardening" in roles
+        if ssh_changed:
+            ssh_port = merged_vars.get("ssh_port", 22)
+            vm.ssh_port = ssh_port if isinstance(ssh_port, int) else int(ssh_port)  # type: ignore[arg-type]
 
     return result
 
