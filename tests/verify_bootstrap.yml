@@ -963,25 +963,39 @@
               ✓ faillock.conf deployed (deny {{ pam_faillock_deny }},
               even_deny_root true)
 
-        - name: Check faillock PAM profile exists
+        - name: Check faillock preauth PAM profile exists
+          ansible.builtin.stat:
+            path: /usr/share/pam-configs/faillock-preauth
+          register: faillock_preauth_profile
+
+        - name: Check faillock authfail PAM profile exists
+          ansible.builtin.stat:
+            path: /usr/share/pam-configs/faillock-authfail
+          register: faillock_authfail_profile
+
+        - name: Check legacy faillock PAM profile is absent
           ansible.builtin.stat:
             path: /usr/share/pam-configs/faillock
-          register: faillock_pam_profile
+          register: faillock_legacy_profile
 
-        - name: Verify faillock is enabled in PAM
+        - name: Read common-auth to verify faillock ordering
           ansible.builtin.command:
-            cmd: grep -q pam_faillock /etc/pam.d/common-auth
-          register: faillock_pam_check
+            cmd: grep -n 'pam_faillock\|pam_unix' /etc/pam.d/common-auth
+          register: pam_auth_ordering
           changed_when: false
-          failed_when: false
 
         - name: Verify faillock PAM integration
           ansible.builtin.assert:
             that:
-              - faillock_pam_profile.stat.exists
-              - faillock_pam_check.rc == 0
-            fail_msg: "Faillock PAM profile not deployed or not enabled in common-auth"
-            success_msg: "✓ Faillock enabled in PAM via pam-auth-update"
+              - faillock_preauth_profile.stat.exists
+              - faillock_authfail_profile.stat.exists
+              - not faillock_legacy_profile.stat.exists
+              - pam_auth_ordering.stdout is search('preauth.*\n.*pam_unix.*\n.*authfail')
+            fail_msg: >-
+              Faillock PAM profiles not deployed correctly or ordering is wrong
+              in common-auth. Expected: preauth → pam_unix → authfail.
+              Got: {{ pam_auth_ordering.stdout_lines | default([]) }}
+            success_msg: "✓ Faillock enabled in PAM (preauth → pam_unix → authfail)"
 
     - name: "Verify resource limits"
       block:

@@ -231,96 +231,140 @@ class TestFaillockConfProperties:
 
 
 class TestFaillockPamProfileProperties:
-    """Property-based tests for faillock pam-auth-update profile template."""
+    """Property-based tests for faillock pam-auth-update profile templates.
+
+    Faillock requires two pam-auth-update profiles because preauth must run
+    before pam_unix (priority > 256) and authfail must run after it
+    (priority < 256).  A single profile cannot wrap around another module.
+    """
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_pam_profile_has_correct_priority(self):
+    def test_preauth_profile_has_higher_priority_than_unix(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock PAM Profile Priority
+        Feature: vps-bootstrap-playbook, Faillock Preauth Priority
 
-        The faillock PAM profile SHALL set Priority to 512 to place it
-        after pam_unix (priority 256) in the PAM stack.
+        The preauth profile SHALL have priority > 256 (pam_unix) so it
+        runs before password authentication.
 
         Validates: PAM hardening design spec
         """
-        template_path = Path("roles/users/templates/faillock-pam-config.j2")
-        assert template_path.exists(), "Faillock PAM profile template must exist"
+        template_path = Path("roles/users/templates/faillock-preauth-pam-config.j2")
+        assert template_path.exists(), "Faillock preauth profile template must exist"
 
         content = template_path.read_text()
 
         assert "Priority: 512" in content, (
-            "PAM profile must set Priority to 512"
+            "Preauth profile must set Priority to 512"
         )
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_pam_profile_has_auth_sections(self):
+    def test_authfail_profile_has_lower_priority_than_unix(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock PAM Profile Auth Sections
+        Feature: vps-bootstrap-playbook, Faillock Authfail Priority
 
-        The faillock PAM profile SHALL contain Auth-Type Primary with
-        preauth and Auth-Final with authfail sections.
+        The authfail profile SHALL have priority < 256 (pam_unix) so it
+        runs after password authentication.
 
         Validates: PAM hardening design spec
         """
-        template_path = Path("roles/users/templates/faillock-pam-config.j2")
+        template_path = Path("roles/users/templates/faillock-authfail-pam-config.j2")
+        assert template_path.exists(), "Faillock authfail profile template must exist"
+
         content = template_path.read_text()
 
-        assert "Auth-Type: Primary" in content, (
-            "PAM profile must have Auth-Type: Primary"
-        )
-        assert "preauth" in content, (
-            "PAM profile must contain preauth directive"
-        )
-        assert "Auth-Final:" in content, (
-            "PAM profile must have Auth-Final section"
-        )
-        assert "authfail" in content, (
-            "PAM profile must contain authfail directive"
+        assert "Priority: 128" in content, (
+            "Authfail profile must set Priority to 128"
         )
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_pam_profile_has_account_section(self):
+    def test_preauth_profile_contains_preauth_directive(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock PAM Profile Account Section
+        Feature: vps-bootstrap-playbook, Faillock Preauth Auth Section
 
-        The faillock PAM profile SHALL contain an Account section to reset
+        The preauth profile SHALL contain the pam_faillock.so preauth
+        directive in both Auth and Auth-Initial sections.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/faillock-preauth-pam-config.j2")
+        content = template_path.read_text()
+
+        assert "Auth-Type: Primary" in content, (
+            "Preauth profile must have Auth-Type: Primary"
+        )
+        assert "preauth" in content, (
+            "Preauth profile must contain preauth directive"
+        )
+        assert "Auth-Initial:" in content, (
+            "Preauth profile must have Auth-Initial section"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_authfail_profile_contains_authfail_directive(self):
+        """
+        Feature: vps-bootstrap-playbook, Faillock Authfail Auth Section
+
+        The authfail profile SHALL contain the pam_faillock.so authfail
+        directive in both Auth and Auth-Initial sections.
+
+        Validates: PAM hardening design spec
+        """
+        template_path = Path("roles/users/templates/faillock-authfail-pam-config.j2")
+        content = template_path.read_text()
+
+        assert "Auth-Type: Primary" in content, (
+            "Authfail profile must have Auth-Type: Primary"
+        )
+        assert "authfail" in content, (
+            "Authfail profile must contain authfail directive"
+        )
+        assert "Auth-Initial:" in content, (
+            "Authfail profile must have Auth-Initial section"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_authfail_profile_has_account_section(self):
+        """
+        Feature: vps-bootstrap-playbook, Faillock Authfail Account Section
+
+        The authfail profile SHALL contain an Account section to reset
         the failure counter on successful login.
 
         Validates: PAM hardening design spec
         """
-        template_path = Path("roles/users/templates/faillock-pam-config.j2")
+        template_path = Path("roles/users/templates/faillock-authfail-pam-config.j2")
         content = template_path.read_text()
 
         assert "Account-Type: Additional" in content, (
-            "PAM profile must have Account-Type: Additional"
+            "Authfail profile must have Account-Type: Additional"
         )
         assert "Account:" in content, (
-            "PAM profile must have Account section"
-        )
-        assert "pam_faillock.so" in content, (
-            "PAM profile Account section must reference pam_faillock.so"
+            "Authfail profile must have Account section"
         )
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_pam_profile_sets_default_yes(self):
+    def test_both_profiles_set_default_yes(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock PAM Profile Default
+        Feature: vps-bootstrap-playbook, Faillock PAM Profiles Default
 
-        The faillock PAM profile SHALL set Default to yes so
-        pam-auth-update enables it automatically.
+        Both faillock profiles SHALL set Default to yes so
+        pam-auth-update enables them automatically.
 
         Validates: PAM hardening design spec
         """
-        template_path = Path("roles/users/templates/faillock-pam-config.j2")
-        content = template_path.read_text()
+        for name in ("faillock-preauth-pam-config.j2", "faillock-authfail-pam-config.j2"):
+            template_path = Path(f"roles/users/templates/{name}")
+            content = template_path.read_text()
 
-        assert "Default: yes" in content, (
-            "PAM profile must set Default: yes"
-        )
+            assert "Default: yes" in content, (
+                f"{name} must set Default: yes"
+            )
 
 
 @st.composite
@@ -476,23 +520,29 @@ class TestPamHardeningTasksProperties:
 
     @pytest.mark.property
     @pytest.mark.unit
-    def test_tasks_deploy_faillock_pam_profile(self):
+    def test_tasks_deploy_faillock_pam_profiles(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy Faillock PAM Profile
+        Feature: vps-bootstrap-playbook, Tasks Deploy Faillock PAM Profiles
 
-        The users role tasks SHALL deploy the faillock PAM profile
-        to /usr/share/pam-configs/.
+        The users role tasks SHALL deploy both faillock PAM profiles
+        (preauth and authfail) to /usr/share/pam-configs/.
 
         Validates: PAM hardening design spec
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()
 
-        assert "faillock-pam-config.j2" in content, (
-            "Tasks must reference faillock-pam-config.j2 template"
+        assert "faillock-preauth-pam-config.j2" in content, (
+            "Tasks must reference faillock-preauth-pam-config.j2 template"
         )
-        assert "dest: /usr/share/pam-configs/faillock" in content, (
-            "Tasks must deploy to /usr/share/pam-configs/faillock"
+        assert "dest: /usr/share/pam-configs/faillock-preauth" in content, (
+            "Tasks must deploy to /usr/share/pam-configs/faillock-preauth"
+        )
+        assert "faillock-authfail-pam-config.j2" in content, (
+            "Tasks must reference faillock-authfail-pam-config.j2 template"
+        )
+        assert "dest: /usr/share/pam-configs/faillock-authfail" in content, (
+            "Tasks must deploy to /usr/share/pam-configs/faillock-authfail"
         )
 
     @pytest.mark.property

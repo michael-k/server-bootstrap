@@ -1,7 +1,7 @@
 ---
 # Handlers for users role
 
-- name: Enable faillock in PAM
+- name: Rebuild PAM common-auth
   ansible.builtin.command:
-    cmd: pam-auth-update --enable faillock
+    cmd: pam-auth-update --enable faillock-preauth faillock-authfail
   changed_when: true

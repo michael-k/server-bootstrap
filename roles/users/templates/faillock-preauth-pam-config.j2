@@ -1,0 +1,8 @@
+Name: Faillock preauth
+Default: yes
+Priority: 512
+Auth-Type: Primary
+Auth:
+	required	pam_faillock.so preauth
+Auth-Initial:
+	required	pam_faillock.so preauth

@@ -1,0 +1,11 @@
+Name: Faillock authfail
+Default: yes
+Priority: 128
+Auth-Type: Primary
+Auth:
+	[default=die]	pam_faillock.so authfail
+Auth-Initial:
+	[default=die]	pam_faillock.so authfail
+Account-Type: Additional
+Account:
+	required	pam_faillock.so

@@ -259,17 +259,38 @@
     - users
     - pam_hardening
 
-- name: Deploy faillock PAM profile
+- name: Remove legacy faillock PAM profile
+  ansible.builtin.file:
+    path: /usr/share/pam-configs/faillock
+    state: absent
+  tags:
+    - users
+    - pam_hardening
+  notify: Rebuild PAM common-auth
+
+- name: Deploy faillock preauth PAM profile
   ansible.builtin.template:
-    src: faillock-pam-config.j2
-    dest: /usr/share/pam-configs/faillock
+    src: faillock-preauth-pam-config.j2
+    dest: /usr/share/pam-configs/faillock-preauth
     owner: root
     group: root
     mode: "0644"
   tags:
     - users
     - pam_hardening
-  notify: Enable faillock in PAM
+  notify: Rebuild PAM common-auth
+
+- name: Deploy faillock authfail PAM profile
+  ansible.builtin.template:
+    src: faillock-authfail-pam-config.j2
+    dest: /usr/share/pam-configs/faillock-authfail
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - users
+    - pam_hardening
+  notify: Rebuild PAM common-auth
 
 - name: Deploy resource limits
   ansible.builtin.template:
