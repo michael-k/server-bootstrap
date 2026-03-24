@@ -167,3 +167,14 @@ def my_vm(request):
     yield vm
     vm.destroy()
 ```
+
+## Internal base image
+
+When a VM is launched from a raw upstream image (`images:debian/…`), `launch()`
+automatically builds and caches a `bootstrap/internal-base-{version}` image with
+openssh-server, curl, and `PermitRootLogin yes` pre-configured. This avoids the
+slow `apt-get install` on every VM boot.
+
+The base image is rebuilt automatically when the upstream Debian image fingerprint
+changes. It is not intended for direct use by other projects — use
+`bootstrap/open-{version}` or `bootstrap/knocking-{version}` instead.
