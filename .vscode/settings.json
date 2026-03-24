@@ -1,4 +1,7 @@
 {
+    "files.associations": {
+        "*.yml.example": "yaml"
+    },
     "kiroAgent.commandDenylist": [
         "commit",
         "--force",
