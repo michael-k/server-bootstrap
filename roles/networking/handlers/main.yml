@@ -1,0 +1,7 @@
+---
+# Handlers for networking role
+
+- name: Apply netplan configuration
+  ansible.builtin.command:
+    cmd: netplan apply
+  changed_when: true

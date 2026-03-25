@@ -186,6 +186,23 @@ zram_enabled: false
 disk_swap_size: ""
 
 # ==============================================================================
+# NETWORKING CONFIGURATION (OPTIONAL)
+# ==============================================================================
+#
+# Static IPv6 address for providers where DHCPv6 is unreliable (e.g. IONOS).
+# When set, netplan is configured with DHCPv4 + static IPv6.
+# When empty, networking is left unchanged.
+
+# Static IPv6 address with prefix length
+# Default: "" (disabled — no networking changes)
+# Example: "2a01:239:4b2:1c00::1/128"
+# static_ipv6_address: ""
+
+# IPv6 gateway
+# Default: "fe80::1" (works for IONOS VPS)
+# static_ipv6_gateway: "fe80::1"
+
+# ==============================================================================
 # HOSTNAME CONFIGURATION (OPTIONAL)
 # ==============================================================================
 

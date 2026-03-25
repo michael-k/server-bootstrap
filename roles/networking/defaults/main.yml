@@ -1,0 +1,12 @@
+---
+# Default variables for networking role
+
+# Static IPv6 address (optional)
+# When set, configures netplan with DHCPv4 + static IPv6.
+# When empty, the role is a no-op.
+# Format: full address with prefix length, e.g. "2a01:239:4b2:1c00::1/128"
+static_ipv6_address: ""
+
+# IPv6 gateway
+# Default works for IONOS VPS; override if your provider uses a different gateway.
+static_ipv6_gateway: "fe80::1"

@@ -1,0 +1,14 @@
+# Netplan configuration — deployed by Ansible
+network:
+  version: 2
+  ethernets:
+    all-en:
+      match:
+        name: "en*"
+      dhcp4: true
+      dhcp6: true
+      addresses:
+        - {{ static_ipv6_address }}
+      routes:
+        - to: default
+          via: {{ static_ipv6_gateway }}

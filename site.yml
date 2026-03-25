@@ -131,6 +131,10 @@
     - role: system_updates
       tags: ["system_updates", "updates"]
 
+    # Configure static IPv6 via netplan (if static_ipv6_address is set)
+    - role: networking
+      tags: ["networking", "network"]
+
     # Harden filesystem mount options (noexec,nosuid,nodev on tmp directories)
     - role: filesystem_hardening
       tags: ["filesystem_hardening", "filesystem", "hardening", "security"]

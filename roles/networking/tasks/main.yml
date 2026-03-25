@@ -1,0 +1,29 @@
+---
+# Main tasks for networking role
+#
+# Configures static IPv6 via netplan alongside DHCPv4.
+# Only activates when static_ipv6_address is set; otherwise a no-op.
+
+- name: Deploy netplan configuration with static IPv6
+  ansible.builtin.template:
+    src: 50-cloud-init.yaml.j2
+    dest: /etc/netplan/50-cloud-init.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  when: static_ipv6_address | default('') | length > 0
+  notify: Apply netplan configuration
+  tags:
+    - networking
+
+- name: Wait for public IPv6 address
+  ansible.builtin.shell:
+    cmd: ip -6 addr show scope global | grep -q 'inet6 '
+  register: ipv6_check
+  until: ipv6_check.rc == 0
+  retries: 6
+  delay: 5
+  changed_when: false
+  when: static_ipv6_address | default('') | length > 0
+  tags:
+    - networking
