@@ -60,6 +60,7 @@ def default_ssh_vars() -> dict:
         "ssh_client_alive_interval": 300,
         "ssh_client_alive_count_max": 2,
         "ssh_kex_algorithms": [
+            "sntrup761x25519-sha512",
             "curve25519-sha256",
             "curve25519-sha256@libssh.org",
             "diffie-hellman-group16-sha512",

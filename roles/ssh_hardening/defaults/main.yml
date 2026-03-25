@@ -13,6 +13,7 @@ ssh_client_alive_count_max: 2
 # SSH algorithm restrictions (Requirements 3.3, 3.4, 3.5)
 # Modern elliptic curve key exchange algorithms only
 ssh_kex_algorithms:
+  - sntrup761x25519-sha512
   - curve25519-sha256
   - curve25519-sha256@libssh.org
   - diffie-hellman-group16-sha512

@@ -37,6 +37,7 @@ def base_vars() -> dict:
         "ssh_client_alive_interval": 300,
         "ssh_client_alive_count_max": 2,
         "ssh_kex_algorithms": [
+            "sntrup761x25519-sha512",
             "curve25519-sha256",
             "curve25519-sha256@libssh.org",
             "diffie-hellman-group16-sha512",
@@ -124,9 +125,10 @@ class TestAlgorithmRestrictions:
     """Tests for cryptographic algorithm restriction lists (Requirements 3.3, 3.4, 3.5)."""
 
     def test_kex_algorithms_present(self, ssh_env, base_vars):
-        """Req 3.3: KexAlgorithms must list only modern elliptic curve algorithms."""
+        """Req 3.3: KexAlgorithms must list only strong key exchange algorithms."""
         config = render_sshd_config(ssh_env, base_vars)
-        assert "KexAlgorithms curve25519-sha256" in config
+        assert "sntrup761x25519-sha512" in config
+        assert "curve25519-sha256" in config
         assert "curve25519-sha256@libssh.org" in config
         assert "diffie-hellman-group16-sha512" in config
         assert "diffie-hellman-group18-sha512" in config
