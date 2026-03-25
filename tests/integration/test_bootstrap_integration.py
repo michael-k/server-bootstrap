@@ -515,7 +515,23 @@ class TestPlaybookIdempotency:
         assert result.returncode == 0, (
             f"Check mode failed.\nstdout: {result.stdout[-2000:]}"
         )
-        assert "changed=0" in result.stdout
+        if "changed=0" not in result.stdout:
+            # Find which tasks reported changed for a useful error message
+            import re
+            lines = result.stdout.split("\n")
+            changed_tasks = []
+            last_task = ""
+            for line in lines:
+                task_match = re.match(r"TASK \[(.+)\]", line)
+                if task_match:
+                    last_task = task_match.group(1)
+                if line.startswith("changed:"):
+                    changed_tasks.append(last_task)
+            msg = "Check mode reported changes. Tasks that changed:\n"
+            for task in changed_tasks:
+                msg += f"  - {task}\n"
+            msg += f"\nPLAY RECAP: {lines[-2] if len(lines) >= 2 else 'N/A'}"
+            pytest.fail(msg)
 
 
 # ===========================================================================
