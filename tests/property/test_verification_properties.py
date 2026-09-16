@@ -5,6 +5,7 @@ These tests verify that the verification test suite (tests/verify_bootstrap.yml)
 correctly validates all configuration aspects modified by the bootstrap playbook.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -697,4 +698,95 @@ class TestConfigurationVerificationProperties:
         # Verify summary uses debug module for output
         assert "ansible.builtin.debug:" in playbook_content, (
             "Verification playbook should use debug module for summary output"
+        )
+
+    @pytest.mark.property
+    @pytest.mark.unit
+    def test_verification_playbook_resolves_role_default_variables(self):
+        """
+        Verify that every role default the verification playbook references is
+        actually resolvable when that playbook runs.
+
+        tests/verify_bootstrap.yml declares no `roles:`, so `roles/*/defaults/main.yml`
+        is not in its variable scope. A reference to a role default must therefore be
+        brought into scope explicitly (include_vars), supplied by the inventory, or
+        guarded with `| default(...)` - otherwise the play aborts at runtime with
+        "'<name>' is undefined".
+        """
+        verify_playbook_path = Path("tests/verify_bootstrap.yml")
+        assert verify_playbook_path.exists(), (
+            "Verification playbook tests/verify_bootstrap.yml must exist"
+        )
+
+        playbook_content = verify_playbook_path.read_text()
+        verify_play = yaml.safe_load(playbook_content)[0]
+
+        # Every variable that only a role provides a value for.
+        role_defaults: dict[str, Path] = {}
+        for defaults_file in sorted(Path("roles").glob("*/defaults/main.yml")):
+            for name in yaml.safe_load(defaults_file.read_text()) or {}:
+                role_defaults.setdefault(name, defaults_file)
+
+        # Names the play can resolve without the roles being applied.
+        in_scope: set[str] = set(verify_play.get("vars") or {})
+
+        def collect_keys(node) -> None:
+            """Collect every mapping key, at any depth, of an example inventory."""
+            if isinstance(node, dict):
+                in_scope.update(node)
+                for value in node.values():
+                    collect_keys(value)
+            elif isinstance(node, list):
+                for item in node:
+                    collect_keys(item)
+
+        for example in sorted(Path("inventory").rglob("*.example")):
+            collect_keys(yaml.safe_load(example.read_text()))
+
+        def collect_included_vars(tasks) -> None:
+            """Collect names the play pulls in with include_vars, including in blocks."""
+            for task in tasks or []:
+                if not isinstance(task, dict):
+                    continue
+                for section in ("block", "rescue", "always"):
+                    collect_included_vars(task.get(section))
+                for module in ("ansible.builtin.include_vars", "include_vars"):
+                    spec = task.get(module)
+                    if spec is None:
+                        continue
+                    included = spec if isinstance(spec, str) else spec.get("file")
+                    if not included:
+                        continue
+                    included = included.replace(
+                        "{{ playbook_dir }}", str(verify_playbook_path.parent)
+                    )
+                    namespace = spec.get("name") if isinstance(spec, dict) else None
+                    if namespace:
+                        # Namespaced include: only the namespace itself enters scope,
+                        # so the file's own keys stay unresolved and must be guarded.
+                        in_scope.add(namespace)
+                    else:
+                        in_scope.update(yaml.safe_load(Path(included).read_text()) or {})
+
+        collect_included_vars(verify_play.get("tasks"))
+
+        unresolvable: list[str] = []
+        for name, defaults_file in sorted(role_defaults.items()):
+            if name in in_scope:
+                continue
+            for match in re.finditer(rf"\b{re.escape(name)}\b", playbook_content):
+                # An attribute access such as `users_role_defaults.login_policy_umask`
+                # resolves through the namespace, not the bare name.
+                if playbook_content[match.start() - 1 : match.start()] == ".":
+                    continue
+                if re.match(r"\s*\|\s*default\(", playbook_content[match.end() :]):
+                    continue
+                line = playbook_content.count("\n", 0, match.start()) + 1
+                unresolvable.append(f"{name} (line {line}, default lives in {defaults_file})")
+
+        assert not unresolvable, (
+            "tests/verify_bootstrap.yml declares no `roles:`, so these role defaults are "
+            'not in scope and the play will abort with "\'<name>\' is undefined". Load '
+            "them with include_vars or guard each reference with | default(...):\n  "
+            + "\n  ".join(unresolvable)
         )

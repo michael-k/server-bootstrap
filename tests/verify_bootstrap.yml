@@ -23,6 +23,16 @@
     tests_skipped: 0
 
   tasks:
+    # This play declares no `roles:`, so roles/*/defaults/main.yml is not in scope.
+    # Load the defaults this playbook asserts against under their own namespace, so
+    # they stay a fallback for `| default(...)` rather than overriding an inventory
+    # that sets them - include_vars outranks inventory variables.
+    - name: Load users role defaults as fallbacks for login policy assertions
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../roles/users/defaults/main.yml"
+        name: users_role_defaults
+      tags: ["always"]
+
     # ==============================================================================
     # USER ACCOUNT VERIFICATION (Requirements 14.1-14.4)
     # ==============================================================================
@@ -896,15 +906,21 @@
         - name: Verify hardened login.defs settings
           ansible.builtin.assert:
             that:
-              - login_defs_content.content | b64decode is search('UMASK.*' + (login_policy_umask | string))
-              - login_defs_content.content | b64decode is search('LOGIN_RETRIES.*' + (login_policy_retries | string))
-              - login_defs_content.content | b64decode is search('LOGIN_TIMEOUT.*' + (login_policy_timeout | string))
+              - >-
+                login_defs_content.content | b64decode is search('UMASK.*' +
+                (login_policy_umask | default(users_role_defaults.login_policy_umask) | string))
+              - >-
+                login_defs_content.content | b64decode is search('LOGIN_RETRIES.*' +
+                (login_policy_retries | default(users_role_defaults.login_policy_retries) | string))
+              - >-
+                login_defs_content.content | b64decode is search('LOGIN_TIMEOUT.*' +
+                (login_policy_timeout | default(users_role_defaults.login_policy_timeout) | string))
               - login_defs_content.content | b64decode is search('LOG_OK_LOGINS.*yes')
             fail_msg: "login.defs hardening is missing or incomplete"
             success_msg: >-
-              ✓ login.defs is hardened (UMASK {{ login_policy_umask }},
-              LOGIN_RETRIES {{ login_policy_retries }},
-              LOGIN_TIMEOUT {{ login_policy_timeout }},
+              ✓ login.defs is hardened (UMASK {{ login_policy_umask | default(users_role_defaults.login_policy_umask) }},
+              LOGIN_RETRIES {{ login_policy_retries | default(users_role_defaults.login_policy_retries) }},
+              LOGIN_TIMEOUT {{ login_policy_timeout | default(users_role_defaults.login_policy_timeout) }},
               LOG_OK_LOGINS yes)
 
     - name: "Verify securetty and shell timeout"
@@ -956,11 +972,11 @@
         - name: Verify faillock.conf settings
           ansible.builtin.assert:
             that:
-              - faillock_conf_content.content | b64decode is search('deny.*' + (pam_faillock_deny | string))
+              - faillock_conf_content.content | b64decode is search('deny.*' + (pam_faillock_deny | default(users_role_defaults.pam_faillock_deny) | string))
               - faillock_conf_content.content | b64decode is search('even_deny_root.*true')
             fail_msg: "faillock.conf is missing or incomplete"
             success_msg: >-
-              ✓ faillock.conf deployed (deny {{ pam_faillock_deny }},
+              ✓ faillock.conf deployed (deny {{ pam_faillock_deny | default(users_role_defaults.pam_faillock_deny) }},
               even_deny_root true)
 
         - name: Check faillock preauth PAM profile exists
