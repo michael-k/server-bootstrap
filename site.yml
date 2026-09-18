@@ -1,21 +1,10 @@
 ---
 # VPS Bootstrap Playbook
 #
-# This playbook performs initial configuration of a fresh VPS, transforming it from
-# root-only access to a hardened, production-ready state with secure access patterns.
+# PRJ-1, PRJ-13, PRJ-15
 #
 # USAGE:
 #   make bootstrap
-#
-# REQUIREMENTS:
-#   - Fresh Debian stable VPS with root access (password or SSH key)
-#   - Configured inventory file (inventory/hosts.yml)
-#   - Encrypted vault file with secrets (inventory/vault.yml)
-#   - SSH public key files for manual and Ansible users
-#
-# EXECUTION MODEL:
-#   This playbook is designed for single execution against a fresh VPS.
-#   It is idempotent and safe to re-run for configuration updates.
 
 # When port knocking is active, Ansible must knock before opening SSH connections.
 # This play runs locally (no SSH needed) and sends TCP SYN packets to the knock
@@ -50,11 +39,12 @@
 
 - name: Bootstrap VPS with secure configuration
   hosts: all
-  become: true
-  gather_facts: true
+  become: true # PRJ-2
+  gather_facts: true # PRJ-3
 
-  # Pre-flight checks to validate environment before making changes
+  # PRJ-5
   pre_tasks:
+    # PRJ-4
     - name: Pre-flight - Verify target is Debian
       ansible.builtin.assert:
         that:
@@ -70,6 +60,7 @@
         fail_msg: "This playbook requires Debian 13 (trixie) or newer"
         success_msg: "Target system is running Debian {{ ansible_facts['distribution_version'] }}"
 
+    # PRJ-6
     - name: Pre-flight - Verify required variables are defined
       ansible.builtin.assert:
         that:
@@ -83,6 +74,7 @@
         fail_msg: "Required user configuration variables are missing. Check inventory/hosts.yml"
         success_msg: "All required user configuration variables are defined"
 
+    # PRJ-7
     - name: Pre-flight - Verify manual user SSH key file exists
       ansible.builtin.stat:
         path: "{{ manual_user_ssh_key_file }}"
@@ -91,6 +83,7 @@
       register: manual_key_stat
       failed_when: not manual_key_stat.stat.exists
 
+    # PRJ-7
     - name: Pre-flight - Verify Ansible user SSH key file exists
       ansible.builtin.stat:
         path: "{{ deploy_user_ssh_key_file }}"
@@ -99,6 +92,7 @@
       register: ansible_key_stat
       failed_when: not ansible_key_stat.stat.exists
 
+    # PRJ-8
     - name: Pre-flight - Verify Tailscale configuration when enabled
       ansible.builtin.assert:
         that:
@@ -110,6 +104,7 @@
         success_msg: "Tailscale configuration variables are defined"
       when: tailscale_enabled | default(false) | bool
 
+    # PRJ-9
     - name: Pre-flight - Display configuration summary
       ansible.builtin.debug:
         msg:
@@ -125,9 +120,9 @@
           - "Disk Swap: {{ disk_swap_size if (disk_swap_size | default('') | length > 0) else 'Disabled' }}"
           - "=========================================="
 
-  # Roles execute in logical order to build up the secure configuration
+  # PRJ-12
   roles:
-    # Update system packages first to ensure security patches are applied
+    # Update system packages
     - role: system_updates
       tags: ["system_updates", "updates"]
 
@@ -148,8 +143,6 @@
       tags: ["users", "access"]
 
     # Install and configure Tailscale VPN (if enabled)
-    # Must run before ssh_hardening so tailscale_ipv4/ipv6 facts are
-    # available for sshd ListenAddress binding
     - role: tailscale
       tags: ["tailscale", "vpn", "network"]
       when: tailscale_enabled | default(false) | bool
@@ -180,8 +173,8 @@
       tags: ["swap", "memory"]
       when: (zram_enabled | default(false) | bool) or (disk_swap_size | default('') | length > 0)
 
-  # Post-execution tasks to verify and inform
   post_tasks:
+    # PRJ-10
     - name: Post-execution - Check if reboot is required
       ansible.builtin.stat:
         path: /var/run/reboot-required
@@ -197,6 +190,7 @@
           - "=========================================="
       when: reboot_required.stat.exists
 
+    # PRJ-11
     - name: Post-execution - Build success message
       ansible.builtin.set_fact:
         success_message: |

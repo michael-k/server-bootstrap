@@ -12,7 +12,8 @@ Tests cover:
   - Playbook idempotency (second run + check mode)
   - Emergency script deployment (Tailscale-dependent tests skipped by default)
 
-Requirements: 9.1-9.8, 13.1-13.17, 15.1, 15.2, 15.3, 15.4, 15.5
+Requirements: PRJ-1, PRJ-13, PRJ-14, and the legacy numbers 9.1-9.8 and
+13.1-13.17 for emergency access and swap, pending their own specs.
 """
 
 import contextlib
@@ -80,34 +81,34 @@ def _reset_fail2ban(vm) -> None:
 
 
 class TestFullBootstrapExecution:
-    """Tests for full bootstrap playbook execution (Requirements 15.1, 15.2)."""
+    """Tests for full bootstrap playbook execution (PRJ-1)."""
 
     def test_bootstrap_creates_manual_user(self, bootstrap_vm):
-        """Req 15.1: After bootstrap, manual access user exists with uid 1000."""
+        """PRJ-1: after one run, the manual access user exists with uid 1000."""
         result = bootstrap_vm.exec("id testuser")
         assert result.returncode == 0, "Manual user 'testuser' not found after bootstrap"
         assert "uid=1000" in result.stdout
 
     def test_bootstrap_creates_ansible_user(self, bootstrap_vm):
-        """Req 15.1: After bootstrap, Ansible user exists with uid 1999."""
+        """PRJ-1: after one run, the Ansible user exists with uid 1999."""
         result = bootstrap_vm.exec("id ansible")
         assert result.returncode == 0, "Ansible user 'ansible' not found after bootstrap"
         assert "uid=1999" in result.stdout
 
     def test_bootstrap_hardens_ssh(self, bootstrap_vm):
-        """Req 15.1: After bootstrap, SSH password authentication is disabled."""
+        """PRJ-1: after one run, SSH password authentication is disabled."""
         result = bootstrap_vm.exec("sshd -T | grep passwordauthentication")
         assert result.returncode == 0
         assert "passwordauthentication no" in result.stdout.lower()
 
     def test_bootstrap_configures_firewall(self, bootstrap_vm):
-        """Req 15.1: After bootstrap, NFTables service is active."""
+        """PRJ-1: after one run, the NFTables service is active."""
         result = bootstrap_vm.exec("systemctl is-active nftables")
         assert result.returncode == 0
         assert "active" in result.stdout
 
     def test_bootstrap_configures_fail2ban(self, bootstrap_vm):
-        """Req 15.1: After bootstrap, fail2ban service is active."""
+        """PRJ-1: after one run, the fail2ban service is active."""
         result = bootstrap_vm.exec("systemctl is-active fail2ban")
         assert result.returncode == 0
         assert "active" in result.stdout
@@ -494,10 +495,10 @@ class TestBootstrapVerification:
 
 
 class TestPlaybookIdempotency:
-    """Tests for playbook idempotency (Requirement 15.3)."""
+    """Tests for playbook idempotency (PRJ-13, PRJ-14)."""
 
     def test_second_run_reports_no_failures(self, bootstrap_vm):
-        """Req 15.3, 15.4: Second playbook run completes without errors."""
+        """PRJ-13: a second run completes without errors or unreachable hosts."""
         bootstrap_vm.knock()
         result = run_bootstrap_playbook(bootstrap_vm, user="ansible")
         assert result.returncode == 0, (
@@ -507,7 +508,7 @@ class TestPlaybookIdempotency:
         assert "unreachable=0" in result.stdout
 
     def test_check_mode_reports_no_changes(self, bootstrap_vm):
-        """Req 15.4, 15.5: Check mode reports no changes on configured system."""
+        """PRJ-14: check mode reports no changes on a configured system."""
         bootstrap_vm.knock()
         result = run_bootstrap_playbook(
             bootstrap_vm, check_mode=True, user="ansible",

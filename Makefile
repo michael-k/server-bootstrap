@@ -1,3 +1,4 @@
+# PRJ-19
 .PHONY: help bootstrap verify test test-unit test-property test-integration clean lint python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix spec-check vm-create vm-list vm-destroy vm-ssh images images-clean
 
 help:
@@ -26,8 +27,10 @@ help:
 INVENTORY ?= inventory/hosts.yml
 LIMIT ?=
 VAULT_PASSWORD_FILE ?=
+# PRJ-15
 VAULT_ARGS = $(if $(VAULT_PASSWORD_FILE),--vault-password-file $(VAULT_PASSWORD_FILE),--ask-vault-pass)
 
+# PRJ-16: every target below runs its tool through uv.
 bootstrap:
 	@echo "Running VPS bootstrap playbook..."
 	uv run ansible-playbook -i $(INVENTORY) site.yml $(VAULT_ARGS) $(if $(LIMIT),--limit $(LIMIT))

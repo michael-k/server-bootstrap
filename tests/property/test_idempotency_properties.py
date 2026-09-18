@@ -88,7 +88,9 @@ class TestPlaybookIdempotencyProperties:
         the playbook SHALL complete without errors, report no changes for already-configured
         items, and apply only configuration changes that differ from the current state.
 
-        Validates: Requirements 15.3, 15.4, 15.5
+        Validates: PRJ-13, and the play-level declarations it rests on —
+        PRJ-2 (every task runs as root), PRJ-3 (facts are gathered) and
+        PRJ-12 (every capability appears in the fixed order).
 
         This property test verifies idempotency by checking that:
         1. All roles use idempotent Ansible modules
@@ -310,6 +312,9 @@ class TestPlaybookIdempotencyProperties:
         """
         Verify that the playbook structure supports idempotent execution.
 
+        Validates: PRJ-5 (pre-flight checks change nothing), PRJ-10 and PRJ-11
+        (the run's closing reports change nothing either).
+
         This test checks:
         1. Playbook uses pre_tasks for validation (doesn't modify state)
         2. Playbook uses roles for configuration (idempotent by design)
@@ -383,6 +388,8 @@ class TestPlaybookIdempotencyProperties:
         """
         Verify that roles define default variables for idempotent behavior.
 
+        Validates: PRJ-13.
+
         Roles should have sensible defaults so they can be run multiple times
         without requiring variable changes.
         """
@@ -429,6 +436,8 @@ class TestPlaybookIdempotencyProperties:
     def test_handlers_are_notified_not_called_directly(self):
         """
         Verify that handlers are used correctly for idempotency.
+
+        Validates: PRJ-13.
 
         Handlers should be notified by tasks, not called directly.
         This ensures services are only restarted when configuration changes.

@@ -177,6 +177,22 @@ make ansible-lint       # Check Ansible files
 - Optional SSH restriction to Tailscale VPN interface
 - All secrets encrypted with Ansible Vault
 
+## Specification
+
+[specs/](specs/) is the authoritative source of truth for this project: a mismatch between a spec and the implementation is a bug, whichever side looks more correct. `make spec-check` enforces the mechanical half of that claim — every requirement is cited by the code that realises it, and every citation names a requirement that exists.
+
+This README is itself one of those implementations. Its sections carry the project's documentation requirements:
+
+| Section | Requirement |
+|---|---|
+| Prerequisites | `PRJ-4` (platform floor), `PRJ-16` (managed environment), `PRJ-18` (Python floor), `PRJ-20` (documented prerequisites) |
+| Quick Start | `PRJ-22` (documented run procedure) |
+| Configuration | `PRJ-26` (documented configuration surface), `PRJ-27` (documented required variables) |
+| Ansible Vault | `PRJ-15` (secrets from the vault), `PRJ-23` (documented secrets handling) |
+| Running the Playbook | `PRJ-19` (routine operations are make targets), `PRJ-21` (documented initial-setup scope) |
+| Testing | `PRJ-24` (documented test procedure) |
+| Project Structure | `PRJ-17` (declared dependencies) |
+
 ## License
 
 Provided as-is for bootstrapping VPS servers. Modify as needed for your environment.
