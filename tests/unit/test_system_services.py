@@ -9,8 +9,9 @@ rendered content; parse YAML task files to verify task parameters.
 
 Covers roles: fail2ban, logging, system_config, swap.
 
-Requirements: 10.1-10.7, 11.1-11.4, TIME-1, TIME-2, TIME-3, TIME-4, TIME-5,
-TIME-6, SWAP-1, SWAP-2, SWAP-5, SWAP-9, SWAP-10, SWAP-12, SWAP-15, SWAP-16
+Requirements: 10.1-10.7, LOG-1, LOG-2, LOG-3, LOG-4, LOG-5, TIME-1, TIME-2,
+TIME-3, SWAP-1, SWAP-2, SWAP-5, SWAP-9, SWAP-10,
+SWAP-12, SWAP-15, SWAP-16
 """
 
 from __future__ import annotations
@@ -143,7 +144,12 @@ class TestFail2banConfiguration:
         assert systemd_params.get("state") == "started"
 
     def test_template_deploy_notifies_restart(self):
-        """Req 11.4 pattern: template deployment must notify handler to restart."""
+        """Fail2ban's own template-deploy-notifies-restart pattern.
+
+        Tests fail2ban's "deploy fail2ban jail configuration" task, not
+        journald's. Fail2ban's own requirement for this pattern belongs to
+        its own spec, not yet written.
+        """
         tasks = load_tasks("fail2ban")
         task = find_task(tasks, "deploy fail2ban jail configuration")
         assert task is not None
@@ -156,7 +162,7 @@ class TestFail2banConfiguration:
 # ---------------------------------------------------------------------------
 
 class TestJournaldConfiguration:
-    """Tests for journald configuration values (Requirements 11.1-11.4)."""
+    """Tests for journald configuration values (LOG-1, LOG-2, LOG-3, LOG-4)."""
 
     @pytest.fixture
     def default_vars(self) -> dict:
@@ -169,28 +175,28 @@ class TestJournaldConfiguration:
         return make_env("logging").get_template("journald.conf.j2").render(**variables)
 
     def test_storage_is_persistent(self, default_vars):
-        """Req 11.1: Storage must be set to persistent."""
+        """LOG-1: Storage must be set to persistent."""
         config = self.render(default_vars)
         assert "Storage=persistent" in config
 
     def test_max_disk_usage_rendered(self, default_vars):
-        """Req 11.2: SystemMaxUse must reflect the configured value."""
+        """LOG-2: SystemMaxUse must reflect the configured value."""
         config = self.render(default_vars)
         assert "SystemMaxUse=500M" in config
 
     def test_max_retention_rendered(self, default_vars):
-        """Req 11.3: MaxRetentionSec must reflect the configured value."""
+        """LOG-3: MaxRetentionSec must reflect the configured value."""
         config = self.render(default_vars)
         assert "MaxRetentionSec=1month" in config
 
     def test_custom_disk_usage(self, default_vars):
-        """Req 11.2: Custom disk usage value is rendered correctly."""
+        """LOG-2: Custom disk usage value is rendered correctly."""
         default_vars["journald_max_disk_usage"] = "1G"
         config = self.render(default_vars)
         assert "SystemMaxUse=1G" in config
 
     def test_custom_retention_time(self, default_vars):
-        """Req 11.3: Custom retention time is rendered correctly."""
+        """LOG-3: Custom retention time is rendered correctly."""
         default_vars["journald_max_retention_time"] = "2weeks"
         config = self.render(default_vars)
         assert "MaxRetentionSec=2weeks" in config
@@ -201,7 +207,7 @@ class TestJournaldConfiguration:
         assert "[Journal]" in config
 
     def test_deploy_task_notifies_restart(self):
-        """Req 11.4: Template deployment must notify journald restart handler."""
+        """LOG-4: Template deployment must notify journald restart handler."""
         tasks = load_tasks("logging")
         task = find_task(tasks, "deploy journald configuration")
         assert task is not None

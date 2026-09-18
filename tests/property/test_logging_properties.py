@@ -80,12 +80,13 @@ class TestJournaldProperties:
         For any execution of the bootstrap playbook, journald SHALL be configured to
         persist logs to disk with configurable maximum disk usage and retention time.
 
-        Validates: Requirements 11.1, 11.2, 11.3
+        Validates: LOG-1, LOG-2, LOG-3, LOG-5
         """
         # This property test verifies the logging role's behavior by checking:
-        # 1. journald is configured to persist logs to disk (Requirement 11.1)
-        # 2. journald maximum disk usage is configurable (Requirement 11.2)
-        # 3. journald log retention time is configurable (Requirement 11.3)
+        # 1. journald is configured to persist logs to disk (LOG-1)
+        # 2. journald maximum disk usage is configurable (LOG-2)
+        # 3. journald log retention time is configurable (LOG-3)
+        # 4. the persistent journal directory has correct ownership/mode (LOG-5)
 
         # Read the logging role tasks
         tasks_path = Path("roles/logging/tasks/main.yml")
@@ -104,38 +105,38 @@ class TestJournaldProperties:
             "Journald configuration must be deployed to /etc/systemd/journald.conf"
         )
 
-        # Verify configuration changes trigger service restart
+        # Verify LOG-4: configuration changes trigger service restart
         assert "notify: Restart systemd-journald" in tasks_content, (
-            "Configuration changes must trigger systemd-journald service restart"
+            "Configuration changes must trigger systemd-journald service restart (LOG-4)"
         )
 
-        # Verify journal directory is created
+        # Verify LOG-5: journal directory is created
         assert "ansible.builtin.file:" in tasks_content, (
-            "Journal directory must be created using file module"
+            "Journal directory must be created using file module (LOG-5)"
         )
         assert "/var/log/journal" in tasks_content, (
-            "Journal directory must be /var/log/journal"
+            "Journal directory must be /var/log/journal (LOG-5)"
         )
         assert "state: directory" in tasks_content, (
-            "Journal directory must be created as directory"
+            "Journal directory must be created as directory (LOG-5)"
         )
 
-        # Verify journal directory has correct ownership
+        # Verify LOG-5: journal directory has correct ownership
         assert "owner: root" in tasks_content, (
-            "Journal directory must be owned by root"
+            "Journal directory must be owned by root (LOG-5)"
         )
         assert "group: systemd-journal" in tasks_content, (
-            "Journal directory must be owned by systemd-journal group"
+            "Journal directory must be owned by systemd-journal group (LOG-5)"
         )
 
-        # Verify journal directory has correct permissions (2755 for setgid)
+        # Verify LOG-5: journal directory has correct permissions (2755 for setgid)
         assert "mode: '2755'" in tasks_content or 'mode: "2755"' in tasks_content, (
-            "Journal directory must have mode 2755 (setgid)"
+            "Journal directory must have mode 2755 (setgid) (LOG-5)"
         )
 
-        # Verify handlers are flushed to restart journald immediately
+        # Verify LOG-4: handlers are flushed to restart journald immediately
         assert "ansible.builtin.meta: flush_handlers" in tasks_content, (
-            "Handlers must be flushed to restart journald after configuration"
+            "Handlers must be flushed to restart journald after configuration (LOG-4)"
         )
 
         # Read the logging defaults
@@ -144,14 +145,14 @@ class TestJournaldProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify Requirement 11.2: maximum disk usage is configurable
+        # Verify LOG-2: maximum disk usage is configurable
         assert "journald_max_disk_usage:" in defaults_content, (
-            "journald_max_disk_usage must be defined in defaults (Requirement 11.2)"
+            "journald_max_disk_usage must be defined in defaults (LOG-2)"
         )
 
-        # Verify Requirement 11.3: retention time is configurable
+        # Verify LOG-3: retention time is configurable
         assert "journald_max_retention_time:" in defaults_content, (
-            "journald_max_retention_time must be defined in defaults (Requirement 11.3)"
+            "journald_max_retention_time must be defined in defaults (LOG-3)"
         )
 
         # Read the journald configuration template
@@ -160,23 +161,23 @@ class TestJournaldProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Requirement 11.1: persistent storage is configured
+        # Verify LOG-1: persistent storage is configured
         assert "[Journal]" in template_content, (
             "Journald configuration must have [Journal] section"
         )
         assert "Storage=persistent" in template_content, (
-            "Journald must be configured for persistent storage (Requirement 11.1)"
+            "Journald must be configured for persistent storage (LOG-1)"
         )
 
-        # Verify Requirement 11.2: SystemMaxUse is configured
+        # Verify LOG-2: SystemMaxUse is configured
         assert "SystemMaxUse={{ journald_max_disk_usage }}" in template_content, (
-            "Journald configuration must use journald_max_disk_usage variable (Requirement 11.2)"
+            "Journald configuration must use journald_max_disk_usage variable (LOG-2)"
         )
 
-        # Verify Requirement 11.3: MaxRetentionSec is configured
+        # Verify LOG-3: MaxRetentionSec is configured
         assert "MaxRetentionSec={{ journald_max_retention_time }}" in template_content, (
             "Journald configuration must use journald_max_retention_time variable "
-            "(Requirement 11.3)"
+            "(LOG-3)"
         )
 
         # Verify compression is enabled for efficient storage
@@ -242,11 +243,11 @@ class TestJournaldProperties:
         )
 
         # Property verified: The logging role configuration ensures that:
-        # - journald is configured to persist logs to disk (11.1)
-        # - maximum disk usage is configurable via journald_max_disk_usage (11.2)
-        # - retention time is configurable via journald_max_retention_time (11.3)
-        # - journal directory is created with correct permissions
-        # - configuration changes trigger service restart
+        # - journald is configured to persist logs to disk (LOG-1)
+        # - maximum disk usage is configurable via journald_max_disk_usage (LOG-2)
+        # - retention time is configurable via journald_max_retention_time (LOG-3)
+        # - configuration changes trigger service restart (LOG-4)
+        # - journal directory is created with correct permissions (LOG-5)
         # - compression is enabled for efficient storage
         # - This applies consistently across all valid configuration values
 
@@ -268,9 +269,11 @@ class TestJournaldStorageModeProperties:
         with persistent storage mode to ensure logs survive system reboots.
 
         This property verifies that:
-        - Storage mode is set to persistent
-        - Journal directory is created for persistent storage
-        - Directory has correct ownership and permissions
+        - Storage mode is set to persistent (LOG-1)
+        - Journal directory is created for persistent storage (LOG-5)
+        - Directory has correct ownership and permissions (LOG-5)
+
+        Validates: LOG-1, LOG-5
         """
         # Read the journald configuration template
         template_path = Path("roles/logging/templates/journald.conf.j2")
@@ -278,9 +281,9 @@ class TestJournaldStorageModeProperties:
 
         template_content = template_path.read_text()
 
-        # Verify storage mode is persistent (not volatile or auto)
+        # Verify LOG-1: storage mode is persistent (not volatile or auto)
         assert "Storage=persistent" in template_content, (
-            "Journald must use persistent storage mode for log persistence"
+            "Journald must use persistent storage mode for log persistence (LOG-1)"
         )
 
         # Read the logging role tasks
@@ -289,22 +292,22 @@ class TestJournaldStorageModeProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify journal directory is created
+        # Verify LOG-5: journal directory is created
         assert "/var/log/journal" in tasks_content, (
-            "Journal directory /var/log/journal must be created for persistent storage"
+            "Journal directory /var/log/journal must be created for persistent storage (LOG-5)"
         )
 
-        # Verify directory creation task exists
+        # Verify LOG-5: directory creation task exists
         assert "ansible.builtin.file:" in tasks_content, (
-            "Directory must be created using file module"
+            "Directory must be created using file module (LOG-5)"
         )
         assert "state: directory" in tasks_content, (
-            "Journal path must be created as directory"
+            "Journal path must be created as directory (LOG-5)"
         )
 
         # Property verified: The logging role ensures:
-        # - Storage mode is persistent for log persistence across reboots
-        # - Journal directory is created with correct permissions
+        # - Storage mode is persistent for log persistence across reboots (LOG-1)
+        # - Journal directory is created with correct permissions (LOG-5)
         # - Logs survive system reboots
 
 
@@ -372,9 +375,11 @@ class TestJournaldServiceRestartProperties:
         the new configuration.
 
         This property verifies that:
-        - Configuration changes trigger service restart via handler
-        - Handler is flushed immediately after configuration
+        - Configuration changes trigger service restart via handler (LOG-4)
+        - Handler is flushed immediately after configuration (LOG-4)
         - Service restart uses systemd module
+
+        Validates: LOG-4
         """
         # Read the logging role tasks
         tasks_path = Path("roles/logging/tasks/main.yml")
@@ -382,14 +387,14 @@ class TestJournaldServiceRestartProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify configuration deployment notifies restart handler
+        # Verify LOG-4: configuration deployment notifies restart handler
         assert "notify: Restart systemd-journald" in tasks_content, (
-            "Configuration deployment must notify restart handler"
+            "Configuration deployment must notify restart handler (LOG-4)"
         )
 
-        # Verify handlers are flushed immediately
+        # Verify LOG-4: handlers are flushed immediately
         assert "ansible.builtin.meta: flush_handlers" in tasks_content, (
-            "Handlers must be flushed to restart journald immediately"
+            "Handlers must be flushed to restart journald immediately (LOG-4)"
         )
 
         # Read the handlers file
@@ -420,7 +425,7 @@ class TestJournaldServiceRestartProperties:
         )
 
         # Property verified: The logging role ensures:
-        # - Configuration changes trigger service restart
-        # - Restart happens immediately via handler flush
+        # - Configuration changes trigger service restart (LOG-4)
+        # - Restart happens immediately via handler flush (LOG-4)
         # - Service restart uses systemd module
         # - New configuration is applied without manual intervention

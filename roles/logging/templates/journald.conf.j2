@@ -4,20 +4,20 @@
 # This configuration enables persistent logging with configurable retention settings.
 # Journald is the systemd logging service that collects logs from all system services.
 #
-# Requirements: 11.1, 11.2, 11.3
+# Requirements: LOG-1, LOG-2, LOG-3
 
 [Journal]
-# Requirement 11.1: Store logs persistently on disk
+# LOG-1: Store logs persistently on disk
 # Persistent storage ensures logs survive system reboots
 # Logs are stored in /var/log/journal/
 Storage=persistent
 
-# Requirement 11.2: Maximum disk space that may be used by journal files
+# LOG-2: Maximum disk space that may be used by journal files
 # This prevents journal logs from consuming excessive disk space
 # Format: K, M, G, T for kilobytes, megabytes, gigabytes, terabytes
 SystemMaxUse={{ journald_max_disk_usage }}
 
-# Requirement 11.3: Maximum time to store journal entries
+# LOG-3: Maximum time to store journal entries
 # Older entries are automatically deleted after this period
 # Format: s, min, h, days, weeks, months, years
 MaxRetentionSec={{ journald_max_retention_time }}

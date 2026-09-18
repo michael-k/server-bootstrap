@@ -1,13 +1,13 @@
 ---
 # Logging Role - Main Tasks
-# Requirements: 11.1, 11.2, 11.3, 11.4
+# LOG-1, LOG-2, LOG-3, LOG-4, LOG-5
 #
 # Configures journald for persistent logging with configurable retention settings.
 # Journald is the systemd logging service that collects logs from all system services.
 
-# Requirement 11.1: Configure journald to persist logs to disk
-# Requirement 11.2: Configure maximum disk usage
-# Requirement 11.3: Configure log retention time
+# LOG-1: persist logs to disk. LOG-2: cap disk usage. LOG-3: cap retention.
+# LOG-4: notify the restart handler so a changed configuration takes effect
+# within this run.
 - name: Deploy journald configuration
   ansible.builtin.template:
     src: journald.conf.j2
@@ -17,8 +17,9 @@
     mode: "0644"
   notify: Restart systemd-journald
 
-# Ensure the journal directory exists with correct permissions
-# This directory stores persistent journal logs
+# LOG-5: /var/log/journal is where journald actually writes persistent
+# entries; owner/group/mode are re-asserted unconditionally on every run so
+# they cannot drift more permissive than this leaves them.
 - name: Ensure journald configuration directory exists
   ansible.builtin.file:
     path: /var/log/journal
@@ -27,7 +28,7 @@
     group: systemd-journal
     mode: "2755"
 
-# Flush handlers immediately to restart journald if configuration changed
-# This ensures the new configuration takes effect before proceeding
+# LOG-4: flush immediately so the restart happens within this run rather
+# than waiting for the play to end or the host's next reboot.
 - name: Flush handlers to restart journald if configuration changed
   ansible.builtin.meta: flush_handlers

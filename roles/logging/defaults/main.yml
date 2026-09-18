@@ -1,6 +1,7 @@
 ---
 # Default variables for logging role
 
-# Journald configuration
+# LOG-2: default maximum disk usage.
 journald_max_disk_usage: "500M"
+# LOG-3: default retention time.
 journald_max_retention_time: "1month"
