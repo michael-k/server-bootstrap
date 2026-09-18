@@ -1,20 +1,22 @@
 ---
 # Disk swap configuration tasks
-# Requirements: 13.11, 13.12, 13.13, 13.14, 13.15, 13.16
+# SWAP-11, SWAP-12, SWAP-13, SWAP-14, SWAP-15, SWAP-16
 #
-# Creates a file-based swap space on disk. This provides additional swap capacity
-# beyond zram, with lower priority so zram is used first.
+# Creates a file-based swap space on disk. Each step after the first is
+# conditioned on the previous one having changed, which is what makes the
+# chain idempotent — and what means a run that finds /swapfile already there
+# does nothing but re-assert its mode.
 
-# Requirement 13.11: Create swap file at /swapfile with specified size
-# Using fallocate for fast file creation (much faster than dd)
+# SWAP-11: allocate the file at the configured size. The creates guard is
+# what keeps a re-run from re-allocating it.
 - name: Create swap file
   ansible.builtin.command:
     cmd: "fallocate -l {{ disk_swap_size }} /swapfile"
     creates: /swapfile
   register: swap_file_created
 
-# Requirement 13.12: Set appropriate permissions on swap file (0600)
-# This prevents non-root users from reading swap file contents
+# SWAP-12: restrict the file to root. Unconditional by design — the mode is
+# re-asserted on every run, not only on the run that created the file.
 - name: Set swap file permissions
   ansible.builtin.file:
     path: /swapfile
@@ -22,24 +24,22 @@
     owner: root
     group: root
 
-# Requirement 13.13: Format swap file as swap space
-# mkswap initializes the file with swap metadata
+# SWAP-13: write swap metadata into the allocated file.
 - name: Format swap file
   ansible.builtin.command:
     cmd: mkswap /swapfile
   when: swap_file_created.changed
   register: swap_formatted
 
-# Requirement 13.14: Enable swap file
-# Requirement 13.16: Set swap priority lower than zram (priority 10 vs 100)
-# Lower priority means this swap is used only after zram is full
+# SWAP-14: hand the formatted file to the kernel as a swap area.
+# SWAP-16: at the configured priority, which is below the zram device's.
 - name: Enable swap file
   ansible.builtin.command:
     cmd: "swapon --priority {{ disk_swap_priority }} /swapfile"
   when: swap_formatted.changed
 
-# Check if swap file entry already exists in fstab
-# This prevents duplicate entries on subsequent playbook runs
+# SWAP-15: look for an existing entry first, so a re-run does not add a
+# second one. The match is on the path alone.
 - name: Check if swap file is already in fstab
   ansible.builtin.lineinfile:
     path: /etc/fstab
@@ -49,8 +49,8 @@
   register: fstab_check
   changed_when: false
 
-# Requirement 13.15: Add swap file to /etc/fstab for persistence across reboots
-# The 'pri=' option sets the swap priority
+# SWAP-15: record the swap file so the next boot activates it again.
+# SWAP-16: the pri= option carries the priority across the reboot.
 - name: Add swap file to fstab for persistence
   ansible.builtin.lineinfile:
     path: /etc/fstab

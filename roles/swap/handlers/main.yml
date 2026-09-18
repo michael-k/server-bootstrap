@@ -1,6 +1,10 @@
 ---
 # Handlers for swap role
 
+# SWAP-4, SWAP-5, SWAP-9: a changed size, algorithm or priority only reaches
+# the device by restarting the service. The restart deactivates the zram swap
+# area and re-creates it, which forces every page swapped out on it back into
+# RAM first.
 - name: Restart zramswap service
   ansible.builtin.systemd:
     name: zramswap

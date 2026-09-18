@@ -5,9 +5,9 @@
 # This provides faster swap performance than disk-based swap with the trade-off
 # of using some RAM for compression overhead.
 #
-# Requirements: 13.4, 13.5, 13.9
+# Requirements: SWAP-2, SWAP-4, SWAP-5, SWAP-9
 
-# Requirement 13.4: Zram device size specification
+# SWAP-2, SWAP-4: Zram device size specification
 # Can be specified as:
 #   - Percentage of RAM (e.g., 50 for 50% of total RAM)
 #   - Absolute size in MB (e.g., 2048 for 2GB)
@@ -25,12 +25,8 @@ PERCENTAGE=50
 {% endif %}
 {% endif %}
 
-# Requirement 13.5: Compression algorithm
-# lz4 is chosen for its excellent balance of speed and compression ratio
-# Other options: lzo, zstd (but lz4 is fastest)
+# SWAP-5: Compression algorithm
 ALGO=lz4
 
-# Requirement 13.9: Swap priority
-# Higher priority than disk swap (100 vs 10) ensures zram is used first
-# Zram is faster than disk swap, so it should be preferred
+# SWAP-9, SWAP-16: Swap priority
 PRIORITY={{ zram_swap_priority }}

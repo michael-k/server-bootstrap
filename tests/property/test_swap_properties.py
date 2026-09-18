@@ -90,19 +90,23 @@ class TestZramSwapProperties:
 
         For any execution of the bootstrap playbook WHERE zram is enabled with a
         specified size, a zram device SHALL be created with the specified size,
-        configured to use lz4 compression, formatted as swap, enabled as swap,
-        configured to initialize on boot, and assigned a higher priority than disk swap.
+        configured to use lz4 compression, enabled as swap, configured to
+        initialize on boot, and assigned a higher priority than disk swap.
 
-        Validates: Requirements 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8, 13.9
+        SWAP-6 (the device is formatted as swap) is deliberately absent: the
+        zramswap service does the formatting and nothing below asserts it.
+
+        Validates: SWAP-1, SWAP-2, SWAP-3, SWAP-4, SWAP-5, SWAP-7, SWAP-8,
+        SWAP-9, SWAP-16
         """
         # This property test verifies the swap role's zram behavior by checking:
-        # 1. zram-tools is installed (Requirement 13.3)
-        # 2. zram device is created with specified size (Requirement 13.4)
-        # 3. lz4 compression is configured (Requirement 13.5)
-        # 4. zram device is formatted as swap (Requirement 13.6)
-        # 5. zram device is enabled as swap (Requirement 13.7)
-        # 6. zram device initializes on boot (Requirement 13.8)
-        # 7. zram priority is higher than disk swap (Requirement 13.9)
+        # 1. zram-tools is installed (SWAP-3)
+        # 2. zram device is created with specified size (SWAP-4)
+        # 3. lz4 compression is configured (SWAP-5)
+        # 4. zram device is enabled as swap (SWAP-7)
+        # 5. zram device initializes on boot (SWAP-8)
+        # 6. zram priority is configurable (SWAP-9) and higher than disk
+        #    swap (SWAP-16)
 
         # Read the swap role tasks
         tasks_path = Path("roles/swap/tasks/main.yml")
@@ -124,12 +128,12 @@ class TestZramSwapProperties:
 
         zram_tasks_content = zram_tasks_path.read_text()
 
-        # Verify Requirement 13.3: zram-tools is installed
+        # Verify SWAP-3: zram-tools is installed
         assert "ansible.builtin.apt:" in zram_tasks_content, (
-            "Zram-tools must be installed using apt module (Requirement 13.3)"
+            "Zram-tools must be installed using apt module (SWAP-3)"
         )
         assert "name: zram-tools" in zram_tasks_content, (
-            "Zram-tools package must be installed (Requirement 13.3)"
+            "Zram-tools package must be installed (SWAP-3)"
         )
         assert "state: present" in zram_tasks_content, (
             "Zram-tools package state must be present"
@@ -157,7 +161,7 @@ class TestZramSwapProperties:
             "Configuration changes must trigger zramswap service restart"
         )
 
-        # Verify Requirement 13.8: zramswap service is enabled to start on boot
+        # Verify SWAP-8: zramswap service is enabled to start on boot
         assert "ansible.builtin.systemd:" in zram_tasks_content, (
             "Zramswap service must be managed using systemd module"
         )
@@ -165,12 +169,12 @@ class TestZramSwapProperties:
             "Service name must be zramswap"
         )
         assert "enabled: true" in zram_tasks_content or "enabled: yes" in zram_tasks_content, (
-            "Zramswap service must be enabled to start on boot (Requirement 13.8)"
+            "Zramswap service must be enabled to start on boot (SWAP-8)"
         )
 
-        # Verify Requirement 13.7: zramswap service is started
+        # Verify SWAP-7: zramswap service is started
         assert "state: started" in zram_tasks_content, (
-            "Zramswap service must be started (Requirement 13.7)"
+            "Zramswap service must be started (SWAP-7)"
         )
 
         # Verify zram device creation is verified
@@ -178,12 +182,12 @@ class TestZramSwapProperties:
             "Zram device creation must be verified using wait_for module"
         )
         assert "path: /dev/zram0" in zram_tasks_content, (
-            "Wait for /dev/zram0 device to be created (Requirement 13.4)"
+            "Wait for /dev/zram0 device to be created (SWAP-4)"
         )
 
-        # Verify Requirement 13.7: zram device is active as swap
+        # Verify SWAP-7: zram device is active as swap
         assert "ansible.builtin.command: swapon --show --noheadings" in zram_tasks_content, (
-            "Zram swap activation must be verified using swapon command (Requirement 13.7)"
+            "Zram swap activation must be verified using swapon command (SWAP-7)"
         )
         assert "register: swap_status" in zram_tasks_content, (
             "Swap status must be registered for verification"
@@ -192,11 +196,11 @@ class TestZramSwapProperties:
             "Verification must check that /dev/zram0 is in swap output"
         )
 
-        # Verify Requirement 13.5: lz4 compression algorithm is verified
+        # Verify SWAP-5: lz4 compression algorithm is verified
         assert (
             "ansible.builtin.command: cat /sys/block/zram0/comp_algorithm"
             in zram_tasks_content
-        ), "Zram compression algorithm must be verified (Requirement 13.5)"
+        ), "Zram compression algorithm must be verified (SWAP-5)"
         assert "register: zram_comp_algo" in zram_tasks_content, (
             "Compression algorithm must be registered for verification"
         )
@@ -208,7 +212,7 @@ class TestZramSwapProperties:
         assert (
             "'[lz4]' in zram_comp_algo.stdout or 'lz4' in zram_comp_algo.stdout"
             in zram_tasks_content
-        ), "Assertion must check for lz4 compression (Requirement 13.5)"
+        ), "Assertion must check for lz4 compression (SWAP-5)"
 
         # Read the swap defaults
         defaults_path = Path("roles/swap/defaults/main.yml")
@@ -216,17 +220,17 @@ class TestZramSwapProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify Requirement 13.1: zram enablement is configurable
+        # Verify SWAP-1: zram enablement is configurable
         assert "zram_enabled:" in defaults_content, (
-            "zram_enabled must be defined in defaults (Requirement 13.1)"
+            "zram_enabled must be defined in defaults (SWAP-1)"
         )
         assert "zram_enabled: false" in defaults_content, (
             "Default zram_enabled should be false (opt-in)"
         )
 
-        # Verify Requirement 13.2: zram size is configurable
+        # Verify SWAP-2: zram size is configurable
         assert "zram_size:" in defaults_content, (
-            "zram_size must be defined in defaults (Requirement 13.2)"
+            "zram_size must be defined in defaults (SWAP-2)"
         )
 
         # Verify default zram size is reasonable (percentage or absolute)
@@ -236,15 +240,15 @@ class TestZramSwapProperties:
             '"1G"' in defaults_content or "'1G'" in defaults_content
         ), "Default zram_size should be a reasonable value (percentage or absolute size)"
 
-        # Verify Requirement 13.9: zram priority is configurable and higher than disk swap
+        # Verify SWAP-9: zram priority is configurable
         assert "zram_swap_priority:" in defaults_content, (
-            "zram_swap_priority must be defined in defaults (Requirement 13.9)"
+            "zram_swap_priority must be defined in defaults (SWAP-9)"
         )
         assert "disk_swap_priority:" in defaults_content, (
             "disk_swap_priority must be defined in defaults"
         )
 
-        # Extract priority values to verify zram priority is higher
+        # SWAP-16: extract priority values to verify zram priority is higher
         zram_priority_line = [
             line for line in defaults_content.split('\n')
             if 'zram_swap_priority:' in line
@@ -262,7 +266,7 @@ class TestZramSwapProperties:
             disk_priority_value = int(disk_value_str)
             assert zram_priority_value > disk_priority_value, (
                 f"Zram priority ({zram_priority_value}) must be higher than disk swap priority "
-                f"({disk_priority_value}) (Requirement 13.9)"
+                f"({disk_priority_value}) (SWAP-16)"
             )
 
         # Read the zram configuration template
@@ -271,41 +275,41 @@ class TestZramSwapProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Requirement 13.2: size configuration supports percentage format
+        # Verify SWAP-2: size configuration supports percentage format
         assert "{% if zram_size.endswith('%') %}" in template_content, (
-            "Template must support percentage format for zram_size (Requirement 13.2)"
+            "Template must support percentage format for zram_size (SWAP-2)"
         )
         assert "PERCENTAGE={{ zram_size.rstrip('%') }}" in template_content, (
             "Template must configure PERCENTAGE when using percentage format"
         )
 
-        # Verify Requirement 13.2: size configuration supports absolute format
+        # Verify SWAP-2: size configuration supports absolute format
         assert (
             "{% if zram_size.endswith('G') or zram_size.endswith('g') %}"
             in template_content
-        ), "Template must support GB format for zram_size (Requirement 13.2)"
+        ), "Template must support GB format for zram_size (SWAP-2)"
         assert (
             "SIZE={{ (zram_size.rstrip('Gg') | int) * 1024 }}" in template_content
         ), "Template must convert GB to MB for SIZE configuration"
         assert (
             "{% elif zram_size.endswith('M') or zram_size.endswith('m') %}"
             in template_content
-        ), "Template must support MB format for zram_size (Requirement 13.2)"
+        ), "Template must support MB format for zram_size (SWAP-2)"
         assert "SIZE={{ zram_size.rstrip('Mm') | int }}" in template_content, (
             "Template must configure SIZE when using MB format"
         )
 
-        # Verify Requirement 13.5: lz4 compression algorithm is configured
+        # Verify SWAP-5: lz4 compression algorithm is configured
         assert "ALGO=lz4" in template_content, (
-            "Template must configure lz4 compression algorithm (Requirement 13.5)"
+            "Template must configure lz4 compression algorithm (SWAP-5)"
         )
 
-        # Verify Requirement 13.9: priority is configured
+        # Verify SWAP-9: priority is configured
         assert (
             "PRIORITY={{ zram_swap_priority }}" in template_content
         ), (
             "Template must configure swap priority using zram_swap_priority "
-            "variable (Requirement 13.9)"
+            "variable (SWAP-9)"
         )
 
         # Verify template has Ansible managed comment
@@ -335,15 +339,15 @@ class TestZramSwapProperties:
         )
 
         # Property verified: The swap role configuration ensures that:
-        # - zram_enabled is configurable (13.1)
-        # - zram_size is configurable with percentage and absolute formats (13.2)
-        # - zram-tools is installed (13.3)
-        # - zram device is created with specified size (13.4)
-        # - lz4 compression is configured and verified (13.5)
-        # - zram device is formatted as swap (13.6)
-        # - zram device is enabled as swap (13.7)
-        # - zramswap service is enabled to start on boot (13.8)
-        # - zram priority is higher than disk swap priority (13.9)
+        # - zram_enabled is configurable (SWAP-1)
+        # - zram_size is configurable with percentage and absolute formats (SWAP-2)
+        # - zram-tools is installed (SWAP-3)
+        # - zram device is created with specified size (SWAP-4)
+        # - lz4 compression is configured and verified (SWAP-5)
+        # - zram device is enabled as swap (SWAP-7)
+        # - zramswap service is enabled to start on boot (SWAP-8)
+        # - zram priority is configurable (SWAP-9)
+        # - default zram priority is higher than disk swap priority (SWAP-16)
         # - Configuration changes trigger service restart
         # - This applies consistently across all valid configuration values
 
@@ -371,16 +375,16 @@ class TestDiskSwapProperties:
         formatted as swap, enabled as swap, added to /etc/fstab for persistence, and
         assigned a lower priority than zram swap if zram is also enabled.
 
-        Validates: Requirements 13.10, 13.11, 13.12, 13.13, 13.14, 13.15, 13.16
+        Validates: SWAP-10, SWAP-11, SWAP-12, SWAP-13, SWAP-14, SWAP-15, SWAP-16
         """
         # This property test verifies the swap role's disk swap behavior by checking:
-        # 1. disk_swap_size is configurable (Requirement 13.10)
-        # 2. swap file is created at /swapfile with specified size (Requirement 13.11)
-        # 3. swap file has mode 0600 (Requirement 13.12)
-        # 4. swap file is formatted as swap (Requirement 13.13)
-        # 5. swap file is enabled as swap (Requirement 13.14)
-        # 6. swap file is added to /etc/fstab (Requirement 13.15)
-        # 7. disk swap priority is lower than zram (Requirement 13.16)
+        # 1. disk_swap_size is configurable (SWAP-10)
+        # 2. swap file is created at /swapfile with specified size (SWAP-11)
+        # 3. swap file has mode 0600 (SWAP-12)
+        # 4. swap file is formatted as swap (SWAP-13)
+        # 5. swap file is enabled as swap (SWAP-14)
+        # 6. swap file is added to /etc/fstab (SWAP-15)
+        # 7. disk swap priority is lower than zram (SWAP-16)
 
         # Read the swap role tasks
         tasks_path = Path("roles/swap/tasks/main.yml")
@@ -402,18 +406,18 @@ class TestDiskSwapProperties:
 
         disk_swap_tasks_content = disk_swap_tasks_path.read_text()
 
-        # Verify Requirement 13.11: swap file is created with specified size
+        # Verify SWAP-11: swap file is created with specified size
         assert "ansible.builtin.command:" in disk_swap_tasks_content, (
             "Swap file must be created using command module"
         )
         assert "cmd: \"fallocate -l {{ disk_swap_size }} /swapfile\"" in disk_swap_tasks_content, (
-            "Swap file must be created using fallocate with disk_swap_size (Requirement 13.11)"
+            "Swap file must be created using fallocate with disk_swap_size (SWAP-11)"
         )
         assert "creates: /swapfile" in disk_swap_tasks_content, (
             "Swap file creation must be idempotent using creates parameter"
         )
 
-        # Verify Requirement 13.12: swap file permissions are set to 0600
+        # Verify SWAP-12: swap file permissions are set to 0600
         assert "ansible.builtin.file:" in disk_swap_tasks_content, (
             "Swap file permissions must be set using file module"
         )
@@ -423,7 +427,7 @@ class TestDiskSwapProperties:
         assert (
             "mode: \"0600\"" in disk_swap_tasks_content
             or "mode: '0600'" in disk_swap_tasks_content
-        ), "Swap file must have mode 0600 (Requirement 13.12)"
+        ), "Swap file must have mode 0600 (SWAP-12)"
         assert "owner: root" in disk_swap_tasks_content, (
             "Swap file must be owned by root"
         )
@@ -431,26 +435,26 @@ class TestDiskSwapProperties:
             "Swap file must be owned by root group"
         )
 
-        # Verify Requirement 13.13: swap file is formatted
+        # Verify SWAP-13: swap file is formatted
         assert "cmd: mkswap /swapfile" in disk_swap_tasks_content, (
-            "Swap file must be formatted using mkswap (Requirement 13.13)"
+            "Swap file must be formatted using mkswap (SWAP-13)"
         )
         assert "when: swap_file_created.changed" in disk_swap_tasks_content, (
             "Swap formatting must be conditional on file creation"
         )
 
-        # Verify Requirement 13.14: swap file is enabled with priority
+        # Verify SWAP-14: swap file is enabled with priority
         assert (
             "cmd: \"swapon --priority {{ disk_swap_priority }} /swapfile\""
             in disk_swap_tasks_content
-        ), "Swap file must be enabled with priority using swapon (Requirement 13.14)"
+        ), "Swap file must be enabled with priority using swapon (SWAP-14)"
         assert "when: swap_formatted.changed" in disk_swap_tasks_content, (
             "Swap enablement must be conditional on formatting"
         )
 
-        # Verify Requirement 13.15: swap file is added to /etc/fstab
+        # Verify SWAP-15: swap file is added to /etc/fstab
         assert "ansible.builtin.lineinfile:" in disk_swap_tasks_content, (
-            "Swap file must be added to fstab using lineinfile module (Requirement 13.15)"
+            "Swap file must be added to fstab using lineinfile module (SWAP-15)"
         )
         assert "path: /etc/fstab" in disk_swap_tasks_content, (
             "Lineinfile must target /etc/fstab"
@@ -458,7 +462,7 @@ class TestDiskSwapProperties:
         assert (
             "line: \"/swapfile none swap sw,pri={{ disk_swap_priority }} 0 0\""
             in disk_swap_tasks_content
-        ), "Fstab entry must include swap file with priority (Requirement 13.15)"
+        ), "Fstab entry must include swap file with priority (SWAP-15)"
         assert "state: present" in disk_swap_tasks_content, (
             "Fstab entry must be present"
         )
@@ -477,9 +481,9 @@ class TestDiskSwapProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify Requirement 13.10: disk_swap_size is configurable
+        # Verify SWAP-10: disk_swap_size is configurable
         assert "disk_swap_size:" in defaults_content, (
-            "disk_swap_size must be defined in defaults (Requirement 13.10)"
+            "disk_swap_size must be defined in defaults (SWAP-10)"
         )
         assert (
             'disk_swap_size: ""' in defaults_content
@@ -491,7 +495,7 @@ class TestDiskSwapProperties:
             "disk_swap_priority must be defined in defaults"
         )
 
-        # Verify Requirement 13.16: disk swap priority is lower than zram
+        # Verify SWAP-16: disk swap priority is lower than zram
         zram_priority_line = [
             line for line in defaults_content.split('\n')
             if 'zram_swap_priority:' in line
@@ -509,17 +513,17 @@ class TestDiskSwapProperties:
             disk_priority_value = int(disk_value_str)
             assert disk_priority_value < zram_priority_value, (
                 f"Disk swap priority ({disk_priority_value}) must be lower than zram priority "
-                f"({zram_priority_value}) (Requirement 13.16)"
+                f"({zram_priority_value}) (SWAP-16)"
             )
 
         # Property verified: The swap role configuration ensures that:
-        # - disk_swap_size is configurable (13.10)
-        # - swap file is created at /swapfile with specified size (13.11)
-        # - swap file has mode 0600 for security (13.12)
-        # - swap file is formatted as swap (13.13)
-        # - swap file is enabled as swap with priority (13.14)
-        # - swap file is added to /etc/fstab for persistence (13.15)
-        # - disk swap priority is lower than zram priority (13.16)
+        # - disk_swap_size is configurable (SWAP-10)
+        # - swap file is created at /swapfile with specified size (SWAP-11)
+        # - swap file has mode 0600 for security (SWAP-12)
+        # - swap file is formatted as swap (SWAP-13)
+        # - swap file is enabled as swap with priority (SWAP-14)
+        # - swap file is added to /etc/fstab for persistence (SWAP-15)
+        # - disk swap priority is lower than zram priority (SWAP-16)
         # - Swap file creation is idempotent
         # - This applies consistently across all valid configuration values
 
@@ -536,11 +540,11 @@ class TestSwapConfigurationSkipProperties:
         For any execution of the bootstrap playbook WHERE neither zram nor disk swap
         is configured, the playbook SHALL skip all swap configuration steps.
 
-        Validates: Requirement 13.17
+        Validates: SWAP-17
         """
         # This property test verifies the swap role's skip behavior by checking:
         # 1. Swap configuration is skipped when both zram and disk swap are
-        #    disabled (Requirement 13.17)
+        #    disabled (SWAP-17)
 
         # Read the swap role tasks
         tasks_path = Path("roles/swap/tasks/main.yml")
@@ -548,21 +552,21 @@ class TestSwapConfigurationSkipProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify Requirement 13.17: zram configuration is conditional
+        # Verify SWAP-17: zram configuration is conditional
         assert "ansible.builtin.include_tasks: zram.yml" in tasks_content, (
             "Zram configuration tasks must be included"
         )
         assert "when: zram_enabled | bool" in tasks_content, (
-            "Zram configuration must be skipped when zram_enabled is false (Requirement 13.17)"
+            "Zram configuration must be skipped when zram_enabled is false (SWAP-17)"
         )
 
-        # Verify Requirement 13.17: disk swap configuration is conditional
+        # Verify SWAP-17: disk swap configuration is conditional
         assert "ansible.builtin.include_tasks: disk_swap.yml" in tasks_content, (
             "Disk swap configuration tasks must be included"
         )
         assert "when: disk_swap_size | length > 0" in tasks_content, (
             "Disk swap configuration must be skipped when disk_swap_size is empty "
-            "(Requirement 13.17)"
+            "(SWAP-17)"
         )
 
         # Verify the conditions check both defined and non-empty/false
@@ -586,8 +590,8 @@ class TestSwapConfigurationSkipProperties:
         ), "Default disk_swap_size should be empty string to skip configuration by default"
 
         # Property verified: The swap role ensures that:
-        # - Zram configuration is skipped when zram_enabled is false (13.17)
-        # - Disk swap configuration is skipped when disk_swap_size is empty (13.17)
+        # - Zram configuration is skipped when zram_enabled is false (SWAP-17)
+        # - Disk swap configuration is skipped when disk_swap_size is empty (SWAP-17)
         # - Default values disable both swap types by default
         # - No swap configuration occurs when both are disabled
         # - This applies consistently regardless of the reason for skipping
@@ -620,6 +624,8 @@ class TestSwapPriorityProperties:
         - Disk swap priority is configurable
         - Default zram priority is higher than default disk swap priority
         - Priority values are used in configuration
+
+        Validates: SWAP-9, SWAP-16
         """
         # Read the swap defaults
         defaults_path = Path("roles/swap/defaults/main.yml")
@@ -719,6 +725,8 @@ class TestZramSizeFormatProperties:
         - Absolute GB format is supported and converted to MB (e.g., "2G")
         - Absolute MB format is supported (e.g., "1024M")
         - Template handles all format variations correctly
+
+        Validates: SWAP-2
         """
         # Read the zram configuration template
         template_path = Path("roles/swap/templates/zram.conf.j2")
@@ -798,6 +806,11 @@ class TestSwapIdempotencyProperties:
         - Swap formatting is conditional on file creation
         - Swap enablement is conditional on formatting
         - Fstab entry is checked before adding to prevent duplicates
+
+        Validates: SWAP-11, SWAP-13, SWAP-14, SWAP-15
+
+        Note that the same conditions that make the chain idempotent are why
+        SWAP-14 does not re-activate an existing but inactive /swapfile.
         """
         # Read the disk swap tasks
         disk_swap_tasks_path = Path("roles/swap/tasks/disk_swap.yml")

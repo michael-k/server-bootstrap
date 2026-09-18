@@ -1,13 +1,17 @@
 ---
 # Default variables for swap role
 
-# Zram configuration
+# SWAP-1: zram swap is opt-in.
 zram_enabled: false
-zram_size: "50%" # Size as percentage of RAM (e.g., "50%") or absolute size (e.g., "2G")
+# SWAP-2: percentage of RAM (e.g. "50%") or absolute size (e.g. "2G").
+zram_size: "50%"
 
-# Disk swap configuration
-disk_swap_size: "" # Disk swap size (e.g., "2G", empty string to disable)
+# SWAP-10: disk swap is opt-in; an empty size means no swap file.
+disk_swap_size: ""
 
-# Swap priorities
-zram_swap_priority: 100 # Higher priority (accessed first)
-disk_swap_priority: 10 # Lower priority (accessed second)
+# SWAP-16: zram outranks disk swap, so the kernel reclaims to compressed RAM
+# before it reaches for the disk.
+# SWAP-9: the zram device's priority.
+zram_swap_priority: 100
+# The swap file's priority.
+disk_swap_priority: 10

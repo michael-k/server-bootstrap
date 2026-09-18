@@ -10,7 +10,7 @@ rendered content; parse YAML task files to verify task parameters.
 Covers roles: fail2ban, logging, system_config, swap.
 
 Requirements: 10.1-10.7, 11.1-11.4, TIME-1, TIME-2, TIME-3, TIME-4, TIME-5,
-TIME-6, 13.1-13.17
+TIME-6, SWAP-1, SWAP-2, SWAP-5, SWAP-9, SWAP-10, SWAP-12, SWAP-15, SWAP-16
 """
 
 from __future__ import annotations
@@ -295,7 +295,11 @@ class TestTimeSyncServiceSelection:
 # ---------------------------------------------------------------------------
 
 class TestSwapPriorityValues:
-    """Tests for swap priority values (Requirements 13.1-13.17)."""
+    """Tests for swap configuration values.
+
+    Covers SWAP-1, SWAP-2, SWAP-5, SWAP-9, SWAP-10, SWAP-12, SWAP-15 and
+    SWAP-16 by rendering the zram template and parsing the role's task files.
+    """
 
     @pytest.fixture
     def zram_vars(self) -> dict:
@@ -309,38 +313,42 @@ class TestSwapPriorityValues:
         return make_env("swap").get_template("zram.conf.j2").render(**variables)
 
     def test_zram_priority_higher_than_disk(self, zram_vars):
-        """Req 13.9, 13.16: zram priority (100) must be higher than disk priority (10)."""
+        """SWAP-16: zram priority (100) must be higher than disk priority (10).
+
+        Asserts on this fixture's own values, not on anything the role
+        defines — see the swap design's failure modes.
+        """
         assert zram_vars["zram_swap_priority"] > zram_vars["disk_swap_priority"]
 
     def test_zram_priority_in_conf(self, zram_vars):
-        """Req 13.9: zram.conf must include the swap priority."""
+        """SWAP-9: zram.conf must include the swap priority."""
         config = self.render_zram_conf(zram_vars)
         assert "PRIORITY=100" in config
 
     def test_zram_compression_is_lz4(self, zram_vars):
-        """Req 13.5: zram.conf must configure lz4 compression algorithm."""
+        """SWAP-5: zram.conf must configure lz4 compression algorithm."""
         config = self.render_zram_conf(zram_vars)
         assert "ALGO=lz4" in config
 
     def test_zram_percentage_size(self, zram_vars):
-        """Req 13.2: Percentage-based zram size is rendered correctly."""
+        """SWAP-2: Percentage-based zram size is rendered correctly."""
         config = self.render_zram_conf(zram_vars)
         assert "PERCENTAGE=50" in config
 
     def test_zram_absolute_size_gb(self, zram_vars):
-        """Req 13.2: Absolute GB zram size is converted to MB."""
+        """SWAP-2: Absolute GB zram size is converted to MB."""
         zram_vars["zram_size"] = "2G"
         config = self.render_zram_conf(zram_vars)
         assert "SIZE=2048" in config
 
     def test_zram_absolute_size_mb(self, zram_vars):
-        """Req 13.2: Absolute MB zram size is rendered directly."""
+        """SWAP-2: Absolute MB zram size is rendered directly."""
         zram_vars["zram_size"] = "512M"
         config = self.render_zram_conf(zram_vars)
         assert "SIZE=512" in config
 
     def test_disk_swap_file_mode_0600(self):
-        """Req 13.12: Swap file must be created with mode 0600."""
+        """SWAP-12: Swap file must be created with mode 0600."""
         tasks = load_tasks("swap", "disk_swap.yml")
         task = find_task(tasks, "set swap file permissions")
         assert task is not None
@@ -349,7 +357,7 @@ class TestSwapPriorityValues:
         assert file_params.get("path") == "/swapfile"
 
     def test_disk_swap_fstab_entry_includes_priority(self):
-        """Req 13.15: fstab entry must include the disk swap priority."""
+        """SWAP-15: fstab entry must include the disk swap priority."""
         tasks = load_tasks("swap", "disk_swap.yml")
         task = find_task(tasks, "add swap file to fstab")
         assert task is not None
@@ -360,7 +368,7 @@ class TestSwapPriorityValues:
         assert "disk_swap_priority" in line
 
     def test_zram_conditional_on_zram_enabled(self):
-        """Req 13.1: zram tasks are only included when zram_enabled is true."""
+        """SWAP-1: zram tasks are only included when zram_enabled is true."""
         tasks = load_tasks("swap")
         task = find_task(tasks, "include zram swap configuration")
         assert task is not None
@@ -368,7 +376,7 @@ class TestSwapPriorityValues:
         assert "zram_enabled" in str(when_condition)
 
     def test_disk_swap_conditional_on_size(self):
-        """Req 13.10: disk swap tasks are only included when disk_swap_size is set."""
+        """SWAP-10: disk swap tasks are only included when disk_swap_size is set."""
         tasks = load_tasks("swap")
         task = find_task(tasks, "include disk swap configuration")
         assert task is not None

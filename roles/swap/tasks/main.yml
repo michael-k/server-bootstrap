@@ -1,10 +1,16 @@
 ---
 # Main tasks for swap role
+# SWAP-1, SWAP-10, SWAP-17
+#
+# Two independent halves, each gated on its own variable. SWAP-17 is the
+# combination: with both defaults left alone, neither include runs.
 
+# SWAP-1, SWAP-17: zram is configured only when zram_enabled is true.
 - name: Include zram swap configuration
   ansible.builtin.include_tasks: zram.yml
   when: zram_enabled | bool
 
+# SWAP-10, SWAP-17: disk swap is configured only when disk_swap_size is set.
 - name: Include disk swap configuration
   ansible.builtin.include_tasks: disk_swap.yml
   when: disk_swap_size | length > 0
