@@ -1,19 +1,18 @@
 ---
 # Hostname configuration tasks
-# Requirements: 6.1, 6.2, 6.3
+# HOST-1, HOST-2, HOST-3
 #
 # Sets the system hostname and ensures it persists across reboots.
 # This task file is only included when system_hostname is defined and non-empty.
 
-# Requirement 6.1: Set system hostname to specified value
-# The hostname module sets the running hostname immediately
+# HOST-1: set the running hostname to the configured value immediately.
 - name: Set system hostname
   ansible.builtin.hostname:
     name: "{{ system_hostname }}"
   notify: Verify hostname persistence
 
-# Requirement 6.2: Persist hostname across reboots
-# Writing to /etc/hostname ensures the hostname is set on boot
+# HOST-2: persist across reboots by writing /etc/hostname, which nothing
+# else reloads the running name from at boot.
 - name: Update /etc/hostname for persistence
   ansible.builtin.copy:
     content: "{{ system_hostname }}\n"
@@ -22,8 +21,9 @@
     group: root
     mode: "0644"
 
-# Update /etc/hosts to map the hostname to 127.0.1.1
-# This prevents hostname resolution issues and warnings
+# HOST-3: keep /etc/hosts's 127.0.1.1 entry pointed at the configured
+# hostname, so sudo and other local-hostname lookups resolve it without
+# stalling on DNS.
 - name: Update /etc/hosts with new hostname
   ansible.builtin.lineinfile:
     path: /etc/hosts

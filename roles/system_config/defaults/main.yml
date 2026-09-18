@@ -1,8 +1,10 @@
 ---
 # Default variables for system_config role
 
-# Hostname configuration
-# Set to empty string or leave undefined to skip hostname configuration
+# system_hostname
+# HOST-1: hostname to apply, read by hostname.yml when non-empty.
+# HOST-4: empty (the default) or undefined skips hostname configuration
+# entirely.
 system_hostname: ""
 
 # Time synchronization service choice

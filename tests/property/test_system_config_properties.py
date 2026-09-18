@@ -78,11 +78,12 @@ class TestHostnameConfigurationProperties:
         the system hostname SHALL be set to the specified value and persisted across
         reboots.
 
-        Validates: Requirements 6.1, 6.2
+        Validates: HOST-1, HOST-2, HOST-3
         """
         # This property test verifies the system_config role's hostname behavior by checking:
-        # 1. System hostname is set when variable is defined (Requirement 6.1)
-        # 2. Hostname persists across reboots (Requirement 6.2)
+        # 1. System hostname is set when variable is defined (HOST-1)
+        # 2. Hostname persists across reboots (HOST-2)
+        # 3. Hostname is added to /etc/hosts for local resolution (HOST-3)
 
         # Read the system_config role tasks
         tasks_path = Path("roles/system_config/tasks/main.yml")
@@ -104,20 +105,20 @@ class TestHostnameConfigurationProperties:
 
         hostname_tasks_content = hostname_tasks_path.read_text()
 
-        # Verify Requirement 6.1: hostname is set using hostname module
+        # Verify HOST-1: hostname is set using hostname module
         assert "ansible.builtin.hostname:" in hostname_tasks_content, (
-            "Hostname must be set using ansible.builtin.hostname module (Requirement 6.1)"
+            "Hostname must be set using ansible.builtin.hostname module (HOST-1)"
         )
         assert "name: \"{{ system_hostname }}\"" in hostname_tasks_content, (
             "Hostname module must use system_hostname variable"
         )
 
-        # Verify Requirement 6.2: hostname persists across reboots via /etc/hostname
+        # Verify HOST-2: hostname persists across reboots via /etc/hostname
         assert "ansible.builtin.copy:" in hostname_tasks_content, (
             "Hostname persistence must use copy module for /etc/hostname"
         )
         assert "dest: /etc/hostname" in hostname_tasks_content, (
-            "Hostname must be written to /etc/hostname for persistence (Requirement 6.2)"
+            "Hostname must be written to /etc/hostname for persistence (HOST-2)"
         )
         assert "content: \"{{ system_hostname }}\\n\"" in hostname_tasks_content, (
             "Hostname file must contain system_hostname with newline"
@@ -134,7 +135,7 @@ class TestHostnameConfigurationProperties:
             "Hostname file must be owned by root group"
         )
 
-        # Verify Requirement 6.2: hostname is added to /etc/hosts for local resolution
+        # Verify HOST-3: hostname is added to /etc/hosts for local resolution
         assert "ansible.builtin.lineinfile:" in hostname_tasks_content, (
             "Hostname must be added to /etc/hosts using lineinfile module"
         )
@@ -185,9 +186,9 @@ class TestHostnameConfigurationProperties:
         )
 
         # Property verified: The system_config role ensures that:
-        # - System hostname is set when system_hostname variable is defined (6.1)
-        # - Hostname persists across reboots via /etc/hostname (6.2)
-        # - Hostname is added to /etc/hosts for local resolution
+        # - System hostname is set when system_hostname variable is defined (HOST-1)
+        # - Hostname persists across reboots via /etc/hostname (HOST-2)
+        # - Hostname is added to /etc/hosts for local resolution (HOST-3)
         # - Hostname file has correct permissions and ownership
         # - Hostname setting is verified after configuration
         # - This applies consistently across all valid hostname values
@@ -202,10 +203,10 @@ class TestHostnameConfigurationProperties:
         the playbook SHALL skip hostname configuration and leave the existing hostname
         unchanged.
 
-        Validates: Requirement 6.3
+        Validates: HOST-4
         """
         # This property test verifies the system_config role's skip behavior by checking:
-        # 1. Hostname configuration is skipped when variable is empty or undefined (Requirement 6.3)
+        # 1. Hostname configuration is skipped when variable is empty or undefined (HOST-4)
 
         # Read the system_config role tasks
         tasks_path = Path("roles/system_config/tasks/main.yml")
@@ -213,7 +214,7 @@ class TestHostnameConfigurationProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify Requirement 6.3: hostname configuration is conditional
+        # Verify HOST-4: hostname configuration is conditional
         assert "ansible.builtin.import_tasks: hostname.yml" in tasks_content, (
             "Hostname configuration tasks must be imported"
         )
@@ -221,7 +222,7 @@ class TestHostnameConfigurationProperties:
             "when: system_hostname is defined and system_hostname | length > 0" in tasks_content
         ), (
             "Hostname configuration must be skipped when system_hostname is empty or undefined "
-            "(Requirement 6.3)"
+            "(HOST-4)"
         )
 
         # Verify the condition checks both defined and non-empty
@@ -245,7 +246,7 @@ class TestHostnameConfigurationProperties:
         ), "system_hostname default should be empty string to skip configuration by default"
 
         # Property verified: The system_config role ensures that:
-        # - Hostname configuration is skipped when system_hostname is empty or undefined (6.3)
+        # - Hostname configuration is skipped when system_hostname is empty or undefined (HOST-4)
         # - Default value is empty string to skip configuration by default
         # - Existing hostname remains unchanged when configuration is skipped
         # - This applies consistently regardless of the reason for skipping
