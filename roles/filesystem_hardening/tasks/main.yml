@@ -1,8 +1,10 @@
 ---
 # Filesystem Hardening Role - Main Tasks
 #
-# Hardens /tmp, /dev/shm, and /var/tmp with noexec, nosuid, nodev options
-# to prevent execution of uploaded payloads from temporary directories.
+# FS-1, FS-2, FS-3: mounts /tmp, /var/tmp and /dev/shm with noexec, nosuid,
+# nodev, preventing execution of a payload written to any of them.
+# FS-4: delivered as systemd mount units and drop-in overrides, never as
+# /etc/fstab entries.
 #
 # Mount strategy:
 #   /tmp     - drop-in override if tmp.mount exists, bind-mount unit otherwise
@@ -11,6 +13,9 @@
 
 # --- /tmp hardening ---
 
+# FS-1: the two mutually exclusive strategies for /tmp — a base tmp.mount
+# unit already existing selects the drop-in override below; its absence
+# selects the full bind-mount unit.
 # Check if a base tmp.mount unit exists (systemd ships one for tmpfs /tmp)
 - name: Check if tmp.mount unit exists
   ansible.builtin.command: systemctl cat tmp.mount
@@ -36,7 +41,7 @@
     group: root
     mode: "0644"
   when: tmp_mount_exists.rc == 0
-  notify: Reload systemd daemon
+  notify: Reload systemd daemon  # FS-1, FS-4
   register: tmp_dropin
 
 # Strategy B: deploy full bind-mount unit when no tmp.mount exists
@@ -48,7 +53,7 @@
     group: root
     mode: "0644"
   when: tmp_mount_exists.rc != 0
-  notify: Reload systemd daemon
+  notify: Reload systemd daemon  # FS-1, FS-4
 
 # --- /dev/shm hardening ---
 
@@ -60,6 +65,7 @@
     group: root
     mode: "0755"
 
+# FS-3: /dev/shm mounted with noexec,nosuid,nodev via a drop-in override.
 - name: Deploy hardened /dev/shm mount override
   ansible.builtin.template:
     src: dev-shm.mount.conf.j2
@@ -67,11 +73,12 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Reload systemd daemon
+  notify: Reload systemd daemon  # FS-3, FS-4
   register: shm_override
 
 # --- /var/tmp hardening ---
 
+# FS-2: /var/tmp mounted with noexec,nosuid,nodev, bound onto /tmp.
 - name: Deploy hardened /var/tmp mount unit
   ansible.builtin.template:
     src: var-tmp.mount.j2
@@ -79,7 +86,7 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Reload systemd daemon
+  notify: Reload systemd daemon  # FS-2, FS-4
 
 # Flush handlers to ensure daemon-reload runs before enabling/restarting mounts
 - name: Flush handlers to reload systemd if unit files changed
@@ -93,19 +100,24 @@
     enabled: true
     state: started
 
-# Remount /tmp to pick up drop-in override if it changed.
-# Uses remount (not restart) to preserve /tmp contents — restarting a
-# tmpfs mount wipes it, which destroys Ansible's in-flight module payloads.
+# FS-5: remount (not restart) to apply the drop-in immediately, in the same
+# run, rather than waiting for the next boot. Uses remount rather than
+# restart to preserve /tmp contents — restarting a tmpfs mount wipes it,
+# which destroys Ansible's in-flight module payloads.
 - name: Remount /tmp to apply drop-in override
   ansible.builtin.command: mount -o remount,noexec,nosuid,nodev /tmp
   when: tmp_dropin is defined and tmp_dropin.changed
   changed_when: true
 
+# FS-5: remount /dev/shm immediately when its drop-in changed.
 - name: Remount /dev/shm with hardened options
   ansible.builtin.command: mount -o remount,noexec,nosuid,nodev /dev/shm
   when: shm_override.changed
   changed_when: true
 
+# FS-6: unlike /tmp and /dev/shm above, an already-active var-tmp.mount is
+# not remounted or restarted here when its unit file changes — see FS-6's
+# Traceability note.
 - name: Enable and start hardened /var/tmp mount
   ansible.builtin.systemd:
     name: var-tmp.mount

@@ -44,7 +44,7 @@ class TestFilesystemHardeningProperties:
         For any execution of the bootstrap playbook, /tmp SHALL be mounted
         with noexec, nosuid, and nodev options via a systemd bind-mount unit.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-1
         """
         template_path = Path("roles/filesystem_hardening/templates/tmp.mount.j2")
         assert template_path.exists(), "tmp.mount.j2 template must exist"
@@ -79,7 +79,7 @@ class TestFilesystemHardeningProperties:
         For any execution of the bootstrap playbook, /dev/shm SHALL be mounted
         with noexec, nosuid, and nodev options via a systemd drop-in override.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-3
         """
         template_path = Path(
             "roles/filesystem_hardening/templates/dev-shm.mount.conf.j2"
@@ -114,7 +114,7 @@ class TestFilesystemHardeningProperties:
         For any execution of the bootstrap playbook, /var/tmp SHALL be mounted
         with noexec, nosuid, and nodev options as a bind-mount to /tmp.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-2
         """
         template_path = Path("roles/filesystem_hardening/templates/var-tmp.mount.j2")
         assert template_path.exists(), "var-tmp.mount.j2 template must exist"
@@ -148,7 +148,7 @@ class TestFilesystemHardeningProperties:
         For any execution of the bootstrap playbook, the var-tmp.mount unit
         SHALL declare a dependency on tmp.mount via After= and Requires=.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-2
         """
         template_path = Path("roles/filesystem_hardening/templates/var-tmp.mount.j2")
         assert template_path.exists(), "var-tmp.mount.j2 template must exist"
@@ -178,7 +178,7 @@ class TestFilesystemHardeningProperties:
         For any execution of the bootstrap playbook, the filesystem_hardening
         tasks SHALL deploy systemd units for all three hardened mountpoints.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-1, FS-2, FS-3, FS-4
         """
         tasks_path = Path("roles/filesystem_hardening/tasks/main.yml")
         assert tasks_path.exists(), "Tasks file must exist"
@@ -222,7 +222,7 @@ class TestFilesystemHardeningProperties:
         DefaultDependencies=no, to preserve systemd's implicit boot ordering
         (After=sysinit.target) that ensures root FS is mounted rw first.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-1, FS-2
         """
         for template_name in ["tmp.mount.j2", "var-tmp.mount.j2"]:
             template_path = Path(
@@ -252,7 +252,7 @@ class TestFilesystemHardeningProperties:
         For any execution of the bootstrap playbook, unit file changes SHALL
         trigger a systemd daemon-reload via the handler.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-4
         """
         # Verify handler exists
         handler_path = Path("roles/filesystem_hardening/handlers/main.yml")
@@ -287,7 +287,7 @@ class TestFilesystemHardeningProperties:
         use a drop-in conf file (not a full unit replacement) to preserve the
         base unit's Type/What/Where while only changing Options.
 
-        Validates: Filesystem hardening design spec
+        Validates: FS-3
         """
         tasks_path = Path("roles/filesystem_hardening/tasks/main.yml")
         tasks_content = tasks_path.read_text()
@@ -330,7 +330,7 @@ class TestFilesystemHardeningProperties:
         Verify that the testing approach can detect a missing security option.
         If an options line does NOT contain a required option, the assertion fails.
 
-        Validates: Filesystem hardening design spec (negative test)
+        Validates: FS-1, FS-2, FS-3 (negative test)
         """
         # Simulate an options line missing one required option
         all_options = {"noexec", "nosuid", "nodev"}

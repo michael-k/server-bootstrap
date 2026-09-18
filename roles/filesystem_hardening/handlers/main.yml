@@ -1,6 +1,7 @@
 ---
 # Handlers for filesystem_hardening role
 
+# FS-4: reloads systemd after a unit file or drop-in changes.
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
