@@ -274,14 +274,14 @@ class TestTimeSynchronizationProperties:
         SHALL be installed, configured with reliable NTP servers, enabled to start on
         boot, started, and verified to be actively synchronizing.
 
-        Validates: Requirements 12.1, 12.2, 12.3, 12.4, 12.5
+        Validates: TIME-1, TIME-2, TIME-3, TIME-4, TIME-5
         """
         # This property test verifies the system_config role's time sync behavior by checking:
-        # 1. Time sync service is installed (Requirement 12.1)
-        # 2. NTP servers are configured (Requirement 12.2)
-        # 3. Service is enabled to start on boot (Requirement 12.3)
-        # 4. Service is started (Requirement 12.4)
-        # 5. Synchronization status is verified (Requirement 12.5)
+        # 1. Time sync service is installed (TIME-1)
+        # 2. NTP servers are configured (TIME-3)
+        # 3. Service is enabled to start on boot (TIME-4)
+        # 4. Service is started (TIME-5)
+        # 5. Synchronization status is queried and registered, not asserted
 
         # Read the system_config role tasks
         tasks_path = Path("roles/system_config/tasks/main.yml")
@@ -300,9 +300,9 @@ class TestTimeSynchronizationProperties:
 
         time_sync_tasks_content = time_sync_tasks_path.read_text()
 
-        # Verify Requirement 12.1: chrony is installed when selected
+        # Verify TIME-1: chrony is installed when selected
         assert "ansible.builtin.apt:" in time_sync_tasks_content, (
-            "Time sync service must be installed using apt module (Requirement 12.1)"
+            "Time sync service must be installed using apt module (TIME-1)"
         )
         assert "name: chrony" in time_sync_tasks_content, (
             "Chrony package must be installable"
@@ -319,7 +319,7 @@ class TestTimeSynchronizationProperties:
             "Conflicting time sync services must be stopped"
         )
 
-        # Verify Requirement 12.2: chrony is configured with NTP servers
+        # Verify TIME-1, TIME-3: chrony is configured with NTP servers
         assert "ansible.builtin.template:" in time_sync_tasks_content, (
             "Time sync configuration must be deployed using template module"
         )
@@ -338,7 +338,7 @@ class TestTimeSynchronizationProperties:
             "Configuration changes must trigger chrony service restart"
         )
 
-        # Verify Requirement 12.3: chrony service is enabled
+        # Verify TIME-4: chrony service is enabled
         assert "ansible.builtin.systemd:" in time_sync_tasks_content, (
             "Time sync service must be managed using systemd module"
         )
@@ -347,17 +347,16 @@ class TestTimeSynchronizationProperties:
         )
         assert (
             "enabled: true" in time_sync_tasks_content or "enabled: yes" in time_sync_tasks_content
-        ), "Chrony service must be enabled to start on boot (Requirement 12.3)"
+        ), "Chrony service must be enabled to start on boot (TIME-4)"
 
-        # Verify Requirement 12.4: chrony service is started
+        # Verify TIME-5: chrony service is started
         assert "state: started" in time_sync_tasks_content, (
-            "Chrony service must be started (Requirement 12.4)"
+            "Chrony service must be started (TIME-5)"
         )
 
-        # Verify Requirement 12.5: synchronization status is verified
+        # The synchronization status is queried with chronyc tracking
         assert "ansible.builtin.command: chronyc tracking" in time_sync_tasks_content, (
-            "Chrony synchronization status must be verified using chronyc tracking "
-            "(Requirement 12.5)"
+            "Chrony synchronization status must be queried using chronyc tracking"
         )
         assert "register: chrony_status" in time_sync_tasks_content, (
             "Chrony status must be registered for verification"
@@ -417,9 +416,9 @@ class TestTimeSynchronizationProperties:
             or "time_sync_service: chrony" in defaults_content
         ), "Default time_sync_service should be chrony"
 
-        # Verify Requirement 12.2: NTP servers are configurable
+        # Verify TIME-3: NTP servers are configurable
         assert "ntp_servers:" in defaults_content, (
-            "ntp_servers must be defined in defaults (Requirement 12.2)"
+            "ntp_servers must be defined in defaults (TIME-3)"
         )
 
         # Verify default NTP servers are reliable
@@ -443,9 +442,9 @@ class TestTimeSynchronizationProperties:
 
         chrony_template_content = chrony_template_path.read_text()
 
-        # Verify Requirement 12.2: NTP servers are configured in template
+        # Verify TIME-3: NTP servers are configured in template
         assert "{% for server in ntp_servers %}" in chrony_template_content, (
-            "Chrony template must iterate over ntp_servers list (Requirement 12.2)"
+            "Chrony template must iterate over ntp_servers list (TIME-3)"
         )
         assert "pool {{ server }} iburst" in chrony_template_content, (
             "Chrony template must configure NTP servers with iburst option"
@@ -479,12 +478,12 @@ class TestTimeSynchronizationProperties:
 
         timesyncd_template_content = timesyncd_template_path.read_text()
 
-        # Verify Requirement 12.2: NTP servers are configured in timesyncd template
+        # Verify TIME-3: NTP servers are configured in timesyncd template
         assert "[Time]" in timesyncd_template_content, (
             "Systemd-timesyncd template must have [Time] section"
         )
         assert "NTP={{ ntp_servers | join(' ') }}" in timesyncd_template_content, (
-            "Systemd-timesyncd template must configure NTP servers (Requirement 12.2)"
+            "Systemd-timesyncd template must configure NTP servers (TIME-3)"
         )
 
         # Verify template has Ansible managed comment
@@ -523,12 +522,12 @@ class TestTimeSynchronizationProperties:
         )
 
         # Property verified: The system_config role ensures that:
-        # - Time sync service is installed (12.1)
-        # - NTP servers are configured (12.2)
-        # - Service is enabled to start on boot (12.3)
-        # - Service is started (12.4)
-        # - Synchronization status is verified (12.5)
-        # - Conflicting services are stopped
+        # - Time sync service is installed (TIME-1)
+        # - NTP servers are configured (TIME-3)
+        # - Service is enabled to start on boot (TIME-4)
+        # - Service is started (TIME-5)
+        # - Synchronization status is queried (not asserted)
+        # - Conflicting services are stopped (TIME-2)
         # - Configuration changes trigger service restart
         # - Multiple NTP servers are configured for redundancy
         # - This applies consistently across all valid configuration values
@@ -550,6 +549,8 @@ class TestTimeSyncServiceSelectionProperties:
         For any execution of the bootstrap playbook with a selected time sync service,
         the playbook SHALL ensure that only the selected service is running and enabled,
         and conflicting services are stopped and disabled.
+
+        Validates: TIME-2
 
         This property verifies that:
         - Only one time sync service is active at a time
@@ -629,6 +630,8 @@ class TestNTPServerConfigurationProperties:
         For any execution of the bootstrap playbook with configured NTP servers,
         the playbook SHALL configure all specified NTP servers in the time sync
         service configuration for redundancy and reliability.
+
+        Validates: TIME-3
 
         This property verifies that:
         - Multiple NTP servers can be configured

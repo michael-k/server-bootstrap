@@ -5,9 +5,9 @@
 # than traditional ntpd, especially for systems that are frequently suspended
 # or have intermittent network connectivity.
 #
-# Requirements: 12.1, 12.2
+# TIME-1, TIME-3
 
-# Requirement 12.2: Configure reliable NTP servers
+# TIME-3: configure reliable NTP servers
 # The 'pool' directive uses multiple servers from the pool for redundancy
 # The 'iburst' option speeds up initial synchronization
 {% for server in ntp_servers %}

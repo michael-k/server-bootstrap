@@ -9,7 +9,8 @@ rendered content; parse YAML task files to verify task parameters.
 
 Covers roles: fail2ban, logging, system_config, swap.
 
-Requirements: 10.1-10.7, 11.1-11.4, 12.1-12.5, 13.1-13.17
+Requirements: 10.1-10.7, 11.1-11.4, TIME-1, TIME-2, TIME-3, TIME-4, TIME-5,
+TIME-6, 13.1-13.17
 """
 
 from __future__ import annotations
@@ -237,20 +238,20 @@ class TestTimeSyncServiceSelection:
         )
 
     def test_chrony_contains_pool_directives(self, ntp_servers):
-        """Req 12.2: chrony.conf must contain pool directives for each NTP server."""
+        """TIME-3: chrony.conf must contain pool directives for each NTP server."""
         config = self.render_chrony(ntp_servers)
         for server in ntp_servers:
             assert f"pool {server} iburst" in config
 
     def test_chrony_has_all_four_servers(self, ntp_servers):
-        """Req 12.2: chrony.conf must include all configured NTP servers."""
+        """TIME-3: chrony.conf must include all configured NTP servers."""
         config = self.render_chrony(ntp_servers)
         # Count actual pool directives (lines starting with "pool ")
         pool_count = sum(1 for line in config.split('\n') if line.strip().startswith('pool '))
         assert pool_count == 4
 
     def test_chrony_custom_servers(self):
-        """Req 12.2: Custom NTP servers are rendered in chrony.conf."""
+        """TIME-3: Custom NTP servers are rendered in chrony.conf."""
         servers = ["ntp1.example.com", "ntp2.example.com"]
         config = self.render_chrony(servers)
         assert "pool ntp1.example.com iburst" in config
@@ -267,7 +268,7 @@ class TestTimeSyncServiceSelection:
         assert "rtcsync" in config
 
     def test_timesyncd_ntp_line(self, ntp_servers):
-        """Req 12.2: timesyncd.conf must have NTP= line with all servers."""
+        """TIME-3: timesyncd.conf must have NTP= line with all servers."""
         config = self.render_timesyncd(ntp_servers)
         assert "NTP=" in config
         for server in ntp_servers:
@@ -279,7 +280,7 @@ class TestTimeSyncServiceSelection:
         assert "[Time]" in config
 
     def test_timesyncd_servers_space_separated(self, ntp_servers):
-        """Req 12.2: timesyncd NTP servers must be space-separated on one line."""
+        """TIME-3: timesyncd NTP servers must be space-separated on one line."""
         config = self.render_timesyncd(ntp_servers)
         ntp_line = next(
             line for line in config.splitlines() if line.startswith("NTP=")

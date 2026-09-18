@@ -8,10 +8,13 @@
 system_hostname: ""
 
 # Time synchronization service choice
+# TIME-1: selects which service is installed, configured, enabled and
+# started; TIME-2 stops and disables whichever one is not selected.
 # Options: "chrony" or "timesyncd"
 time_sync_service: "chrony"
 
 # NTP servers for time synchronization
+# TIME-3: configurable list, defaulting to the Debian pool.
 ntp_servers:
   - "0.debian.pool.ntp.org"
   - "1.debian.pool.ntp.org"

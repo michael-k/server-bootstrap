@@ -5,10 +5,10 @@
 # It's simpler than chrony but sufficient for most use cases where high
 # accuracy is not critical.
 #
-# Requirements: 12.1, 12.2
+# TIME-1, TIME-3
 
 [Time]
-# Requirement 12.2: Configure reliable NTP servers
+# TIME-3: configure reliable NTP servers
 # Space-separated list of NTP servers to use for time synchronization
 NTP={{ ntp_servers | join(' ') }}
 

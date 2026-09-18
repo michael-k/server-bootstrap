@@ -1,6 +1,6 @@
 ---
 # Time synchronization configuration tasks
-# Requirements: 12.1, 12.2, 12.3, 12.4, 12.5
+# TIME-1, TIME-2, TIME-3, TIME-4, TIME-5
 #
 # Configures either chrony or systemd-timesyncd for NTP time synchronization.
 # Chrony is preferred for better accuracy and features, but systemd-timesyncd
@@ -9,7 +9,7 @@
 # Chrony Configuration Path
 # ========================
 
-# Requirement 12.1: Install time synchronization service (chrony)
+# TIME-1: install chrony when it is the selected service.
 - name: Install chrony
   ansible.builtin.apt:
     name: chrony
@@ -17,8 +17,7 @@
     update_cache: true
   when: time_sync_service == "chrony"
 
-# Ensure systemd-timesyncd is not running when using chrony
-# Only one NTP service should be active at a time
+# TIME-2: stop and disable the non-selected service so exactly one is active.
 - name: Stop and disable systemd-timesyncd when using chrony
   ansible.builtin.systemd:
     name: systemd-timesyncd
@@ -27,8 +26,8 @@
   when: time_sync_service == "chrony"
   failed_when: false
 
-# Requirement 12.2: Configure NTP servers
-# Deploy chrony configuration with specified NTP server list
+# TIME-1, TIME-3: deploy chrony's configuration, including the configurable
+# ntp_servers list.
 - name: Configure chrony
   ansible.builtin.template:
     src: chrony.conf.j2
@@ -39,8 +38,7 @@
   when: time_sync_service == "chrony"
   notify: Restart chrony
 
-# Requirement 12.3: Enable time sync service to start on boot
-# Requirement 12.4: Start time sync service
+# TIME-4, TIME-5: enable chrony to start on boot and start it now.
 - name: Enable and start chrony service
   ansible.builtin.systemd:
     name: chrony
@@ -48,8 +46,8 @@
     enabled: true
   when: time_sync_service == "chrony"
 
-# Requirement 12.5: Verify time synchronization is active
-# chronyc tracking shows current synchronization status
+# Queries and displays the synchronization status without asserting it. The
+# time-sync spec's requirement that the state be checked is pending.
 - name: Verify chrony synchronization status
   ansible.builtin.command: chronyc tracking
   register: chrony_status
@@ -64,8 +62,7 @@
 # Systemd-timesyncd Configuration Path
 # ====================================
 
-# Ensure chrony is not running when using systemd-timesyncd
-# Only one NTP service should be active at a time
+# TIME-2: stop and disable the non-selected service so exactly one is active.
 - name: Stop and disable chrony when using systemd-timesyncd
   ansible.builtin.systemd:
     name: chrony
@@ -74,8 +71,8 @@
   when: time_sync_service == "timesyncd"
   failed_when: false
 
-# Requirement 12.2: Configure NTP servers
-# Deploy systemd-timesyncd configuration with specified NTP server list
+# TIME-1, TIME-3: deploy systemd-timesyncd's configuration, including the
+# configurable ntp_servers list.
 - name: Configure systemd-timesyncd
   ansible.builtin.template:
     src: timesyncd.conf.j2
@@ -86,8 +83,7 @@
   when: time_sync_service == "timesyncd"
   notify: Restart systemd-timesyncd
 
-# Requirement 12.3: Enable time sync service to start on boot
-# Requirement 12.4: Start time sync service
+# TIME-4, TIME-5: enable systemd-timesyncd to start on boot and start it now.
 - name: Enable and start systemd-timesyncd service
   ansible.builtin.systemd:
     name: systemd-timesyncd
@@ -95,8 +91,8 @@
     enabled: true
   when: time_sync_service == "timesyncd"
 
-# Requirement 12.5: Verify time synchronization is active
-# timedatectl timesync-status shows current synchronization status
+# Queries and displays the synchronization status without asserting it. The
+# time-sync spec's requirement that the state be checked is pending.
 - name: Verify systemd-timesyncd synchronization status
   ansible.builtin.command: timedatectl timesync-status
   register: timesyncd_status

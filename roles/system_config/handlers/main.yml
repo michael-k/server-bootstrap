@@ -6,12 +6,15 @@
   register: hostname_check
   changed_when: false
 
+# TIME-1: restart chrony when Configure chrony (time_sync.yml) changes it.
 - name: Restart chrony
   ansible.builtin.systemd:
     name: chrony
     state: restarted
   when: time_sync_service == "chrony"
 
+# TIME-1: restart systemd-timesyncd when Configure systemd-timesyncd
+# (time_sync.yml) changes it.
 - name: Restart systemd-timesyncd
   ansible.builtin.systemd:
     name: systemd-timesyncd
