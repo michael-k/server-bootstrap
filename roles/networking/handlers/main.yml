@@ -1,6 +1,7 @@
 ---
 # Handlers for networking role
 
+# NET-6: applies a changed netplan configuration.
 - name: Apply netplan configuration
   ansible.builtin.command:
     cmd: netplan apply

@@ -17,7 +17,7 @@ class TestNetworkingDefaults:
     @pytest.mark.unit
     def test_defaults_define_static_ipv6_address(self):
         """
-        The networking role defaults SHALL define static_ipv6_address
+        NET-1: the networking role defaults SHALL define static_ipv6_address
         as empty string (disabled by default).
         """
         defaults_path = Path("roles/networking/defaults/main.yml")
@@ -36,7 +36,7 @@ class TestNetworkingDefaults:
     @pytest.mark.unit
     def test_defaults_define_static_ipv6_gateway(self):
         """
-        The networking role defaults SHALL define static_ipv6_gateway
+        NET-3: the networking role defaults SHALL define static_ipv6_gateway
         with a sensible default for IONOS VPS.
         """
         defaults_path = Path("roles/networking/defaults/main.yml")
@@ -54,7 +54,7 @@ class TestNetplanTemplateProperties:
     @pytest.mark.unit
     def test_template_uses_dhcp4(self):
         """
-        The netplan template SHALL enable DHCPv4.
+        NET-2: the netplan template SHALL enable DHCPv4.
         """
         template_path = Path("roles/networking/templates/50-cloud-init.yaml.j2")
         assert template_path.exists(), "Netplan template must exist"
@@ -67,8 +67,8 @@ class TestNetplanTemplateProperties:
     @pytest.mark.unit
     def test_template_uses_static_ipv6_address_variable(self):
         """
-        The netplan template SHALL use the static_ipv6_address variable
-        in the addresses list.
+        NET-2: the netplan template SHALL use the static_ipv6_address
+        variable in the addresses list.
         """
         template_path = Path("roles/networking/templates/50-cloud-init.yaml.j2")
         content = template_path.read_text()
@@ -81,8 +81,8 @@ class TestNetplanTemplateProperties:
     @pytest.mark.unit
     def test_template_uses_static_ipv6_gateway_variable(self):
         """
-        The netplan template SHALL use the static_ipv6_gateway variable
-        for the default route.
+        NET-3: the netplan template SHALL use the static_ipv6_gateway
+        variable for the default route.
         """
         template_path = Path("roles/networking/templates/50-cloud-init.yaml.j2")
         content = template_path.read_text()
@@ -95,7 +95,8 @@ class TestNetplanTemplateProperties:
     @pytest.mark.unit
     def test_template_matches_wired_interfaces(self):
         """
-        The netplan template SHALL match wired ethernet interfaces (en*).
+        NET-2: the netplan template SHALL match wired ethernet
+        interfaces (en*).
         """
         template_path = Path("roles/networking/templates/50-cloud-init.yaml.j2")
         content = template_path.read_text()
@@ -110,7 +111,7 @@ class TestNetworkingTaskProperties:
     @pytest.mark.unit
     def test_tasks_are_conditional_on_static_ipv6(self):
         """
-        The networking role tasks SHALL only run when
+        NET-1: the networking role tasks SHALL only run when
         static_ipv6_address is set.
         """
         tasks_path = Path("roles/networking/tasks/main.yml")
@@ -126,7 +127,7 @@ class TestNetworkingTaskProperties:
     @pytest.mark.unit
     def test_tasks_deploy_netplan_config(self):
         """
-        The networking role SHALL deploy the netplan template
+        NET-5: the networking role SHALL deploy the netplan template
         to /etc/netplan/.
         """
         tasks_path = Path("roles/networking/tasks/main.yml")
@@ -143,8 +144,8 @@ class TestNetworkingTaskProperties:
     @pytest.mark.unit
     def test_tasks_use_handler_for_netplan_apply(self):
         """
-        The networking role SHALL use a handler to run netplan apply
-        when the config changes.
+        NET-6: the networking role SHALL use a handler to run netplan
+        apply when the config changes.
         """
         tasks_path = Path("roles/networking/tasks/main.yml")
         content = tasks_path.read_text()
@@ -157,7 +158,7 @@ class TestNetworkingTaskProperties:
     @pytest.mark.unit
     def test_tasks_verify_ipv6_address(self):
         """
-        The networking role SHALL verify that a global IPv6 address
+        NET-7: the networking role SHALL verify that a global IPv6 address
         is assigned after configuration.
         """
         tasks_path = Path("roles/networking/tasks/main.yml")
@@ -171,7 +172,7 @@ class TestNetworkingTaskProperties:
     @pytest.mark.unit
     def test_handler_runs_netplan_apply(self):
         """
-        The networking handler SHALL run netplan apply.
+        NET-6: the networking handler SHALL run netplan apply.
         """
         handlers_path = Path("roles/networking/handlers/main.yml")
         assert handlers_path.exists(), "Networking handlers must exist"
@@ -186,7 +187,7 @@ class TestNetworkingTaskProperties:
     @pytest.mark.unit
     def test_netplan_config_has_restrictive_permissions(self):
         """
-        The networking role SHALL deploy the netplan config with
+        NET-5: the networking role SHALL deploy the netplan config with
         mode 0600 since it's a network configuration file.
         """
         tasks_path = Path("roles/networking/tasks/main.yml")
@@ -204,7 +205,7 @@ class TestNetworkingRoleOrderingProperties:
     @pytest.mark.unit
     def test_networking_role_in_site_yml(self):
         """
-        The networking role SHALL be listed in site.yml.
+        PRJ-12: the networking role SHALL be listed in site.yml.
         """
         site_path = Path("site.yml")
         content = site_path.read_text()
@@ -217,8 +218,8 @@ class TestNetworkingRoleOrderingProperties:
     @pytest.mark.unit
     def test_networking_role_runs_before_tailscale(self):
         """
-        The networking role SHALL run before tailscale in site.yml
-        so that IPv6 is configured before VPN setup.
+        PRJ-12: the networking role SHALL run before tailscale in
+        site.yml so that IPv6 is configured before VPN setup.
         """
         site_path = Path("site.yml")
         content = site_path.read_text()
