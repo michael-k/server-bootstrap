@@ -188,6 +188,8 @@ These are the designated places where purpose repos integrate with the bootstrap
 | systemd units | Create new services — they log to journald automatically | Yes |
 | apt packages | Install any package (bootstrap runs `dist-upgrade` on re-run, which may update them) | Yes |
 
+Granting SSH access by adding an account to the `ssh-users` group, rather than by changing sshd's access configuration, is required by `USR-15`.
+
 Beyond the extension points above, purpose repos can also:
 - Use the automation user (`ansible` by default) for Ansible-driven configuration
 - Assume the Tailscale interface exists if `tailscale_enabled` was set

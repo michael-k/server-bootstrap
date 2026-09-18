@@ -4,7 +4,10 @@ Unit tests for the users role.
 Tests specific user creation behavior, SSH key deployment,
 sudo configuration file content, and authorized_keys permissions.
 
-Requirements: 1.1-1.8, 2.1-2.8
+Requirements: USR-1, USR-3, USR-4, USR-6, USR-9, USR-10, USR-12
+
+TestSudoConfiguration below covers the per-account sudo grants instead; its
+legacy citations (1.4, 2.3) stay until the sudo-hardening spec exists.
 """
 
 from __future__ import annotations
@@ -36,10 +39,10 @@ def find_task(tasks: list[dict[str, Any]], name_fragment: str) -> dict[str, Any]
 
 
 class TestManualUserCreation:
-    """Tests for manual access user creation."""
+    """USR-1, USR-3, USR-9: manual access account identity and key directory."""
 
     def test_manual_user_uid_is_1000(self):
-        """Test that the manual user task specifies uid 1000 via variable."""
+        """USR-1: the manual account is created with uid 1000."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create manual access user")
         assert task is not None, "Could not find manual user creation task"
@@ -51,7 +54,7 @@ class TestManualUserCreation:
         )
 
     def test_manual_user_password_uses_pre_hashed_variable(self):
-        """Test that the manual user password is set from a pre-hashed variable."""
+        """USR-3: the password comes from manual_user_password, not a default."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create manual access user")
         assert task is not None, "Could not find manual user creation task"
@@ -62,7 +65,7 @@ class TestManualUserCreation:
         )
 
     def test_manual_user_update_password_on_create(self):
-        """Test that the manual user task sets update_password to on_create."""
+        """USR-3: the password is written only when the account is created."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create manual access user")
         assert task is not None, "Could not find manual user creation task"
@@ -72,7 +75,7 @@ class TestManualUserCreation:
         )
 
     def test_manual_user_creates_home_directory(self):
-        """Test that the manual user task sets create_home to true."""
+        """USR-1: the account is created with a home directory."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create manual access user")
         assert task is not None, "Could not find manual user creation task"
@@ -82,7 +85,7 @@ class TestManualUserCreation:
         )
 
     def test_manual_user_ssh_dir_mode_0700(self):
-        """Test that the .ssh directory task for manual user sets mode 0700."""
+        """USR-9: the manual account's .ssh directory is mode 0700."""
         tasks = load_tasks("users")
         task = find_task(tasks, "ensure .ssh directory exists for manual user")
         assert task is not None, "Could not find manual user .ssh directory task"
@@ -93,10 +96,10 @@ class TestManualUserCreation:
 
 
 class TestAnsibleUserCreation:
-    """Tests for Ansible automation user creation."""
+    """USR-4, USR-6, USR-9: automation account identity and key directory."""
 
     def test_deploy_user_uid_is_1999(self):
-        """Test that the Ansible user task specifies uid 1999 via variable."""
+        """USR-4: the automation account is created with uid 1999."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create ansible user")
         assert task is not None, "Could not find Ansible user creation task"
@@ -107,7 +110,7 @@ class TestAnsibleUserCreation:
         )
 
     def test_ansible_user_password_is_locked(self):
-        """Test that the Ansible user password is set to '!' (locked/disabled)."""
+        """USR-6: the shadow field is a value no password can hash to."""
         tasks = load_tasks("users")
         task = find_task(tasks, "create ansible user")
         assert task is not None, "Could not find Ansible user creation task"
@@ -117,7 +120,7 @@ class TestAnsibleUserCreation:
         )
 
     def test_ansible_user_ssh_dir_mode_0700(self):
-        """Test that the .ssh directory task for Ansible user sets mode 0700."""
+        """USR-9: the automation account's .ssh directory is mode 0700."""
         tasks = load_tasks("users")
         task = find_task(tasks, "ensure .ssh directory exists for ansible user")
         assert task is not None, "Could not find Ansible user .ssh directory task"
@@ -128,10 +131,10 @@ class TestAnsibleUserCreation:
 
 
 class TestSSHKeyDeployment:
-    """Tests for SSH key deployment to authorized_keys."""
+    """USR-10, USR-12: key deployment and authorized_keys permissions."""
 
     def test_manual_user_authorized_key_state_present(self):
-        """Test that the manual user authorized_key task uses state: present."""
+        """USR-10: the manual account's key is deployed, not removed."""
         tasks = load_tasks("users")
         task = find_task(tasks, "deploy ssh public key to manual user")
         assert task is not None, "Could not find manual user authorized_key task"
@@ -141,7 +144,7 @@ class TestSSHKeyDeployment:
         )
 
     def test_manual_user_authorized_key_not_exclusive(self):
-        """Test that the manual user authorized_key task uses exclusive: false."""
+        """USR-10: deploying the key does not remove keys added elsewhere."""
         tasks = load_tasks("users")
         task = find_task(tasks, "deploy ssh public key to manual user")
         assert task is not None, "Could not find manual user authorized_key task"
@@ -151,7 +154,7 @@ class TestSSHKeyDeployment:
         )
 
     def test_ansible_user_authorized_key_state_present(self):
-        """Test that the Ansible user authorized_key task uses state: present."""
+        """USR-10: the automation account's key is deployed, not removed."""
         tasks = load_tasks("users")
         task = find_task(tasks, "deploy ssh public key to ansible user")
         assert task is not None, "Could not find Ansible user authorized_key task"
@@ -161,7 +164,7 @@ class TestSSHKeyDeployment:
         )
 
     def test_ansible_user_authorized_key_not_exclusive(self):
-        """Test that the Ansible user authorized_key task uses exclusive: false."""
+        """USR-10: deploying the key does not remove keys added elsewhere."""
         tasks = load_tasks("users")
         task = find_task(tasks, "deploy ssh public key to ansible user")
         assert task is not None, "Could not find Ansible user authorized_key task"
@@ -171,7 +174,7 @@ class TestSSHKeyDeployment:
         )
 
     def test_manual_user_authorized_keys_mode_uses_variable(self):
-        """Test that the authorized_keys permission task uses the authorized_keys_mode variable."""
+        """USR-12: the manual account's authorized_keys mode comes from the variable."""
         tasks = load_tasks("users")
         task = find_task(tasks, "set correct permissions on manual user authorized_keys")
         assert task is not None, "Could not find manual user authorized_keys permission task"
@@ -181,7 +184,7 @@ class TestSSHKeyDeployment:
         )
 
     def test_ansible_user_authorized_keys_mode_uses_variable(self):
-        """Test that the Ansible user authorized_keys permission task uses the variable."""
+        """USR-12: the automation account's authorized_keys mode comes from the variable."""
         tasks = load_tasks("users")
         task = find_task(tasks, "set correct permissions on ansible user authorized_keys")
         assert task is not None, "Could not find Ansible user authorized_keys permission task"

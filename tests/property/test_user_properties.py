@@ -4,6 +4,17 @@ Property-based tests for user management in VPS Bootstrap Playbook.
 These tests verify that user accounts are created correctly with proper UIDs,
 SSH key deployment, sudo privileges, and authentication methods across various
 configuration parameters.
+
+Requirements: USR-1, USR-2, USR-3, USR-4, USR-5, USR-6, USR-7, USR-9, USR-10,
+USR-11, USR-12
+
+Every test below draws its values from a Hypothesis strategy and then asserts
+substrings against the unchanged text of the role's files, so the generated
+values reach no template, module or assertion. They are recorded as such in
+the user-accounts design's failure modes rather than repaired here.
+
+Property 3 covers the per-account sudo grants instead; its legacy citations
+(1.4, 2.3) stay until the sudo-hardening spec exists.
 """
 
 from pathlib import Path
@@ -82,7 +93,7 @@ class TestUserManagementProperties:
         the manual access user SHALL be created with uid 1000 and the Ansible user
         SHALL be created with uid 1999.
 
-        Validates: Requirements 1.1, 1.2, 2.1, 2.2
+        Validates: USR-1, USR-2, USR-4, USR-5
 
         This property test verifies that:
         1. Users role creates manual access user with uid 1000
@@ -165,7 +176,7 @@ class TestUserManagementProperties:
         file path, the playbook SHALL deploy the public key to the user's
         authorized_keys file with mode 0600 and correct ownership.
 
-        Validates: Requirements 1.6, 1.7, 1.8, 2.5, 2.6, 2.7
+        Validates: USR-9, USR-10, USR-11, USR-12
 
         This property test verifies that:
         1. SSH keys are deployed using authorized_key module
@@ -265,6 +276,8 @@ class TestUserManagementProperties:
         passwordless sudo privileges.
 
         Validates: Requirements 1.4, 2.3
+        (the per-account sudo grants, owned by the sudo-hardening spec and
+        not yet migrated — no user-accounts requirement covers them)
 
         This property test verifies that:
         1. Manual user has sudo with password (ALL=(ALL:ALL) ALL)
@@ -355,7 +368,11 @@ class TestUserManagementProperties:
         support both password and SSH key authentication, while the Ansible user
         SHALL support only SSH key authentication.
 
-        Validates: Requirements 1.3, 1.5, 2.4, 2.8
+        Validates: USR-3, USR-6
+
+        Validates: 2.4 — key-only authentication, which sshd enforces and the
+        ssh-hardening spec owns; not migrated yet. Nothing below asserts it:
+        this test reads the users role only.
 
         This property test verifies that:
         1. Manual user has password set (hashed)
@@ -449,10 +466,14 @@ class TestUserManagementProperties:
         shell: str,
     ):
         """
-        Verify that user creation uses appropriate Ansible module parameters.
+        USR-1, USR-4, USR-7: user creation uses appropriate module parameters.
 
         For any valid username, uid, and shell, the user creation tasks should
         use proper Ansible module parameters for idempotent and secure user creation.
+
+        The shell assertion below is satisfied by its second disjunct for any
+        task file that sets a shell at all, so it cannot fail for the reason
+        its message gives.
         """
         # Verify users role exists
         role_path = Path("roles/users")
@@ -503,6 +524,8 @@ class TestUserManagementProperties:
         Verify that user management tasks have appropriate tags for selective execution.
 
         Tags allow running specific subsets of tasks (e.g., only manual user creation).
+        No requirement of any spec fixes this role's tags, so this test carries
+        no citation.
         """
         # Verify users role exists
         role_path = Path("roles/users")
@@ -535,7 +558,10 @@ class TestUserManagementProperties:
     @pytest.mark.unit
     def test_user_role_uses_secure_defaults(self):
         """
-        Verify that user role uses secure defaults for user creation.
+        USR-9, USR-12: secure file permissions for the SSH key material.
+
+        The sudoers mode and validation asserted below belong to the
+        sudo-hardening spec, which does not exist yet.
 
         Security best practices:
         - Home directories should be created
@@ -597,7 +623,8 @@ class TestUserManagementProperties:
         ansible_user: str,
     ):
         """
-        Verify that user role supports configuration through variables.
+        USR-1, USR-2, USR-4, USR-5, USR-10: account names, uids and key file
+        paths are configurable through variables.
 
         All user-specific settings should be configurable through variables
         rather than hardcoded in tasks.
@@ -647,6 +674,11 @@ class TestUserManagementProperties:
         """
         Verify that user role has complete documentation.
 
+        No requirement fixes the role's own comments, so this test carries no
+        citation. Note that its check for `manual_user_password` in the
+        defaults file is satisfied by a comment: USR-3 gives that variable no
+        default on purpose.
+
         Documentation should explain:
         - Purpose of each user account
         - Required variables
@@ -686,6 +718,9 @@ class TestUserManagementProperties:
     def test_user_role_idempotency_patterns(self):
         """
         Verify that user role follows idempotency best practices.
+
+        Module choice is not fixed by any user-accounts requirement, so this
+        test carries no citation; re-run behaviour is the project spec's.
 
         Idempotent patterns:
         - Use state: present for user creation

@@ -3,24 +3,33 @@
 # These can be overridden in inventory or playbook variables
 
 # Manual Access User Configuration (uid 1000)
-# Human administrator account with password and SSH key authentication
+# USR-2: the manual account's name is configurable.
 manual_user_name: "admin"
+# USR-1: uid 1000 is a contract with purpose repos, not a preference.
 manual_user_uid: 1000
+# USR-10, USR-11: configurable path, resolved on the controller.
 manual_user_ssh_key_file: "~/.ssh/id_ed25519_admin.pub"
+# USR-7: login shell.
 manual_user_shell: "/bin/bash"
+# USR-8: supplementary groups, appended to whatever the account already has.
 manual_user_groups: []
-# manual_user_password should be provided at runtime or from vault
+# USR-3: manual_user_password has no default here on purpose — it is supplied
+# from the vault.
 # Example: ansible-playbook -e "manual_user_password=SecurePassword123"
 # Or from vault: manual_user_password: "{{ vault_manual_user_password }}"
 
 # Ansible User Configuration (uid 1999)
-# Automation account with SSH key-only authentication
+# USR-5: the automation account's name is configurable.
 deploy_user_name: "ansible"
+# USR-4: uid 1999 is fixed for the same reason uid 1000 is.
 deploy_user_uid: 1999
+# USR-10, USR-11: configurable path, resolved on the controller.
 deploy_user_ssh_key_file: "~/.ssh/id_ed25519_ansible.pub"
+# USR-7: login shell.
 deploy_user_shell: "/bin/bash"
+# USR-8: supplementary groups, appended.
 deploy_user_groups: []
-# SSH authorized_keys file permissions
+# USR-12: authorized_keys mode, re-asserted on every run.
 authorized_keys_mode: "0600"
 
 # Sudo hardening

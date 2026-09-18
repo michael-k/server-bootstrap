@@ -12,8 +12,16 @@
     - sudo
 
 # Manual Access User Creation (uid 1000)
-# Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8
+# Requirements: 1.4
+# (1.4 is the sudo grant below, owned by the sudo-hardening spec and not yet
+# migrated. The rest of this block's citations now sit on their own tasks.)
 
+# USR-1: uid 1000 is fixed — purpose repos address this account by number.
+# USR-2: the name is configurable. USR-7: so is the login shell.
+# USR-8: supplementary groups are appended, never replaced, so memberships
+# granted by later tasks survive a re-run.
+# USR-3: the password comes from a vault variable with no role default, and
+# is written only at creation.
 - name: Create manual access user with uid 1000
   ansible.builtin.user:
     name: "{{ manual_user_name }}"
@@ -29,6 +37,8 @@
     - users
     - manual_user
 
+# USR-9: sshd ignores authorized_keys under a directory others can write,
+# and says nothing the locked-out operator can read.
 - name: Ensure .ssh directory exists for manual user
   ansible.builtin.file:
     path: "/home/{{ manual_user_name }}/.ssh"
@@ -40,6 +50,9 @@
     - users
     - manual_user
 
+# USR-10: the key file path is configurable per account.
+# USR-11: the lookup runs on the controller, which is what lets PRJ-7 check
+# the same path before the run changes anything on the host.
 - name: Deploy SSH public key to manual user authorized_keys
   ansible.posix.authorized_key:
     user: "{{ manual_user_name }}"
@@ -50,6 +63,8 @@
     - users
     - manual_user
 
+# USR-12: re-asserted unconditionally, so a mode loosened by hand does not
+# survive the next run.
 - name: Set correct permissions on manual user authorized_keys
   ansible.builtin.file:
     path: "/home/{{ manual_user_name }}/.ssh/authorized_keys"
@@ -74,8 +89,15 @@
     - sudo
 
 # Ansible User Creation (uid 1999)
-# Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.7, 2.8
+# Requirements: 2.3, 2.4
+# (2.3 is the passwordless sudo grant below, owned by the sudo-hardening
+# spec; 2.4 is key-only authentication, which sshd enforces and the
+# ssh-hardening spec owns. Neither is migrated yet.)
 
+# USR-4: uid 1999 is fixed. USR-5: the name is configurable.
+# USR-7: so is the login shell. USR-8: supplementary groups are appended.
+# USR-6: "!" is a shadow field no password can hash to — an empty field
+# would mean "no password required", not "no password".
 - name: Create Ansible user with uid 1999
   ansible.builtin.user:
     name: "{{ deploy_user_name }}"
@@ -90,6 +112,7 @@
     - users
     - ansible_user
 
+# USR-9: same directory contract as the manual account's.
 - name: Ensure .ssh directory exists for Ansible user
   ansible.builtin.file:
     path: "/home/{{ deploy_user_name }}/.ssh"
@@ -101,6 +124,8 @@
     - users
     - ansible_user
 
+# USR-10, USR-11: as for the manual account — a configurable path, read on
+# the controller.
 - name: Deploy SSH public key to Ansible user authorized_keys
   ansible.posix.authorized_key:
     user: "{{ deploy_user_name }}"
@@ -111,6 +136,7 @@
     - users
     - ansible_user
 
+# USR-12: same unconditional mode reassertion.
 - name: Set correct permissions on Ansible user authorized_keys
   ansible.builtin.file:
     path: "/home/{{ deploy_user_name }}/.ssh/authorized_keys"
@@ -137,6 +163,9 @@
 # Sudo Hardening
 # Harden sudo with environment sanitization, logging, timeouts, and su restriction
 
+# USR-13: sshd admits only members of this group, so it has to exist before
+# sshd is configured to consult it. The name's only definition lives in the
+# ssh_hardening role's defaults; the fallback below has to match it.
 - name: Create SSH access group
   ansible.builtin.group:
     name: "{{ ssh_access_group | default('ssh-users') }}"
@@ -145,6 +174,8 @@
     - users
     - ssh
 
+# USR-14: this membership is what actually grants SSH access. append: true
+# so it does not disturb memberships granted by other tasks.
 - name: Add bootstrap users to SSH access group
   ansible.builtin.user:
     name: "{{ user_name }}"
