@@ -1,4 +1,4 @@
-.PHONY: help bootstrap verify test test-unit test-property test-integration clean lint python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix vm-create vm-list vm-destroy vm-ssh images images-clean
+.PHONY: help bootstrap verify test test-unit test-property test-integration clean lint python-lint python-lint-fix python-typecheck ansible-lint ansible-lint-fix spec-check vm-create vm-list vm-destroy vm-ssh images images-clean
 
 help:
 	@echo "VPS Bootstrap Playbook - Available targets:"
@@ -14,6 +14,7 @@ help:
 	@echo "  python-typecheck   Type-check Python code with ty"
 	@echo "  ansible-lint       Check Ansible files with ansible-lint"
 	@echo "  ansible-lint-fix   Fix Ansible files with ansible-lint"
+	@echo "  spec-check         Check spec/implementation traceability"
 	@echo "  clean              Remove generated files and caches"
 	@echo "  vm-create          Create a test VM (DEBIAN=13|testing)"
 	@echo "  vm-list            List running test VMs"
@@ -51,7 +52,7 @@ test-integration:
 	@echo "Running integration tests..."
 	uv run pytest -m integration $(ARGS)
 
-lint: python-lint python-typecheck ansible-lint
+lint: python-lint python-typecheck ansible-lint spec-check
 
 python-lint:
 	@echo "Checking Python code with ruff..."
@@ -72,6 +73,10 @@ ansible-lint:
 ansible-lint-fix:
 	@echo "Fixing Ansible files with ansible-lint..."
 	uv run ansible-lint --fix $(ARGS)
+
+spec-check:
+	@echo "Checking spec traceability..."
+	uv run python -m tests.spec_check $(ARGS)
 
 clean:
 	@echo "Cleaning up..."

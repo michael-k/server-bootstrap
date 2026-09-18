@@ -20,6 +20,8 @@ from tests.spec_check import (
     load_prefixes,
     parse_allowance_register,
     parse_requirements,
+    render_traceability,
+    run_checks,
 )
 
 pytestmark = pytest.mark.unit
@@ -462,3 +464,144 @@ def test_check_implementation_map_accepts_an_existing_path(tmp_path: Path) -> No
     (tmp_path / "site.yml").write_text("---\n")
 
     assert check_implementation_map(specs, {"SSH": "ssh-hardening"}, tmp_path) == []
+
+
+def test_render_traceability_lists_requirements_and_their_citers() -> None:
+    rendered = render_traceability(
+        [_req("SSH-1", spec="ssh-hardening", title="Password auth")],
+        {"SSH-1": {Path("roles/ssh_hardening/tasks/main.yml")}},
+    )
+
+    assert "## ssh-hardening" in rendered
+    assert "`SSH-1`" in rendered
+    assert "`roles/ssh_hardening/tasks/main.yml`" in rendered
+    assert rendered.endswith("\n")
+
+
+def test_render_traceability_is_deterministic() -> None:
+    requirements = [_req("SSH-2", spec="s"), _req("SSH-1", spec="s")]
+    citations = {"SSH-1": {Path("b.yml"), Path("a.yml")}}
+
+    first = render_traceability(requirements, citations)
+    second = render_traceability(list(reversed(requirements)), citations)
+
+    assert first == second
+    assert first.index("`SSH-1`") < first.index("`SSH-2`")
+
+
+def test_render_traceability_marks_uncited_requirements() -> None:
+    rendered = render_traceability([_req("SSH-1", spec="s")], {})
+
+    assert "—" in rendered
+
+
+def test_run_checks_is_clean_for_a_consistent_tree(tmp_path: Path) -> None:
+    specs = tmp_path / "specs"
+    _spec(specs, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+    (tmp_path / "site.yml").write_text("# SSH-1\n")
+
+    assert run_checks(tmp_path, specs, {"SSH": "ssh-hardening"}) == []
+
+
+def test_run_checks_does_not_flag_allowances_outside_the_scoped_spec(
+    tmp_path: Path,
+) -> None:
+    specs = tmp_path / "specs"
+    _spec(specs, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+    (tmp_path / "site.yml").write_text("# SSH-1\n")
+
+    emergency_requirements = _FULL_REQUIREMENTS.replace(
+        "### SSH-1 — A\n\nSHALL a.\n",
+        "### EMRG-2 — Console access\n\nSHALL allow console root access.\n",
+    ).replace("**Allowances claimed:** none", "**Allowances claimed:** ALW-1")
+    _spec(specs, "emergency-access", emergency_requirements, _FULL_DESIGN)
+    (tmp_path / "console.yml").write_text("# EMRG-2\n")
+
+    (specs / "project").mkdir(parents=True, exist_ok=True)
+    (specs / "project" / "security-invariants.md").write_text(
+        "| Allowance | Invariant | Claimed by | Compensating control |\n"
+        "|---|---|---|---|\n"
+        "| ALW-1 | INV-1 | EMRG-2 | Console only |\n"
+    )
+
+    all_prefixes = {"SSH": "ssh-hardening", "EMRG": "emergency-access"}
+
+    assert run_checks(tmp_path, specs, {"SSH": "ssh-hardening"}, all_prefixes) == []
+
+
+def test_run_checks_collects_findings_from_every_check(tmp_path: Path) -> None:
+    specs = tmp_path / "specs"
+    requirements = _FULL_REQUIREMENTS.replace(
+        "**Allowances claimed:** none",
+        "**Allowances claimed:** none\n\n```\nunterminated\n",
+    )
+    _spec(specs, "ssh-hardening", requirements, _FULL_DESIGN)
+    (tmp_path / "site.yml").write_text("# SSH-9\n")
+
+    kinds = {f.kind for f in run_checks(tmp_path, specs, {"SSH": "ssh-hardening"})}
+
+    assert kinds == {"dangling-citation", "orphan-requirement", "unclosed-code-fence"}
+
+
+def test_main_returns_zero_when_clean(tmp_path: Path, monkeypatch, capsys) -> None:
+    import tests.spec_check as spec_check
+
+    specs = tmp_path / "specs"
+    _spec(specs, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+    (specs / "README.md").write_text(
+        "| Prefix | Spec directory | Implemented by |\n"
+        "|---|---|---|\n"
+        "| `SSH` | `ssh-hardening` | `site.yml` |\n"
+    )
+    (tmp_path / "site.yml").write_text("# SSH-1\n")
+    monkeypatch.setattr(spec_check, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(spec_check, "SPECS_DIR", specs)
+    monkeypatch.setattr(spec_check, "TRACEABILITY_PATH", specs / "_traceability.md")
+
+    assert spec_check.main([]) == 0
+    assert (specs / "_traceability.md").is_file()
+    assert "no findings" in capsys.readouterr().out.lower()
+
+
+def test_main_does_not_write_the_index_on_a_scoped_run(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    import tests.spec_check as spec_check
+
+    specs = tmp_path / "specs"
+    _spec(specs, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+    (specs / "README.md").write_text(
+        "| Prefix | Spec directory | Implemented by |\n"
+        "|---|---|---|\n"
+        "| `SSH` | `ssh-hardening` | `site.yml` |\n"
+    )
+    (tmp_path / "site.yml").write_text("# SSH-1\n")
+    index = specs / "_traceability.md"
+    index.write_text("sentinel\n")
+    monkeypatch.setattr(spec_check, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(spec_check, "SPECS_DIR", specs)
+    monkeypatch.setattr(spec_check, "TRACEABILITY_PATH", index)
+
+    assert spec_check.main(["--spec", "ssh-hardening"]) == 0
+    assert "no findings" in capsys.readouterr().out.lower()
+    assert index.read_text() == "sentinel\n"
+
+
+def test_main_returns_one_and_prints_findings(tmp_path: Path, monkeypatch, capsys) -> None:
+    import tests.spec_check as spec_check
+
+    specs = tmp_path / "specs"
+    _spec(specs, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+    (specs / "README.md").write_text(
+        "| Prefix | Spec directory | Implemented by |\n"
+        "|---|---|---|\n"
+        "| `SSH` | `ssh-hardening` | `site.yml` |\n"
+    )
+    (tmp_path / "site.yml").write_text("---\n")
+    monkeypatch.setattr(spec_check, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(spec_check, "SPECS_DIR", specs)
+    monkeypatch.setattr(spec_check, "TRACEABILITY_PATH", specs / "_traceability.md")
+
+    assert spec_check.main(["--check"]) == 1
+    assert "orphan-requirement" in capsys.readouterr().out
+    assert not (specs / "_traceability.md").exists()
