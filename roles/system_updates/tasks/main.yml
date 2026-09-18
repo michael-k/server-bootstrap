@@ -1,28 +1,31 @@
 ---
 # Main tasks file for system_updates role
 # Updates system packages and notifies operator if reboot is required
-# Requirements: 7.1, 7.2, 7.3, 7.4
+# Requirements: UPD-1, UPD-2, UPD-3, UPD-4, UPD-5, UPD-6
 
-- name: Update apt package cache
+- name: Update apt package cache  # UPD-1
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: "{{ apt_update_cache_valid_time }}"
+  # UPD-5: apt's update_cache reports changed unconditionally in check mode,
+  # even when cache_valid_time would skip the refresh; this task never
+  # mutates installed packages, so it is never a real change.
   changed_when: false
   tags:
     - system_updates
     - apt
 
-- name: Upgrade all packages to latest version
+- name: Upgrade all packages to latest version  # UPD-2
   ansible.builtin.apt:
     upgrade: "{{ apt_upgrade_type }}"
-    autoremove: "{{ apt_autoremove }}"
-    autoclean: "{{ apt_autoclean }}"
+    autoremove: "{{ apt_autoremove }}" # UPD-3
+    autoclean: "{{ apt_autoclean }}" # UPD-4
   register: apt_upgrade_result
   tags:
     - system_updates
     - apt
 
-- name: Check if system reboot is required
+- name: Check if system reboot is required  # UPD-6
   ansible.builtin.stat:
     path: /var/run/reboot-required
   register: reboot_required_file

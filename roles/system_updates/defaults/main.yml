@@ -3,7 +3,7 @@
 # These can be overridden in inventory or playbook variables
 
 # APT update and upgrade configuration
-apt_update_cache_valid_time: 3600 # Cache validity in seconds (1 hour)
-apt_upgrade_type: "dist" # Options: dist, full, safe, yes (dist recommended for Debian stable)
-apt_autoremove: true # Remove unused dependencies after upgrade
-apt_autoclean: true # Clean up package cache after upgrade
+apt_update_cache_valid_time: 3600 # UPD-1: cache validity in seconds (1 hour)
+apt_upgrade_type: "dist" # UPD-2: options are dist, full, safe, yes — see design.md Key decisions for why dist
+apt_autoremove: true # UPD-3: remove unused dependencies after upgrade
+apt_autoclean: true # UPD-4: clean up package cache after upgrade

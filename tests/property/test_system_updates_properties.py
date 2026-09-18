@@ -51,13 +51,13 @@ class TestSystemUpdatesProperties:
         the playbook SHALL execute apt update and apt upgrade, and notify the
         operator if a reboot is required.
 
-        Validates: Requirements 7.1, 7.2, 7.3, 7.4
+        Validates: UPD-1, UPD-2, UPD-3, UPD-4, UPD-6
         """
         # This property test verifies the system_updates role's behavior by checking:
-        # 1. apt update is executed to refresh package lists (Requirement 7.1)
-        # 2. apt upgrade is executed to install available updates (Requirement 7.2)
-        # 3. The playbook targets Debian stable distribution (Requirement 7.3)
-        # 4. Operator is notified when package upgrades require a reboot (Requirement 7.4)
+        # 1. apt update is executed to refresh package lists (UPD-1)
+        # 2. apt upgrade is executed to install available updates (UPD-2)
+        # 3. The default upgrade type is dist, appropriate for Debian stable (UPD-2)
+        # 4. Operator is notified when package upgrades require a reboot (UPD-6)
 
         # Read the system_updates role tasks
         tasks_path = Path("roles/system_updates/tasks/main.yml")
@@ -65,12 +65,12 @@ class TestSystemUpdatesProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify Requirement 7.1: apt update is executed
+        # Verify UPD-1: apt update is executed
         assert "ansible.builtin.apt:" in tasks_content, (
             "System updates must use ansible.builtin.apt module"
         )
         assert "update_cache: true" in tasks_content or "update_cache: yes" in tasks_content, (
-            "apt update must be executed to refresh package lists (Requirement 7.1)"
+            "apt update must be executed to refresh package lists (UPD-1)"
         )
 
         # Verify cache validity time is configurable
@@ -81,9 +81,9 @@ class TestSystemUpdatesProperties:
             "apt cache validity time must use apt_update_cache_valid_time variable"
         )
 
-        # Verify Requirement 7.2: apt upgrade is executed
+        # Verify UPD-2: apt upgrade is executed
         assert "upgrade:" in tasks_content, (
-            "apt upgrade must be executed to install available updates (Requirement 7.2)"
+            "apt upgrade must be executed to install available updates (UPD-2)"
         )
         assert "{{ apt_upgrade_type }}" in tasks_content, (
             "apt upgrade type must use apt_upgrade_type variable"
@@ -94,24 +94,25 @@ class TestSystemUpdatesProperties:
             "apt upgrade task must register result for tracking"
         )
 
-        # Verify autoremove and autoclean are configurable
+        # Verify UPD-3: autoremove is configurable
         assert "autoremove:" in tasks_content, (
             "apt autoremove should be configurable"
         )
         assert "{{ apt_autoremove }}" in tasks_content, (
-            "apt autoremove must use apt_autoremove variable"
+            "apt autoremove must use apt_autoremove variable (UPD-3)"
         )
+        # Verify UPD-4: autoclean is configurable
         assert "autoclean:" in tasks_content, (
             "apt autoclean should be configurable"
         )
         assert "{{ apt_autoclean }}" in tasks_content, (
-            "apt autoclean must use apt_autoclean variable"
+            "apt autoclean must use apt_autoclean variable (UPD-4)"
         )
 
-        # Verify Requirement 7.4: Reboot notification
+        # Verify UPD-6: Reboot notification
         # Check for reboot-required file detection
         assert "/var/run/reboot-required" in tasks_content, (
-            "Playbook must check for /var/run/reboot-required file (Requirement 7.4)"
+            "Playbook must check for /var/run/reboot-required file (UPD-6)"
         )
         assert "ansible.builtin.stat:" in tasks_content, (
             "Playbook must use stat module to check reboot-required file"
@@ -149,13 +150,13 @@ class TestSystemUpdatesProperties:
             "apt_upgrade_type must be defined in defaults"
         )
 
-        # Verify default upgrade type is appropriate for Debian stable (Requirement 7.3)
+        # Verify default upgrade type is appropriate for Debian stable (UPD-2)
         # "dist" is recommended for Debian stable as it handles dependencies correctly
         assert (
             'apt_upgrade_type: "dist"' in defaults_content
             or "apt_upgrade_type: dist" in defaults_content
         ), (
-            "Default apt_upgrade_type should be 'dist' for Debian stable (Requirement 7.3)"
+            "Default apt_upgrade_type should be 'dist' for Debian stable (UPD-2)"
         )
 
         # Verify autoremove is defined
@@ -255,6 +256,8 @@ class TestSystemUpdatesIdempotencyProperties:
         - cache_valid_time parameter is used correctly
         - Repeated executions within cache validity period don't refresh unnecessarily
         - This reduces network traffic and execution time
+
+        Validates: UPD-1
         """
         # Read the system_updates role tasks
         tasks_path = Path("roles/system_updates/tasks/main.yml")
