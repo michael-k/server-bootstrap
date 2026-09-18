@@ -33,6 +33,8 @@ deploy_user_groups: []
 authorized_keys_mode: "0600"
 
 # Sudo hardening
+# SUDO-7: how long a successful sudo authentication is cached before a new
+# one is required, configurable.
 sudo_timestamp_timeout: 5
 
 # Login policy hardening

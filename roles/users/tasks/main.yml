@@ -3,6 +3,8 @@
 # Creates manual access user and Ansible automation user with appropriate configurations
 
 # Ensure sudo is installed (Debian cloud images may not include it)
+# SUDO-1: sudo has to be installed before anything else in this role can
+# grant it or configure it.
 - name: Ensure sudo is installed
   ansible.builtin.apt:
     name: sudo
@@ -12,9 +14,6 @@
     - sudo
 
 # Manual Access User Creation (uid 1000)
-# Requirements: 1.4
-# (1.4 is the sudo grant below, owned by the sudo-hardening spec and not yet
-# migrated. The rest of this block's citations now sit on their own tasks.)
 
 # USR-1: uid 1000 is fixed — purpose repos address this account by number.
 # USR-2: the name is configurable. USR-7: so is the login shell.
@@ -75,6 +74,8 @@
     - users
     - manual_user
 
+# SUDO-2: the manual account's own sudoers.d file, requiring a password;
+# validated with visudo before being installed.
 - name: Grant sudo privileges to manual user (password required)
   ansible.builtin.copy:
     content: "{{ manual_user_name }} ALL=(ALL:ALL) ALL\n"
@@ -89,10 +90,9 @@
     - sudo
 
 # Ansible User Creation (uid 1999)
-# Requirements: 2.3, 2.4
-# (2.3 is the passwordless sudo grant below, owned by the sudo-hardening
-# spec; 2.4 is key-only authentication, which sshd enforces and the
-# ssh-hardening spec owns. Neither is migrated yet.)
+# Requirements: 2.4
+# (2.4 is key-only SSH authentication, enforced by sshd and owned by the
+# ssh-hardening spec; not yet migrated.)
 
 # USR-4: uid 1999 is fixed. USR-5: the name is configurable.
 # USR-7: so is the login shell. USR-8: supplementary groups are appended.
@@ -147,6 +147,8 @@
     - users
     - ansible_user
 
+# SUDO-3: the automation account's own sudoers.d file, passwordless;
+# validated with visudo before being installed.
 - name: Grant passwordless sudo privileges to Ansible user
   ansible.builtin.copy:
     content: "{{ deploy_user_name }} ALL=(ALL:ALL) NOPASSWD:ALL\n"
@@ -159,9 +161,6 @@
     - users
     - ansible_user
     - sudo
-
-# Sudo Hardening
-# Harden sudo with environment sanitization, logging, timeouts, and su restriction
 
 # USR-13: sshd admits only members of this group, so it has to exist before
 # sshd is configured to consult it. The name's only definition lives in the
@@ -190,6 +189,12 @@
     - users
     - ssh
 
+# Sudo Hardening
+# The shared sudo security defaults, the wheel group and su restriction. The
+# per-account sudoers.d grants above are SUDO's too, cited where they sit.
+
+# SUDO-11: wheel has to exist before anything can be restricted to its
+# membership.
 - name: Create wheel group for su restriction
   ansible.builtin.group:
     name: wheel
@@ -198,6 +203,8 @@
     - users
     - sudo
 
+# SUDO-12: only the manual account joins wheel — the automation account
+# escalates through its own passwordless sudo grant, not su.
 - name: Add manual user to wheel group
   ansible.builtin.user:
     name: "{{ manual_user_name }}"
@@ -208,6 +215,9 @@
     - manual_user
     - sudo
 
+# SUDO-4: the shared sudoers.d drop-in, validated with visudo like every
+# sudoers.d file this role writes. Each directive it sets is cited in the
+# template itself.
 - name: Deploy sudo security defaults
   ansible.builtin.template:
     src: 00-sudo-security.j2
@@ -220,6 +230,10 @@
     - users
     - sudo
 
+# SUDO-13: su refuses non-wheel members via pam_wheel. With no group=
+# option, pam_wheel checks membership of a group literally named wheel if
+# one exists — which SUDO-11 guarantees — falling back to GID 0 only when
+# it does not.
 - name: Restrict su to wheel group members
   ansible.builtin.lineinfile:
     path: /etc/pam.d/su

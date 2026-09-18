@@ -3,6 +3,9 @@ Property-based tests for sudo hardening in VPS Bootstrap Playbook.
 
 These tests verify universal properties about the sudo security defaults
 template and the users role tasks that deploy sudo hardening.
+
+Requirements: SUDO-4, SUDO-5, SUDO-6, SUDO-7, SUDO-8, SUDO-9, SUDO-10,
+SUDO-11, SUDO-13
 """
 
 from pathlib import Path
@@ -39,10 +42,10 @@ class TestSudoHardeningProperties:
         Feature: vps-bootstrap-playbook, Sudo Security Directives
 
         The sudo security defaults template SHALL contain all required
-        hardening directives: env_reset, env_clean, secure_path, use_pty,
-        log_year, and log_host.
+        hardening directives: env_reset, secure_path, use_pty, log_year,
+        and log_host.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-5, SUDO-6, SUDO-8, SUDO-9
         """
         template_path = Path("roles/users/templates/00-sudo-security.j2")
         assert template_path.exists(), "Sudo security template must exist"
@@ -62,7 +65,7 @@ class TestSudoHardeningProperties:
         The sudo security template SHALL define a secure_path containing
         only standard system binary directories.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-6
         """
         template_path = Path("roles/users/templates/00-sudo-security.j2")
         content = template_path.read_text()
@@ -86,7 +89,7 @@ class TestSudoHardeningProperties:
         The sudo security template SHALL reference the sudo_timestamp_timeout
         variable for credential caching, not a hardcoded value.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-7
         """
         template_path = Path("roles/users/templates/00-sudo-security.j2")
         content = template_path.read_text()
@@ -104,7 +107,7 @@ class TestSudoHardeningProperties:
         The sudo security template SHALL require a TTY for sudo usage
         AND exempt the ansible user from this requirement.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-10
         """
         template_path = Path("roles/users/templates/00-sudo-security.j2")
         content = template_path.read_text()
@@ -125,7 +128,7 @@ class TestSudoHardeningProperties:
 
         The users role defaults SHALL define sudo_timestamp_timeout.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-7
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         assert defaults_path.exists(), "Users defaults must exist"
@@ -144,7 +147,7 @@ class TestSudoHardeningProperties:
 
         The users role tasks SHALL create the wheel group for su restriction.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-11
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         assert tasks_path.exists(), "Users tasks must exist"
@@ -164,7 +167,7 @@ class TestSudoHardeningProperties:
 
         The users role tasks SHALL enable pam_wheel.so in /etc/pam.d/su.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-13
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()
@@ -188,7 +191,7 @@ class TestSudoHardeningProperties:
         The sudo security defaults file SHALL be deployed using the template
         module with visudo validation to prevent syntax errors from breaking sudo.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-4
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()
@@ -213,7 +216,10 @@ class TestSudoHardeningProperties:
         Sudo logs to syslog (AUTH facility) by default, which journald captures.
         A separate logfile is redundant.
 
-        Validates: Sudo hardening design spec
+        Validates: SUDO-8
+
+        This guards SUDO-8's choice of syslog/journald over a dedicated
+        logfile; it is not itself evidence that syslog logging works.
         """
         template_path = Path("roles/users/templates/00-sudo-security.j2")
         content = template_path.read_text()

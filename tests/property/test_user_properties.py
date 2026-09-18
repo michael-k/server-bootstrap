@@ -13,8 +13,8 @@ substrings against the unchanged text of the role's files, so the generated
 values reach no template, module or assertion. They are recorded as such in
 the user-accounts design's failure modes rather than repaired here.
 
-Property 3 covers the per-account sudo grants instead; its legacy citations
-(1.4, 2.3) stay until the sudo-hardening spec exists.
+Property 3 covers the per-account sudo grants instead, citing SUDO-2 and
+SUDO-3 from the sudo-hardening spec.
 """
 
 from pathlib import Path
@@ -275,9 +275,7 @@ class TestUserManagementProperties:
         have password-required sudo privileges and the Ansible user SHALL have
         passwordless sudo privileges.
 
-        Validates: Requirements 1.4, 2.3
-        (the per-account sudo grants, owned by the sudo-hardening spec and
-        not yet migrated — no user-accounts requirement covers them)
+        Validates: SUDO-2, SUDO-3
 
         This property test verifies that:
         1. Manual user has sudo with password (ALL=(ALL:ALL) ALL)

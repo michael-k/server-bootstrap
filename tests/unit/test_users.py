@@ -6,8 +6,8 @@ sudo configuration file content, and authorized_keys permissions.
 
 Requirements: USR-1, USR-3, USR-4, USR-6, USR-9, USR-10, USR-12
 
-TestSudoConfiguration below covers the per-account sudo grants instead; its
-legacy citations (1.4, 2.3) stay until the sudo-hardening spec exists.
+TestSudoConfiguration below covers the per-account sudo grants instead,
+citing SUDO-2 and SUDO-3 from the sudo-hardening spec.
 """
 
 from __future__ import annotations
@@ -195,10 +195,10 @@ class TestSSHKeyDeployment:
 
 
 class TestSudoConfiguration:
-    """Tests for sudo privilege configuration files."""
+    """SUDO-2, SUDO-3: the per-account sudoers.d grants."""
 
     def test_manual_user_sudo_content_requires_password(self):
-        """Test that the manual user sudo file requires a password."""
+        """SUDO-2: the manual user's own sudoers.d file requires a password."""
         tasks = load_tasks("users")
         task = find_task(tasks, "grant sudo privileges to manual user")
         assert task is not None, "Could not find manual user sudo task"
@@ -209,7 +209,7 @@ class TestSudoConfiguration:
         )
 
     def test_ansible_user_sudo_content_is_passwordless(self):
-        """Test that the Ansible user sudo file grants passwordless sudo."""
+        """SUDO-3: the automation user's own sudoers.d file is passwordless."""
         tasks = load_tasks("users")
         task = find_task(tasks, "grant passwordless sudo privileges to ansible user")
         assert task is not None, "Could not find Ansible user sudo task"
@@ -220,7 +220,7 @@ class TestSudoConfiguration:
         )
 
     def test_manual_user_sudo_file_mode_0440(self):
-        """Test that the manual user sudo file is deployed with mode 0440."""
+        """SUDO-2: the manual user's sudoers.d file is deployed with mode 0440."""
         tasks = load_tasks("users")
         task = find_task(tasks, "grant sudo privileges to manual user")
         assert task is not None, "Could not find manual user sudo task"
@@ -230,7 +230,7 @@ class TestSudoConfiguration:
         )
 
     def test_ansible_user_sudo_file_mode_0440(self):
-        """Test that the Ansible user sudo file is deployed with mode 0440."""
+        """SUDO-3: the automation user's sudoers.d file is deployed with mode 0440."""
         tasks = load_tasks("users")
         task = find_task(tasks, "grant passwordless sudo privileges to ansible user")
         assert task is not None, "Could not find Ansible user sudo task"
@@ -240,7 +240,7 @@ class TestSudoConfiguration:
         )
 
     def test_manual_user_sudo_file_uses_visudo_validate(self):
-        """Test that the manual user sudo file uses visudo for validation."""
+        """SUDO-2: the manual user's sudoers.d file is validated with visudo."""
         tasks = load_tasks("users")
         task = find_task(tasks, "grant sudo privileges to manual user")
         assert task is not None, "Could not find manual user sudo task"
@@ -250,7 +250,7 @@ class TestSudoConfiguration:
         )
 
     def test_ansible_user_sudo_file_uses_visudo_validate(self):
-        """Test that the Ansible user sudo file uses visudo for validation."""
+        """SUDO-3: the automation user's sudoers.d file is validated with visudo."""
         tasks = load_tasks("users")
         task = find_task(tasks, "grant passwordless sudo privileges to ansible user")
         assert task is not None, "Could not find Ansible user sudo task"

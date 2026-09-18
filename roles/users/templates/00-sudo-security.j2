@@ -1,18 +1,32 @@
 # Sudo security defaults — deployed by Ansible
 
 # Environment sanitization — prevent LD_PRELOAD, PATH injection
+# SUDO-5: reset the environment before running the escalated command, so an
+# inherited variable cannot inject behaviour into it.
 Defaults    env_reset
+# SUDO-6: fix the command search path to standard system directories,
+# closing the PATH-injection gap env_reset alone does not.
 Defaults    secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Credential caching
+# SUDO-7: how long a successful sudo authentication is cached, configurable.
 Defaults    timestamp_timeout={{ sudo_timestamp_timeout }}
 
 # Logging — enhance syslog entries (sudo logs to AUTH facility by default,
 # which journald captures automatically)
+# SUDO-8: enrich sudo's syslog entries with year and host so they stay
+# unambiguous once aggregated across a fleet or across a year boundary. No
+# separate logfile directive is set — syslog/journald is the log
+# destination this relies on.
 Defaults    log_year
 Defaults    log_host
 
 # Security restrictions
+# SUDO-9: run the escalated command in a pseudo-tty sudo controls, so the
+# session can be monitored and logged like an interactive one.
 Defaults    use_pty
+# SUDO-10: require a real controlling terminal for interactive sudo use,
+# except the deploy account, whose automation runs unattended over SSH
+# without one.
 Defaults    requiretty
 Defaults:{{ deploy_user_name }}    !requiretty
