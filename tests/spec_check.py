@@ -218,3 +218,222 @@ def check_citations(
         )
 
     return findings
+
+
+REQUIRED_REQUIREMENTS_SECTIONS: tuple[str, ...] = (
+    "Purpose",
+    "Scope",
+    "Security invariants",
+    "Requirements",
+)
+REQUIRED_DESIGN_SECTIONS: tuple[str, ...] = ("Approach", "Implementation map")
+
+_ALLOWANCE_ROW = re.compile(
+    r"^\|\s*(?P<id>ALW-\d+)\s*\|[^|]*\|(?P<claimed_by>[^|]*)\|"
+)
+_CLAIMS_LINE = re.compile(r"^\*\*Allowances claimed:\*\*\s*(?P<value>.+?)\s*$")
+_REQ_TOKEN = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
+_ALW_TOKEN = re.compile(r"\bALW-\d+\b")
+_MAP_ROW = re.compile(r"^\|\s*`(?P<path>[^`]+)`\s*\|")
+
+
+def _sections(text: str) -> set[str]:
+    return {
+        line.removeprefix("## ").strip()
+        for line in text.splitlines()
+        if line.startswith("## ")
+    }
+
+
+def check_structure(specs_dir: Path, prefixes: dict[str, str]) -> list[Finding]:
+    """Flag specs missing a mandatory file or section."""
+    findings: list[Finding] = []
+    for spec in sorted(set(prefixes.values())):
+        for filename, required in (
+            ("requirements.md", REQUIRED_REQUIREMENTS_SECTIONS),
+            ("design.md", REQUIRED_DESIGN_SECTIONS),
+        ):
+            path = specs_dir / spec / filename
+            if not path.is_file():
+                findings.append(
+                    Finding("missing-spec-file", f"{spec}/{filename} does not exist")
+                )
+                continue
+            present = _sections(path.read_text())
+            findings.extend(
+                Finding(
+                    "missing-section",
+                    f"{spec}/{filename} has no '## {section}' section",
+                )
+                for section in required
+                if section not in present
+            )
+    return findings
+
+
+def parse_allowance_register(path: Path) -> dict[str, set[str]]:
+    """Read the allowance register, mapping each ALW id to its claiming requirements."""
+    register: dict[str, set[str]] = {}
+    if not path.is_file():
+        return register
+    for line in path.read_text().splitlines():
+        match = _ALLOWANCE_ROW.match(line)
+        if match:
+            register[match["id"]] = set(_REQ_TOKEN.findall(match["claimed_by"]))
+    return register
+
+
+def find_allowance_claims(
+    specs_dir: Path, prefixes: dict[str, str]
+) -> dict[str, set[str]]:
+    """Read the `**Allowances claimed:**` line of every spec.
+
+    Lines inside fenced code blocks are skipped, so a documentation example
+    showing the claims-line syntax is not mistaken for a real claim.
+    """
+    claims: dict[str, set[str]] = {}
+    for spec in sorted(set(prefixes.values())):
+        path = specs_dir / spec / "requirements.md"
+        if not path.is_file():
+            continue
+        in_fence = False
+        for line in path.read_text().splitlines():
+            if line.strip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            match = _CLAIMS_LINE.match(line)
+            if not match:
+                continue
+            for allowance in _ALW_TOKEN.findall(match["value"]):
+                claims.setdefault(allowance, set()).add(spec)
+    return claims
+
+
+def check_spec_markdown(specs_dir: Path, prefixes: dict[str, str]) -> list[Finding]:
+    """Flag malformed markdown that would make `find_allowance_claims` silently drop lines.
+
+    An unclosed code fence in `requirements.md` causes every line after it to
+    be treated as fenced, so a real `**Allowances claimed:**` line below it is
+    silently dropped rather than counted — defeating the allowance register
+    with no finding anywhere. This makes that drop impossible to miss.
+    """
+    findings: list[Finding] = []
+    for spec in sorted(set(prefixes.values())):
+        path = specs_dir / spec / "requirements.md"
+        if not path.is_file():
+            continue
+        in_fence = False
+        for line in path.read_text().splitlines():
+            if line.strip().startswith("```"):
+                in_fence = not in_fence
+        if in_fence:
+            findings.append(
+                Finding(
+                    "unclosed-code-fence",
+                    f"{spec}/requirements.md has an unclosed code fence",
+                )
+            )
+    return findings
+
+
+def check_allowances(
+    register: dict[str, set[str]],
+    claims: dict[str, set[str]],
+    requirements: list[Requirement],
+) -> list[Finding]:
+    """Flag allowances claimed but unregistered, registered but unclaimed, or dangling.
+
+    A register entry must also be internally consistent: it must name at least
+    one claimant, that claimant must not be withdrawn, and it must belong to a
+    spec that actually claims the allowance — otherwise a spec could invoke an
+    allowance that was registered for someone else's requirement.
+    """
+    by_id = {req.id: req for req in requirements}
+    findings: list[Finding] = []
+
+    findings.extend(
+        Finding(
+            "unregistered-allowance",
+            f"{allowance} is claimed by {', '.join(sorted(specs))} "
+            "but is not in the allowance register",
+        )
+        for allowance, specs in sorted(claims.items())
+        if allowance not in register
+    )
+    findings.extend(
+        Finding(
+            "unclaimed-allowance",
+            f"{allowance} is registered but no spec claims it",
+        )
+        for allowance in sorted(register)
+        if allowance not in claims
+    )
+    findings.extend(
+        Finding(
+            "allowance-without-claimant",
+            f"{allowance} names no claimant requirement in the register",
+        )
+        for allowance, req_ids in sorted(register.items())
+        if not req_ids
+    )
+    findings.extend(
+        Finding(
+            "dangling-citation",
+            f"{allowance} names {req_id} as its claimant but no spec defines it",
+        )
+        for allowance, req_ids in sorted(register.items())
+        for req_id in sorted(req_ids)
+        if req_id not in by_id
+    )
+
+    for allowance, req_ids in sorted(register.items()):
+        for req_id in sorted(req_ids):
+            req = by_id.get(req_id)
+            if req is None:
+                continue  # already reported as dangling-citation
+            if req.withdrawn:
+                findings.append(
+                    Finding(
+                        "withdrawn-allowance-claimant",
+                        f"{allowance} names withdrawn requirement {req_id} as its claimant",
+                    )
+                )
+                continue
+            if allowance not in claims:
+                continue  # already reported as unclaimed-allowance
+            if req.spec not in claims[allowance]:
+                findings.append(
+                    Finding(
+                        "allowance-claimant-mismatch",
+                        f"{allowance} names {req_id} ({req.spec}) as its claimant but is "
+                        f"claimed by {', '.join(sorted(claims[allowance]))}",
+                    )
+                )
+    return findings
+
+
+def check_implementation_map(
+    specs_dir: Path, prefixes: dict[str, str], repo_root: Path
+) -> list[Finding]:
+    """Flag paths in a design's implementation map that do not exist."""
+    findings: list[Finding] = []
+    for spec in sorted(set(prefixes.values())):
+        path = specs_dir / spec / "design.md"
+        if not path.is_file():
+            continue
+        in_map = False
+        for line in path.read_text().splitlines():
+            if line.startswith("## "):
+                in_map = line.removeprefix("## ").strip() == "Implementation map"
+                continue
+            match = _MAP_ROW.match(line)
+            if in_map and match and not (repo_root / match["path"]).exists():
+                findings.append(
+                    Finding(
+                        "missing-implementation-path",
+                        f"{spec}/design.md maps {match['path']}, which does not exist",
+                    )
+                )
+    return findings

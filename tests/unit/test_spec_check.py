@@ -7,12 +7,18 @@ import pytest
 from tests.spec_check import (
     Finding,
     Requirement,
+    check_allowances,
     check_citations,
     check_ids,
+    check_implementation_map,
+    check_spec_markdown,
+    check_structure,
     citation_pattern,
+    find_allowance_claims,
     find_citations,
     load_all_requirements,
     load_prefixes,
+    parse_allowance_register,
     parse_requirements,
 )
 
@@ -258,3 +264,201 @@ def test_check_citations_flags_a_cited_withdrawn_requirement() -> None:
     assert [f.kind for f in findings] == ["cited-withdrawn-requirement"]
 
     assert all(isinstance(f, Finding) for f in findings)
+
+
+def _spec(specs_dir: Path, name: str, requirements: str, design: str) -> None:
+    (specs_dir / name).mkdir(parents=True, exist_ok=True)
+    (specs_dir / name / "requirements.md").write_text(requirements)
+    (specs_dir / name / "design.md").write_text(design)
+
+
+_FULL_REQUIREMENTS = (
+    "# X — Requirements\n\n"
+    "## Purpose\n\np\n\n"
+    "## Scope\n\ns\n\n"
+    "## Security invariants\n\n**Allowances claimed:** none\n\n"
+    "## Requirements\n\n### SSH-1 — A\n\nSHALL a.\n"
+)
+_FULL_DESIGN = (
+    "# X — Design\n\n## Approach\n\na\n\n## Implementation map\n\n"
+    "| Path | Realises |\n|---|---|\n| `site.yml` | SSH-1 |\n"
+)
+
+
+def test_check_structure_accepts_a_complete_spec(tmp_path: Path) -> None:
+    _spec(tmp_path, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+
+    assert check_structure(tmp_path, {"SSH": "ssh-hardening"}) == []
+
+
+def test_check_structure_flags_a_missing_section(tmp_path: Path) -> None:
+    _spec(
+        tmp_path,
+        "ssh-hardening",
+        _FULL_REQUIREMENTS.replace("## Security invariants", "## Notes"),
+        _FULL_DESIGN,
+    )
+
+    findings = check_structure(tmp_path, {"SSH": "ssh-hardening"})
+
+    assert [f.kind for f in findings] == ["missing-section"]
+    assert "Security invariants" in findings[0].message
+
+
+def test_check_structure_flags_a_missing_file(tmp_path: Path) -> None:
+    (tmp_path / "firewall").mkdir()
+
+    findings = check_structure(tmp_path, {"FW": "firewall"})
+
+    assert {f.kind for f in findings} == {"missing-spec-file"}
+    assert len(findings) == 2
+
+
+def test_parse_allowance_register_reads_rows(tmp_path: Path) -> None:
+    path = tmp_path / "security-invariants.md"
+    path.write_text(
+        "| Allowance | Invariant | Claimed by | Compensating control |\n"
+        "|---|---|---|---|\n"
+        "| ALW-1 | INV-1, INV-6 | EMRG-2, EMRG-3 | Console root only |\n"
+    )
+
+    assert parse_allowance_register(path) == {"ALW-1": {"EMRG-2", "EMRG-3"}}
+
+
+def test_parse_allowance_register_accepts_a_prefix_containing_a_digit(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "security-invariants.md"
+    path.write_text(
+        "| Allowance | Invariant | Claimed by | Compensating control |\n"
+        "|---|---|---|---|\n"
+        "| ALW-1 | INV-1 | F2B-1 | Console root only |\n"
+    )
+
+    assert parse_allowance_register(path) == {"ALW-1": {"F2B-1"}}
+
+
+def test_find_allowance_claims_reads_the_claims_line(tmp_path: Path) -> None:
+    _spec(
+        tmp_path,
+        "emergency-access",
+        _FULL_REQUIREMENTS.replace(
+            "**Allowances claimed:** none", "**Allowances claimed:** ALW-1"
+        ),
+        _FULL_DESIGN,
+    )
+
+    assert find_allowance_claims(tmp_path, {"EMRG": "emergency-access"}) == {
+        "ALW-1": {"emergency-access"}
+    }
+
+
+def test_check_allowances_flags_a_claim_missing_from_the_register() -> None:
+    findings = check_allowances({}, {"ALW-1": {"emergency-access"}}, [])
+
+    assert [f.kind for f in findings] == ["unregistered-allowance"]
+
+
+def test_check_allowances_flags_a_register_entry_nobody_claims() -> None:
+    findings = check_allowances({"ALW-1": {"EMRG-2"}}, {}, [_req("EMRG-2")])
+
+    assert [f.kind for f in findings] == ["unclaimed-allowance"]
+
+
+def test_check_allowances_flags_an_unknown_claimed_by_requirement() -> None:
+    findings = check_allowances(
+        {"ALW-1": {"EMRG-99"}}, {"ALW-1": {"emergency-access"}}, [_req("EMRG-2")]
+    )
+
+    assert [f.kind for f in findings] == ["dangling-citation"]
+
+
+def test_check_allowances_accepts_a_matched_pair() -> None:
+    assert (
+        check_allowances(
+            {"ALW-1": {"EMRG-2"}},
+            {"ALW-1": {"emergency-access"}},
+            [_req("EMRG-2", spec="emergency-access")],
+        )
+        == []
+    )
+
+
+def test_check_allowances_flags_a_claimant_owned_by_a_different_spec() -> None:
+    findings = check_allowances(
+        {"ALW-1": {"EMRG-2"}}, {"ALW-1": {"firewall"}}, [_req("EMRG-2")]
+    )
+
+    assert [f.kind for f in findings] == ["allowance-claimant-mismatch"]
+
+
+def test_check_allowances_flags_a_register_entry_with_no_claimant_id() -> None:
+    findings = check_allowances({"ALW-1": set()}, {"ALW-1": {"firewall"}}, [])
+
+    assert [f.kind for f in findings] == ["allowance-without-claimant"]
+
+
+def test_check_allowances_flags_a_withdrawn_claimant() -> None:
+    findings = check_allowances(
+        {"ALW-1": {"EMRG-2"}},
+        {"ALW-1": {"emergency-access"}},
+        [_req("EMRG-2", spec="emergency-access", withdrawn=True)],
+    )
+
+    assert [f.kind for f in findings] == ["withdrawn-allowance-claimant"]
+
+
+def test_find_allowance_claims_ignores_a_claims_line_inside_a_fenced_code_block(
+    tmp_path: Path,
+) -> None:
+    requirements = _FULL_REQUIREMENTS.replace(
+        "**Allowances claimed:** none",
+        "**Allowances claimed:** none\n\n```\n**Allowances claimed:** ALW-9\n```\n",
+    )
+    _spec(tmp_path, "emergency-access", requirements, _FULL_DESIGN)
+
+    assert find_allowance_claims(tmp_path, {"EMRG": "emergency-access"}) == {}
+
+
+def test_check_spec_markdown_flags_an_unclosed_code_fence(tmp_path: Path) -> None:
+    requirements = _FULL_REQUIREMENTS.replace(
+        "**Allowances claimed:** none",
+        "**Allowances claimed:** none\n\n```\nunterminated\n",
+    )
+    _spec(tmp_path, "emergency-access", requirements, _FULL_DESIGN)
+
+    findings = check_spec_markdown(tmp_path, {"EMRG": "emergency-access"})
+
+    assert [f.kind for f in findings] == ["unclosed-code-fence"]
+
+
+def test_check_spec_markdown_accepts_balanced_fences(tmp_path: Path) -> None:
+    requirements = _FULL_REQUIREMENTS.replace(
+        "**Allowances claimed:** none",
+        "**Allowances claimed:** none\n\n```\nexample\n```\n",
+    )
+    _spec(tmp_path, "emergency-access", requirements, _FULL_DESIGN)
+
+    assert check_spec_markdown(tmp_path, {"EMRG": "emergency-access"}) == []
+
+
+def test_check_implementation_map_flags_a_missing_path(tmp_path: Path) -> None:
+    specs = tmp_path / "specs"
+    _spec(
+        specs,
+        "ssh-hardening",
+        _FULL_REQUIREMENTS,
+        _FULL_DESIGN.replace("`site.yml`", "`roles/gone/tasks/main.yml`"),
+    )
+
+    findings = check_implementation_map(specs, {"SSH": "ssh-hardening"}, tmp_path)
+
+    assert [f.kind for f in findings] == ["missing-implementation-path"]
+
+
+def test_check_implementation_map_accepts_an_existing_path(tmp_path: Path) -> None:
+    specs = tmp_path / "specs"
+    _spec(specs, "ssh-hardening", _FULL_REQUIREMENTS, _FULL_DESIGN)
+    (tmp_path / "site.yml").write_text("---\n")
+
+    assert check_implementation_map(specs, {"SSH": "ssh-hardening"}, tmp_path) == []
