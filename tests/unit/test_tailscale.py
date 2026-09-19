@@ -6,7 +6,7 @@ disabled (via when: conditions), and connectivity verification logic.
 
 Approach: parse YAML task files and verify task parameters and conditions.
 
-Requirements: 4.1-4.6, 5.1-5.3
+Each test cites the requirement it checks.
 """
 
 from __future__ import annotations
@@ -38,10 +38,10 @@ def find_task(tasks: list[dict[str, Any]], name_fragment: str) -> dict[str, Any]
 
 
 class TestTailscaleInstallation:
-    """Tests for Tailscale installation task structure (Requirements 4.1-4.5)."""
+    """Tests for Tailscale installation task structure."""
 
     def test_install_tasks_included_when_enabled(self):
-        """Req 4.1: install.yml is included only when tailscale_enabled is true."""
+        """TS-2: install.yml is included only when tailscale_enabled is true."""
         tasks = load_tasks("tailscale")
         task = find_task(tasks, "include tailscale installation")
         assert task is not None, "Could not find Tailscale installation include task"
@@ -49,7 +49,7 @@ class TestTailscaleInstallation:
         assert "tailscale_enabled" in str(when_condition)
 
     def test_verify_tasks_included_when_enabled(self):
-        """Req 5.1: verify.yml is included only when tailscale_enabled is true."""
+        """TS-2: verify.yml is included only when tailscale_enabled is true."""
         tasks = load_tasks("tailscale")
         task = find_task(tasks, "include tailscale connectivity verification")
         assert task is not None, "Could not find Tailscale verification include task"
@@ -57,13 +57,13 @@ class TestTailscaleInstallation:
         assert "tailscale_enabled" in str(when_condition)
 
     def test_gpg_key_task_exists(self):
-        """Req 4.1: A task to add the Tailscale GPG key must exist."""
+        """TS-4: A task to add the Tailscale signing key must exist."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "add tailscale gpg key")
         assert task is not None, "Could not find GPG key task"
 
     def test_gpg_key_uses_official_url(self):
-        """Req 4.1: GPG key is fetched from the official Tailscale URL."""
+        """TS-4: Signing key is fetched from the official Tailscale URL."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "add tailscale gpg key")
         assert task is not None
@@ -72,13 +72,13 @@ class TestTailscaleInstallation:
         assert "tailscale" in url.lower() or "tailscale_repo_key_url" in url
 
     def test_repository_task_exists(self):
-        """Req 4.1: A task to add the Tailscale apt repository must exist."""
+        """TS-3: A task to add the Tailscale apt repository must exist."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "add tailscale repository")
         assert task is not None, "Could not find repository task"
 
     def test_install_package_task_exists(self):
-        """Req 4.1: A task to install the tailscale package must exist."""
+        """TS-3: A task to install the tailscale package must exist."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "install tailscale package")
         assert task is not None, "Could not find package install task"
@@ -87,7 +87,7 @@ class TestTailscaleInstallation:
         assert apt_params.get("state") == "present"
 
     def test_authenticate_task_uses_login_server(self):
-        """Req 4.2, 4.3: Authentication task uses --login-server with control server URL."""
+        """TS-6: Registration task uses --login-server with the control server URL."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "authenticate tailscale")
         assert task is not None, "Could not find Tailscale authentication task"
@@ -97,7 +97,7 @@ class TestTailscaleInstallation:
         assert "tailscale_control_server" in cmd
 
     def test_authenticate_task_uses_authkey(self):
-        """Req 4.2: Authentication task uses --authkey with the pre-auth key."""
+        """TS-7: Registration task passes the pre-auth key to the client."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "authenticate tailscale")
         assert task is not None
@@ -107,7 +107,7 @@ class TestTailscaleInstallation:
         assert "tailscale_pre_auth_key" in cmd
 
     def test_service_enabled_task_exists(self):
-        """Req 4.4: A task to enable the tailscaled service must exist."""
+        """TS-12: A task to enable the tailscaled service must exist."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "enable tailscale service")
         assert task is not None, "Could not find service enable task"
@@ -116,7 +116,7 @@ class TestTailscaleInstallation:
         assert systemd_params.get("enabled") is True
 
     def test_service_started_task_exists(self):
-        """Req 4.5: A task to start the tailscaled service must exist."""
+        """TS-13: A task to start the tailscaled service must exist."""
         tasks = load_tasks("tailscale", "install.yml")
         task = find_task(tasks, "start tailscale service")
         assert task is not None, "Could not find service start task"
@@ -126,10 +126,10 @@ class TestTailscaleInstallation:
 
 
 class TestTailscaleSkipWhenDisabled:
-    """Tests for skip behavior when Tailscale is disabled (Requirement 4.6)."""
+    """Tests for skip behavior when Tailscale is disabled."""
 
     def test_main_tasks_use_when_condition(self):
-        """Req 4.6: All main tasks have a when: tailscale_enabled condition."""
+        """TS-2: All main tasks have a when: tailscale_enabled condition."""
         tasks = load_tasks("tailscale")
         for task in tasks:
             when_condition = task.get("when", "")
@@ -138,7 +138,7 @@ class TestTailscaleSkipWhenDisabled:
             )
 
     def test_only_two_include_tasks_in_main(self):
-        """Req 4.6: main.yml contains exactly two include_tasks (install + verify)."""
+        """TS-2: main.yml contains exactly two include_tasks (install + verify)."""
         tasks = load_tasks("tailscale")
         include_tasks = [t for t in tasks if "ansible.builtin.include_tasks" in t]
         assert len(include_tasks) == 2, (
@@ -147,16 +147,16 @@ class TestTailscaleSkipWhenDisabled:
 
 
 class TestTailscaleConnectivityVerification:
-    """Tests for connectivity verification logic (Requirements 5.1, 5.2, 5.3)."""
+    """Tests for connectivity verification logic."""
 
     def test_interface_wait_task_exists(self):
-        """Req 5.1: A task to wait for the Tailscale interface must exist."""
+        """TS-15: A task to wait for the Tailscale interface must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "wait for tailscale interface")
         assert task is not None, "Could not find interface wait task"
 
     def test_interface_wait_uses_tailscale_interface_var(self):
-        """Req 5.1: Interface wait task uses the tailscale_interface variable."""
+        """TS-14, TS-15: Interface wait task uses the tailscale_interface variable."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "wait for tailscale interface")
         assert task is not None
@@ -165,7 +165,7 @@ class TestTailscaleConnectivityVerification:
         assert "tailscale_interface" in path
 
     def test_fail_if_interface_missing(self):
-        """Req 5.1: A fail task exists when the interface does not appear."""
+        """TS-15: A fail task exists when the interface does not appear."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "fail if tailscale interface does not exist")
         assert task is not None, "Could not find interface-missing fail task"
@@ -173,7 +173,7 @@ class TestTailscaleConnectivityVerification:
         assert "tailscale" in fail_params.get("msg", "").lower()
 
     def test_get_tailscale_status_task_exists(self):
-        """Req 5.1: A task to get Tailscale status JSON must exist."""
+        """TS-16: A task to get Tailscale status JSON must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "wait for tailscale to reach running state")
         assert task is not None, "Could not find status task"
@@ -182,14 +182,14 @@ class TestTailscaleConnectivityVerification:
         assert "tailscale status" in cmd
 
     def test_fail_if_not_connected(self):
-        """Req 5.1: The status task retries until Tailscale reaches Running state."""
+        """TS-16: The status task retries until Tailscale reaches Running state."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "wait for tailscale to reach running state")
         assert task is not None, "Could not find status task"
         assert task.get("retries", 0) > 0, "Status task should have retries"
 
     def test_get_tailscale_ip_task_exists(self):
-        """Req 5.1: A task to retrieve the Tailscale IPv4 address must exist."""
+        """TS-17: A task to retrieve the Tailscale IPv4 address must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "get tailscale ipv4 address")
         assert task is not None, "Could not find IP address task"
@@ -198,7 +198,7 @@ class TestTailscaleConnectivityVerification:
         assert "tailscale ip" in cmd
 
     def test_set_tailscale_ip_fact(self):
-        """Req 5.1: A task to set the tailscale_ipv4 fact must exist."""
+        """TS-17: A task to set the tailscale_ipv4 fact must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "set tailscale ip facts")
         assert task is not None, "Could not find set_fact task for tailscale_ipv4"
@@ -206,7 +206,7 @@ class TestTailscaleConnectivityVerification:
         assert "tailscale_ipv4" in set_fact_params
 
     def test_connectivity_ping_test_exists(self):
-        """Req 5.1: A ping connectivity test through the Tailscale interface must exist."""
+        """TS-21: A ping connectivity test through the Tailscale interface must exist."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "test connectivity through tailscale interface")
         assert task is not None, "Could not find connectivity ping task"
@@ -216,7 +216,7 @@ class TestTailscaleConnectivityVerification:
         assert "tailscale_interface" in cmd
 
     def test_fail_if_connectivity_test_fails(self):
-        """Req 5.1: A fail task exists when the connectivity ping test fails."""
+        """TS-21: A fail task exists when the connectivity ping test fails."""
         tasks = load_tasks("tailscale", "verify.yml")
         task = find_task(tasks, "fail if tailscale connectivity test fails")
         assert task is not None, "Could not find connectivity-fail task"

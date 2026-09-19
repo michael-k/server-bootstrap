@@ -82,15 +82,18 @@ class TestTailscaleInstallationProperties:
         server using a pre-auth key from Vault, configure the control server URL,
         enable the service, and start the service.
 
-        Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5
+        Validates: TS-1, TS-3, TS-4, TS-5, TS-6, TS-7, TS-9, TS-12, TS-13, TS-14
         """
         # This property test verifies the Tailscale role's behavior by checking:
-        # 1. Tailscale packages are installed from official repository (Requirement 4.1)
-        # 2. Authentication uses pre-auth key from Vault (Requirement 4.2)
-        # 3. Control server URL is configured (Requirement 4.3)
-        # 4. Tailscale service is enabled to start on boot (Requirement 4.4)
-        # 5. Tailscale service is started (Requirement 4.5)
-        # 6. All tasks are conditional on tailscale_enabled variable (Requirement 4.6)
+        # 1. The client is installed from the official repository (TS-3)
+        # 2. The repository is pinned to the official signing key (TS-4)
+        # 3. Repository and key follow the host's Debian release (TS-5)
+        # 4. The control server URL is configured (TS-6)
+        # 5. Registration uses the pre-auth key from Vault (TS-7)
+        # 6. Registration is skipped on an already-registered host (TS-9)
+        # 7. The service is enabled to start on boot (TS-12)
+        # 8. The service is started (TS-13)
+        # 9. Enrolment is opt-in and the interface name is configurable (TS-1, TS-14)
 
         # Read the Tailscale role main tasks
         main_tasks_path = Path("roles/tailscale/tasks/main.yml")
@@ -98,7 +101,7 @@ class TestTailscaleInstallationProperties:
 
         main_tasks_content = main_tasks_path.read_text()
 
-        # Verify conditional execution based on tailscale_enabled (Requirement 4.6)
+        # Verify conditional execution based on tailscale_enabled (TS-2)
         assert "when: tailscale_enabled | bool" in main_tasks_content, (
             "Tailscale tasks must be conditional on tailscale_enabled variable"
         )
@@ -119,7 +122,7 @@ class TestTailscaleInstallationProperties:
 
         install_tasks_content = install_tasks_path.read_text()
 
-        # Verify Requirement 4.1: Install Tailscale packages from official repository
+        # TS-3, TS-4: install the client from the official, key-pinned repository
         assert "ansible.builtin.get_url:" in install_tasks_content, (
             "Must download Tailscale GPG key using get_url module"
         )
@@ -144,7 +147,7 @@ class TestTailscaleInstallationProperties:
             "Package state must be present"
         )
 
-        # Verify Requirement 4.2, 4.3: Authenticate with control server using pre-auth key
+        # TS-6, TS-7: register with the control server using the pre-auth key
         assert "ansible.builtin.command:" in install_tasks_content, (
             "Must use command module for Tailscale authentication"
         )
@@ -153,10 +156,10 @@ class TestTailscaleInstallationProperties:
         )
         assert "--login-server={{ tailscale_control_server }}" in install_tasks_content, (
             "Must configure control server URL using tailscale_control_server variable "
-            "(Requirement 4.3)"
+            "(TS-6)"
         )
         assert "--authkey={{ tailscale_pre_auth_key }}" in install_tasks_content, (
-            "Must use pre-auth key from tailscale_pre_auth_key variable (Requirement 4.2)"
+            "Must use pre-auth key from tailscale_pre_auth_key variable (TS-7)"
         )
 
         # Verify authentication is guarded by a status check for idempotency
@@ -174,7 +177,7 @@ class TestTailscaleInstallationProperties:
             "Authentication task must set changed_when based on return code"
         )
 
-        # Verify Requirement 4.4: Enable Tailscale service to start on boot
+        # TS-12: enable the service to start on boot
         assert "ansible.builtin.systemd:" in install_tasks_content, (
             "Must use systemd module for service management"
         )
@@ -182,12 +185,12 @@ class TestTailscaleInstallationProperties:
             "Must manage tailscaled service"
         )
         assert "enabled: true" in install_tasks_content, (
-            "Tailscale service must be enabled to start on boot (Requirement 4.4)"
+            "Tailscale service must be enabled to start on boot (TS-12)"
         )
 
-        # Verify Requirement 4.5: Start Tailscale service
+        # TS-13: start the service
         assert "state: started" in install_tasks_content, (
-            "Tailscale service must be started (Requirement 4.5)"
+            "Tailscale service must be started (TS-13)"
         )
 
         # Verify tasks are properly tagged
@@ -216,12 +219,12 @@ class TestTailscaleInstallationProperties:
 
         # Verify tailscale_control_server variable is defined
         assert "tailscale_control_server:" in defaults_content, (
-            "tailscale_control_server must be defined in defaults (Requirement 4.3)"
+            "tailscale_control_server must be defined in defaults (TS-6)"
         )
 
         # Verify tailscale_pre_auth_key variable is defined
         assert "tailscale_pre_auth_key:" in defaults_content, (
-            "tailscale_pre_auth_key must be defined in defaults (Requirement 4.2)"
+            "tailscale_pre_auth_key must be defined in defaults (TS-7)"
         )
 
         # Verify tailscale_interface variable is defined
@@ -248,13 +251,15 @@ class TestTailscaleInstallationProperties:
         )
 
         # Property verified: The Tailscale role configuration ensures that:
-        # - Tailscale packages are installed from official repository (4.1)
-        # - Authentication uses pre-auth key from Vault (4.2)
-        # - Control server URL is configured (4.3)
-        # - Tailscale service is enabled to start on boot (4.4)
-        # - Tailscale service is started (4.5)
-        # - All tasks are conditional on tailscale_enabled variable (4.6)
-        # - Configuration is idempotent (uses creates parameter)
+        # - The client is installed from the official repository (TS-3)
+        # - The repository is pinned to the official signing key (TS-4)
+        # - Repository and key follow the host's Debian release (TS-5)
+        # - The control server URL is configured (TS-6)
+        # - Registration uses the pre-auth key from Vault (TS-7)
+        # - Registration is skipped on an already-registered host (TS-9)
+        # - The service is enabled to start on boot and started (TS-12, TS-13)
+        # - Enrolment is opt-in, defaulting to off (TS-1)
+        # - The interface name is configurable (TS-14)
         # - Tasks are properly tagged for selective execution
         # - This applies consistently across all valid configuration values
 
@@ -281,17 +286,18 @@ class TestTailscaleConnectivityVerificationProperties:
         the playbook SHALL verify Tailscale connectivity before configuring SSH
         to listen only on the Tailscale interface.
 
-        This test verifies the connectivity verification logic (Requirement 5.1).
+        This test verifies the connectivity verification logic.
         The SSH interface restriction logic is tested separately.
 
-        Validates: Requirement 5.1 (connectivity verification aspect)
+        Validates: TS-14, TS-15, TS-16, TS-17, TS-19, TS-21
         """
         # This property test verifies the Tailscale role's connectivity verification by checking:
-        # 1. Tailscale interface existence is verified (Requirement 5.1)
-        # 2. Tailscale connection state is verified (Requirement 5.1)
-        # 3. Tailscale IP address assignment is verified (Requirement 5.1)
-        # 4. Connectivity through Tailscale interface is tested (Requirement 5.1)
-        # 5. Verification fails with clear error if connectivity test fails (Requirement 5.1)
+        # 1. The interface has to appear before the run continues (TS-15)
+        # 2. The backend has to reach Running (TS-16)
+        # 3. The IPv4 address is published as a fact (TS-17)
+        # 4. An unassigned IPv4 address fails the run (TS-19)
+        # 5. Connectivity over the interface is tested and acted on (TS-21)
+        # 6. The interface is named by a configurable variable (TS-14)
 
         # Read the Tailscale verification tasks
         verify_tasks_path = Path("roles/tailscale/tasks/verify.yml")
@@ -299,7 +305,7 @@ class TestTailscaleConnectivityVerificationProperties:
 
         verify_tasks_content = verify_tasks_path.read_text()
 
-        # Verify Requirement 5.1: Wait for Tailscale interface to be created
+        # TS-15: wait for the interface to be created
         assert "ansible.builtin.wait_for:" in verify_tasks_content, (
             "Must use wait_for module to check for Tailscale interface"
         )
@@ -409,12 +415,13 @@ class TestTailscaleConnectivityVerificationProperties:
         )
 
         # Property verified: The Tailscale role verification ensures that:
-        # - Tailscale interface existence is verified with timeout (5.1)
-        # - Tailscale connection state is verified (BackendState == Running) (5.1)
-        # - Tailscale IP address assignment is verified (5.1)
-        # - Connectivity through Tailscale interface is tested (5.1)
-        # - Clear error messages prevent lockout scenarios (5.1)
-        # - All checks are performed before SSH restriction
+        # - Interface existence is verified with a timeout (TS-15)
+        # - The backend state is verified to be Running (TS-16)
+        # - The IPv4 address is published as a fact (TS-17)
+        # - An unassigned IPv4 address fails the run (TS-19)
+        # - Connectivity over the interface is tested and acted on (TS-21)
+        # - The interface name comes from a variable (TS-14)
+        # - Clear error messages name lockout as the reason
         # - This applies consistently across all valid interface names and timeouts
 
 
@@ -435,10 +442,10 @@ class TestTailscaleConditionalExecutionProperties:
         the playbook SHALL skip all Tailscale installation, configuration, and
         SSH restriction steps.
 
-        Validates: Requirements 4.6, 9.8
+        Validates: TS-1, TS-2, and Requirement 9.8 (emergency access)
         """
         # This property test verifies the Tailscale role's conditional execution by checking:
-        # 1. All Tailscale tasks are conditional on tailscale_enabled (Requirement 4.6)
+        # 1. All Tailscale tasks are conditional on tailscale_enabled (TS-2)
         # 2. Emergency script deployment is conditional on tailscale_enabled (Requirement 9.8)
         # 3. SSH restriction is conditional on tailscale_enabled
 
@@ -475,7 +482,7 @@ class TestTailscaleConditionalExecutionProperties:
 
         # Verify tailscale_enabled defaults to false (opt-in behavior)
         assert "tailscale_enabled: false" in defaults_content, (
-            "tailscale_enabled must default to false (Requirement 4.6)"
+            "tailscale_enabled must default to false (TS-1)"
         )
 
         # Verify emergency_access role exists and has conditional deployment
@@ -502,10 +509,9 @@ class TestTailscaleConditionalExecutionProperties:
                 )
 
         # Property verified: The Tailscale role configuration ensures that:
-        # - All Tailscale installation tasks are conditional on tailscale_enabled (4.6)
-        # - All Tailscale verification tasks are conditional on tailscale_enabled (4.6)
+        # - Both task includes are conditional on tailscale_enabled (TS-2)
         # - Emergency script deployment is conditional on tailscale_enabled (9.8)
-        # - Default value is false (opt-in behavior)
+        # - The flag defaults to false, so enrolment is opt-in (TS-1)
         # - When disabled, all Tailscale-related tasks are skipped
         # - This applies consistently regardless of enabled value
 
@@ -528,9 +534,9 @@ class TestTailscaleRepositoryConfigurationProperties:
         repository with proper GPG key verification.
 
         This property verifies that:
-        - Official Tailscale repository is used (Requirement 4.1)
-        - GPG key is properly configured for package verification
-        - Repository configuration adapts to Debian release
+        - The official Tailscale repository is used (TS-3)
+        - The repository is pinned to the official signing key (TS-4)
+        - Repository and key follow the host's Debian release (TS-5)
         """
         # Read the Tailscale defaults
         defaults_path = Path("roles/tailscale/defaults/main.yml")
@@ -586,7 +592,6 @@ class TestTailscaleRepositoryConfigurationProperties:
         )
 
         # Property verified: The Tailscale role ensures:
-        # - Official Tailscale repository is configured (4.1)
-        # - GPG key verification is properly configured
-        # - Repository configuration adapts to Debian release
-        # - Package authenticity is verified during installation
+        # - The official repository is configured (TS-3)
+        # - The repository is pinned to the official signing key (TS-4)
+        # - Repository and key follow the host's Debian release (TS-5)

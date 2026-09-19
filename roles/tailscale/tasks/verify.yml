@@ -1,8 +1,10 @@
 ---
-# Tailscale connectivity verification tasks
-# Verifies Tailscale interface exists and is connected before SSH restriction
-# Requirement 5.1: Verify Tailscale connectivity before restricting SSH
+# Tailscale connectivity verification.
+# Everything here runs before the role returns, so a tailnet that did not
+# come up fails the run while the host is still reachable the way it was.
 
+# TS-15: the interface has to appear at all. The wait tolerates its own
+# timeout so the failure below can name lockout as the reason.
 - name: Wait for Tailscale interface to be created
   ansible.builtin.wait_for:
     path: /sys/class/net/{{ tailscale_interface }}
@@ -13,6 +15,7 @@
     - tailscale
     - verification
 
+# TS-15: the failure itself.
 - name: Fail if Tailscale interface does not exist
   ansible.builtin.fail:
     msg: >
@@ -24,6 +27,8 @@
     - tailscale
     - verification
 
+# TS-16: an interface can exist while the client is still negotiating or
+# logged out, so the backend's own state is what the address lookups wait on.
 - name: Wait for Tailscale to reach Running state
   ansible.builtin.command:
     cmd: tailscale status --json
@@ -36,6 +41,7 @@
     - tailscale
     - verification
 
+# TS-16: the parsed status, reported by the final task of this file.
 - name: Parse Tailscale status
   ansible.builtin.set_fact:
     tailscale_status_json: "{{ tailscale_status.stdout | from_json }}"
@@ -43,6 +49,7 @@
     - tailscale
     - verification
 
+# TS-17: the IPv4 address downstream roles bind and filter on.
 - name: Get Tailscale IPv4 address
   ansible.builtin.command:
     cmd: tailscale ip -4
@@ -52,6 +59,7 @@
     - tailscale
     - verification
 
+# TS-18: the IPv6 half of the same pair.
 - name: Get Tailscale IPv6 address
   ansible.builtin.command:
     cmd: tailscale ip -6
@@ -61,6 +69,8 @@
     - tailscale
     - verification
 
+# TS-17, TS-18: this role's output. Every consumer reads these two facts
+# rather than querying the client itself.
 - name: Set Tailscale IP facts
   ansible.builtin.set_fact:
     tailscale_ipv4: "{{ tailscale_ip.stdout | trim }}"
@@ -69,6 +79,8 @@
     - tailscale
     - verification
 
+# TS-19: an empty fact renders as an empty ListenAddress downstream rather
+# than as an error, so it is refused here instead.
 - name: Fail if Tailscale IPv4 is not assigned
   ansible.builtin.fail:
     msg: >
@@ -80,6 +92,7 @@
     - tailscale
     - verification
 
+# TS-20: the same refusal for the IPv6 half.
 - name: Fail if Tailscale IPv6 is not assigned
   ansible.builtin.fail:
     msg: >
@@ -90,6 +103,10 @@
     - tailscale
     - verification
 
+# TS-21: the last check before the narrowing that follows. Note what it
+# actually measures: the target is this host's own tailnet address, which
+# the kernel answers locally, so a pass does not establish that any packet
+# crossed the tailnet. See specs/tailscale/design.md.
 - name: Test connectivity through Tailscale interface
   ansible.builtin.command:
     cmd: ping -c 3 -I {{ tailscale_interface }} {{ tailscale_ipv4 }}
@@ -100,6 +117,7 @@
     - tailscale
     - verification
 
+# TS-21: the measured result is acted on, not merely reported.
 - name: Fail if Tailscale connectivity test fails
   ansible.builtin.fail:
     msg: >
@@ -112,6 +130,7 @@
     - tailscale
     - verification
 
+# TS-21: what was verified, for the run's operator.
 - name: Display Tailscale connectivity verification success
   ansible.builtin.debug:
     msg: >

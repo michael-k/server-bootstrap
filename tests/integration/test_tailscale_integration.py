@@ -5,7 +5,11 @@ Three Incus VMs: a headscale control server, a tailnet peer, and the
 bootstrap target. Verifies SSH is restricted to the tailnet, port
 knocking cannot bypass it, and the emergency script toggles access.
 
-Requirements: Tailscale integration, emergency access, firewall isolation
+This is the only suite in the project that runs an enabled Tailscale
+bootstrap against a real host. Each test cites the requirement it
+exercises; the tests covering SSH binding, firewall isolation and the
+emergency script belong to specs that are not yet written and carry no
+citation yet.
 """
 
 import dataclasses
@@ -193,6 +197,10 @@ def tailscale_env(request):
     """Three-VM environment: headscale server, tailnet peer, bootstrap target.
 
     Session-scoped — all tests in TestTailscaleIntegration share this fixture.
+
+    TS-1: the only place this project runs the role with enrolment enabled.
+    TS-6: the target registers with the headscale server on VM1.
+    TS-7: it registers with a pre-auth key that server issued.
     """
     if not incus_available():
         pytest.skip("Incus not available")
@@ -374,7 +382,15 @@ class TestTailscaleIntegration:
     def test_ssh_open_from_tailnet_peer(
         self, tailscale_env: TailscaleEnv,
     ) -> None:
-        """SSH from the tailnet peer to the target must succeed (IPv4 and IPv6)."""
+        """SSH from the tailnet peer to the target must succeed (IPv4 and IPv6).
+
+        TS-17, TS-18: reaching the target on both published addresses is the
+        only evidence in this project that each fact held a real address.
+        TS-21: the only check that traffic actually crosses the tailnet,
+        rather than being answered locally by the target's own kernel.
+        TS-22: the target has already been narrowed to those addresses by the
+        time this runs, so a verification that ran too late shows up here.
+        """
         env = tailscale_env
 
         # IPv4
@@ -492,7 +508,11 @@ class TestTailscaleIntegration:
     def test_tailscale_services_running(
         self, tailscale_env: TailscaleEnv,
     ) -> None:
-        """Tailscaled service is enabled and running on the target."""
+        """Tailscaled service is enabled and running on the target.
+
+        TS-12, TS-13: the only checks of the real unit state rather than of
+        the task that is supposed to produce it.
+        """
         env = tailscale_env
 
         result = env.target.exec("systemctl is-active tailscaled")

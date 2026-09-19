@@ -1,10 +1,9 @@
 ---
-# Main tasks file for tailscale role
-# Installs and configures Tailscale VPN with Headscale control server
-# All tasks are conditional based on tailscale_enabled variable
+# Entry point for the tailscale role: installs and registers the client with
+# a Headscale control server, then verifies the resulting tailnet connection.
+# These two includes are the only way into either task file.
 
-# Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1
-
+# TS-2: nothing is installed or configured on a host where the flag is off.
 - name: Include Tailscale installation and configuration tasks
   ansible.builtin.include_tasks: install.yml
   when: tailscale_enabled | bool
@@ -12,6 +11,9 @@
     - tailscale
     - vpn
 
+# TS-2: the same gate covers verification.
+# TS-22: verification runs here, before the role returns and therefore
+# before any later role narrows SSH to the addresses it publishes.
 - name: Include Tailscale connectivity verification tasks
   ansible.builtin.include_tasks: verify.yml
   when: tailscale_enabled | bool

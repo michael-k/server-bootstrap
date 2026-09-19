@@ -2,27 +2,27 @@
 # Default variables for tailscale role
 # These can be overridden in inventory or playbook variables
 
-# Tailscale Enable Flag (Requirement 4.1, 4.2, 4.3)
-# Set to true to install and configure Tailscale VPN
-# Set to false to skip all Tailscale installation and configuration
+# TS-1: enrolment is opt-in. False means this role does nothing at all —
+# no package, no registration, no verification, no facts.
 tailscale_enabled: false
 
-# Tailscale Control Server URL (Requirement 4.3)
-# URL of the Headscale control server
+# TS-6: URL of the Headscale control server this node registers with.
+# There is no sensible default, so the empty value is deliberate: the
+# playbook's own pre-flight check refuses an enabled run without one.
 # Example: "https://headscale.example.com"
 tailscale_control_server: ""
 
-# Tailscale Pre-Authentication Key (Requirement 4.2)
-# Pre-auth key for automatic node registration with the control server
-# Should be provided from Ansible Vault for security
+# TS-7: pre-authentication key for unattended node registration, supplied
+# from Ansible Vault and never committed here.
 # Example: tailscale_pre_auth_key: "{{ vault_tailscale_pre_auth_key }}"
 tailscale_pre_auth_key: ""
 
-# Tailscale Interface Name
-# The network interface created by Tailscale
+# TS-14: the interface the client creates, named once here because every
+# verification check and every downstream firewall rule refers to it.
 tailscale_interface: "tailscale0"
 
-# Tailscale Package Repository
-# Official Tailscale package repository for Debian
+# TS-3: the official package repository the client is installed from.
 tailscale_repo_url: "https://pkgs.tailscale.com/stable/debian"
+# TS-4: the signing key the repository is pinned to.
+# TS-5: both the suite and the key file follow the host's own Debian release.
 tailscale_repo_key_url: "https://pkgs.tailscale.com/stable/debian/{{ ansible_facts['distribution_release'] }}.noarmor.gpg"

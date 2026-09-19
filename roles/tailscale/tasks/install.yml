@@ -1,9 +1,10 @@
 ---
-# Tailscale installation and configuration tasks
-# These tasks only execute when tailscale_enabled is true
+# Tailscale installation and registration tasks.
+# Reached only through the role's entry point, which gates this file on the
+# enable flag.
 
-# Requirement 4.1: Install Tailscale packages from official repository
-
+# TS-4: apt_repository validates the signing key this role pins the
+# repository to, which it cannot do without gpg present.
 - name: Ensure gpg is installed for apt_repository
   ansible.builtin.apt:
     name: gpg
@@ -12,6 +13,8 @@
     - tailscale
     - packages
 
+# TS-4: the official signing key, fetched into its own keyring file so the
+# repository below can be pinned to it and to nothing else in apt's trust.
 - name: Add Tailscale GPG key
   ansible.builtin.get_url:
     url: "{{ tailscale_repo_key_url }}"
@@ -21,6 +24,9 @@
     - tailscale
     - packages
 
+# TS-3: the official repository, named by a role default rather than here.
+# TS-4: signed-by pins it to the keyring fetched above.
+# TS-5: the suite is the host's own Debian release, never a hardcoded name.
 - name: Add Tailscale repository
   ansible.builtin.apt_repository:
     repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] {{ tailscale_repo_url }} {{ ansible_facts['distribution_release'] }} main"
@@ -38,6 +44,7 @@
     - tailscale
     - packages
 
+# TS-3: the client itself, from the repository configured above.
 - name: Install Tailscale package
   ansible.builtin.apt:
     name: tailscale
@@ -46,8 +53,8 @@
     - tailscale
     - packages
 
-# Requirement 4.2, 4.3: Authenticate with Headscale using pre-auth key
-
+# TS-9: this is the check that decides whether registration is skipped. It
+# tolerates a non-zero exit, but not empty output — see the guard below.
 - name: Check Tailscale authentication status
   ansible.builtin.command:
     cmd: tailscale status --json
@@ -55,6 +62,21 @@
   changed_when: false
   failed_when: false
 
+# TS-6: the control server URL comes from a role default.
+# TS-7: the pre-authentication key comes from Ansible Vault.
+# WARNING — the requirement "Pre-auth key kept out of the argument list and
+#   out of run output" is NOT met here, and is deliberately left uncited: a
+#   requirement ID on this line would be recorded as evidence that the rule
+#   is implemented, which is the opposite of the truth. The key is
+#   interpolated into a literal command argument and the task carries no
+#   no_log, so its value reaches the target's /proc/<pid>/cmdline and the
+#   controller's Ansible log via the registered result's cmd field. Closing
+#   that gap is a behaviour change, out of scope here; the requirement is
+#   marked pending in specs/tailscale/requirements.md and the exposure is
+#   set out in specs/tailscale/design.md under Failure modes.
+# TS-9: skipped when the backend already reports Running.
+# TS-10: routes advertised through the tailnet are accepted.
+# TS-11: the tailnet's DNS configuration is not applied to this host.
 - name: Authenticate Tailscale with Headscale control server
   ansible.builtin.command:
     cmd: >
@@ -71,8 +93,8 @@
     - tailscale
     - configuration
 
-# Requirement 4.4: Enable Tailscale service to start on boot
-
+# TS-12: the tailnet has to survive a reboot, because by the time the run
+# ends sshd is bound to addresses that exist only while the client runs.
 - name: Enable Tailscale service
   ansible.builtin.systemd:
     name: tailscaled
@@ -81,8 +103,7 @@
     - tailscale
     - service
 
-# Requirement 4.5: Start Tailscale service
-
+# TS-13: and it has to be running now, for the verification that follows.
 - name: Start Tailscale service
   ansible.builtin.systemd:
     name: tailscaled
