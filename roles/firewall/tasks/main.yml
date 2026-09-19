@@ -1,9 +1,10 @@
 ---
 # Firewall Role - Main Tasks
-# Implements NFTables firewall configuration with dual-stack support
-# Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 8.10, 8.11
+# Deploys the dual-stack NFTables ruleset and the service that loads it.
+# Every rule in the ruleset itself is cited in templates/nftables.conf.j2.
 
-# Validate port knocking sequence length when active
+# Validate port knocking sequence length when active. Port knocking belongs to
+# a spec that has not been written yet, so this task carries no requirement ID.
 - name: Verify port knocking sequence has exactly 3 ports
   ansible.builtin.assert:
     that:
@@ -12,6 +13,9 @@
     success_msg: "Port knocking sequence has 3 ports"
   when: not (firewall_tailscale_enabled | bool) and (firewall_port_knocking_enabled | bool)
 
+# FW-1: nftables is the packet filter this project configures. Debian ships
+# the package but no ruleset, so installing it changes nothing on its own —
+# the filtering starts with the file deployed below.
 - name: Install nftables package
   ansible.builtin.apt:
     name: nftables
@@ -19,6 +23,9 @@
     update_cache: true
   become: true
 
+# FW-20: the extension point a purpose repo adds its own rules through. It is
+# created before the ruleset that includes it, and root-owned so only root can
+# add a rule the firewall will load.
 - name: Create nftables drop-in directory for purpose-specific rules
   ansible.builtin.file:
     path: /etc/nftables.d
@@ -28,6 +35,9 @@
     mode: "0755"
   become: true
 
+# FW-16: /etc/nftables.conf is the path the packaged service reads, which is
+# what turns a rendered file into rules the kernel holds after a reboot.
+# Root-owned and 0644, so only root decides what the firewall does.
 - name: Deploy NFTables configuration
   ansible.builtin.template:
     src: nftables.conf.j2
@@ -36,14 +46,21 @@
     group: root
     mode: "0644"
   become: true
+  # FW-19: a deployed ruleset is not a loaded ruleset until nftables re-reads
+  # the file.
   notify: Reload nftables
 
+# FW-17: enabled, so the deployed ruleset is loaded on every boot and not only
+# in the run that wrote it. This is the whole of the persistence guarantee:
+# nothing saves the running ruleset, it is re-read from the file each time.
 - name: Enable nftables service for boot persistence
   ansible.builtin.systemd:
     name: nftables
     enabled: true
   become: true
 
+# FW-18: started, so a first run ends with the rules in force rather than with
+# a file waiting for a reboot.
 - name: Start nftables service
   ansible.builtin.systemd:
     name: nftables

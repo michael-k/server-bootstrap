@@ -1,8 +1,12 @@
 ---
 # Firewall Role - Handlers
 
-# Handler to reload NFTables rules after configuration changes
-# (Requirement 8.10)
+# FW-19: nft reads /etc/nftables.conf when it is told to, so a file the kernel
+# has not been given leaves the previous ruleset in force while the run
+# reports success. A reload re-executes the whole file, flush and drop-in
+# include alike, as one transaction: if any part of it fails to parse, nothing
+# is applied and the rules already loaded stay exactly as they were.
+# Ansible flushes handlers at the end of the play, not of this role.
 - name: Reload nftables
   ansible.builtin.systemd:
     name: nftables

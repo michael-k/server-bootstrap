@@ -1,23 +1,29 @@
 ---
 # Firewall Role - Default Variables
 
-# SSH port configuration (inherited from ssh_hardening role)
-# Used to configure firewall rules for SSH access
+# FW-14: the SSH port is derived from the ssh_hardening role's ssh_port rather
+# than configured twice, so the rule and the daemon's Port directive cannot
+# name different ports. The fallback applies only where that role is absent.
 firewall_ssh_port: "{{ ssh_port | default(22) }}"
 
-# Tailscale configuration (Requirements 8.7, 8.8, 8.9)
-# Enable flag determines whether to restrict SSH to Tailscale interface
+# The Tailscale enrolment flag, inherited from the tailscale role. It selects
+# which SSH exposure branch the ruleset renders: the tailnet-only rule (FW-10)
+# with the WireGuard port open (FW-12) when true, and otherwise either the
+# knock-gated branch or the open one (FW-13).
 firewall_tailscale_enabled: "{{ tailscale_enabled | default(false) }}"
 
-# Tailscale interface name for SSH restriction
+# FW-11: the interface name the tailnet-only SSH rule matches on, inherited
+# from the tailscale role so both roles narrow to the same interface.
 firewall_tailscale_interface: "{{ tailscale_interface | default('tailscale0') }}"
 
-# Tailscale IPv4 address for SSH restriction
-# Set by tailscale role's verify.yml tasks
+# Tailscale IPv4 address, published by the tailscale role's verify.yml tasks.
+# No rule in this role reads it: the tailnet-only rule matches the interface,
+# not an address. See the firewall design's failure modes.
 firewall_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
 
-# WireGuard port for Tailscale VPN traffic (Requirement 8.9)
-# Tailscale uses UDP port 41641 by default
+# FW-12: the UDP port Tailscale's WireGuard traffic is accepted on. 41641 is
+# the client's default listening port; a deployment that moves it must change
+# this too, because nothing here reads the port back from the client.
 firewall_wireguard_port: 41641
 
 # Port knocking configuration (active only when Tailscale is disabled)

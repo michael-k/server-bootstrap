@@ -53,7 +53,7 @@ class TestNFTablesDualStackProperties:
         For any execution of the bootstrap playbook, NFTables rules SHALL be configured
         for both IPv4 and IPv6 traffic with identical policies.
 
-        Validates: Requirements 8.1, 8.2
+        Validates: FW-1, FW-2, FW-8, FW-9, FW-16
         """
         # This property test verifies the firewall role's dual-stack behavior by checking:
         # 1. NFTables configuration uses inet family (supports both IPv4 and IPv6)
@@ -66,7 +66,7 @@ class TestNFTablesDualStackProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Requirement 8.1 & 8.2: Dual-stack configuration using inet family
+        # FW-2: dual-stack configuration through a single inet table
         assert "table inet filter" in template_content, (
             "NFTables must use 'inet' family for dual-stack (IPv4 + IPv6) support"
         )
@@ -141,7 +141,7 @@ class TestNFTablesDualStackProperties:
         )
 
         # Property verified: The firewall role configuration ensures that:
-        # - NFTables uses inet family for dual-stack support (8.1, 8.2)
+        # - NFTables uses inet family for dual-stack support (FW-2)
         # - Rules apply uniformly to both IPv4 and IPv6 traffic
         # - ICMP is allowed for both protocol versions
         # - Configuration is properly deployed with correct permissions
@@ -168,13 +168,13 @@ class TestNFTablesStatefulFirewallProperties:
         and related connections, allow loopback interface traffic, and set default
         input and forward policies to drop.
 
-        Validates: Requirements 8.3, 8.4, 8.5, 8.6
+        Validates: FW-3, FW-4, FW-5, FW-6, FW-7, FW-17, FW-18, FW-19
         """
         # This property test verifies the firewall role's stateful behavior by checking:
-        # 1. Established and related connections are allowed (Requirement 8.3)
-        # 2. Loopback interface traffic is allowed (Requirement 8.4)
-        # 3. Default input policy is drop (Requirement 8.5)
-        # 4. Default forward policy is drop (Requirement 8.6)
+        # 1. Established and related connections are allowed (FW-6)
+        # 2. Loopback interface traffic is allowed (FW-7)
+        # 3. Default input policy is drop (FW-3)
+        # 4. Default forward policy is drop (FW-4)
 
         # Read the NFTables configuration template
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
@@ -182,17 +182,17 @@ class TestNFTablesStatefulFirewallProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Requirement 8.3: Established and related connections are allowed
+        # FW-6: established and related connections are allowed
         assert "ct state established,related accept" in template_content, (
             "Must allow established and related connections for stateful firewall"
         )
 
-        # Verify Requirement 8.4: Loopback interface traffic is allowed
+        # FW-7: loopback interface traffic is allowed
         assert "iif lo accept" in template_content, (
             "Must allow loopback interface traffic (required for local services)"
         )
 
-        # Verify Requirement 8.5: Default input policy is drop
+        # FW-3: default input policy is drop
         assert "chain input" in template_content, (
             "Input chain must be defined"
         )
@@ -208,10 +208,10 @@ class TestNFTablesStatefulFirewallProperties:
                     break
 
         assert any('policy drop' in line for line in input_chain_lines), (
-            "Input chain must have default policy drop (Requirement 8.5)"
+            "Input chain must have default policy drop (FW-3)"
         )
 
-        # Verify Requirement 8.6: Default forward policy is drop
+        # FW-4: default forward policy is drop
         assert "chain forward" in template_content, (
             "Forward chain must be defined"
         )
@@ -227,10 +227,10 @@ class TestNFTablesStatefulFirewallProperties:
                     break
 
         assert any('policy drop' in line for line in forward_chain_lines), (
-            "Forward chain must have default policy drop (Requirement 8.6)"
+            "Forward chain must have default policy drop (FW-4)"
         )
 
-        # Verify output chain has accept policy (allow all outbound)
+        # FW-5: the output chain has an accept policy
         output_chain_lines = []
         in_output_chain = False
         for line in template_content.split('\n'):
@@ -286,7 +286,7 @@ class TestNFTablesStatefulFirewallProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify service is enabled for boot persistence (Requirement 8.10)
+        # FW-17: the service is enabled so the ruleset is reloaded at boot
         assert "name: nftables" in tasks_content, (
             "NFTables service must be referenced"
         )
@@ -322,11 +322,11 @@ class TestNFTablesStatefulFirewallProperties:
         )
 
         # Property verified: The firewall role configuration ensures that:
-        # - Established and related connections are allowed (stateful) (8.3)
-        # - Loopback interface traffic is allowed (8.4)
-        # - Default input policy is drop (8.5)
-        # - Default forward policy is drop (8.6)
-        # - Service is enabled for boot persistence (8.10)
+        # - Established and related connections are allowed (stateful) (FW-6)
+        # - Loopback interface traffic is allowed (FW-7)
+        # - Default input policy is drop (FW-3)
+        # - Default forward policy is drop (FW-4)
+        # - Service is enabled for boot persistence (FW-17)
         # - Configuration changes trigger service reload
         # - Rule ordering is optimized for performance
         # - This applies consistently regardless of SSH port or Tailscale status
@@ -353,13 +353,13 @@ class TestNFTablesSSHAccessControlProperties:
         access to the Tailscale interface only when Tailscale is enabled, or allow SSH
         port access from all interfaces when Tailscale is disabled.
 
-        Validates: Requirements 8.7, 8.8
+        Validates: FW-10, FW-11, FW-12, FW-13, FW-14
         """
         # This property test verifies the firewall role's SSH access control by checking:
-        # 1. When Tailscale enabled: SSH restricted to Tailscale interface (Requirement 8.7)
-        # 2. When Tailscale disabled: SSH allowed from all interfaces (Requirement 8.8)
-        # 3. SSH port is configurable
-        # 4. Tailscale WireGuard traffic is allowed when enabled (Requirement 8.9)
+        # 1. When Tailscale enabled: SSH restricted to the tailnet interface (FW-10)
+        # 2. When Tailscale disabled: SSH allowed from all interfaces (FW-13)
+        # 3. SSH port is configurable (FW-14)
+        # 4. Tailscale WireGuard traffic is allowed when enabled (FW-12)
 
         # Read the NFTables configuration template
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
@@ -393,7 +393,7 @@ class TestNFTablesSSHAccessControlProperties:
             "Template must close conditional block"
         )
 
-        # Verify Requirement 8.7: SSH restricted to Tailscale interface when enabled
+        # FW-10: SSH restricted to the tailnet interface when Tailscale is enabled
         # Extract the Tailscale enabled block
         lines = template_content.split('\n')
         in_tailscale_block = False
@@ -412,7 +412,7 @@ class TestNFTablesSSHAccessControlProperties:
 
         # Verify SSH is restricted to Tailscale interface
         assert 'iifname "{{ firewall_tailscale_interface }}"' in tailscale_block, (
-            "When Tailscale enabled, SSH must be restricted to Tailscale interface (8.7)"
+            "When Tailscale enabled, SSH must be restricted to the tailnet interface (FW-10)"
         )
         assert "tcp dport {{ firewall_ssh_port }}" in tailscale_block, (
             "When Tailscale enabled, SSH port must be specified"
@@ -421,12 +421,12 @@ class TestNFTablesSSHAccessControlProperties:
             "When Tailscale enabled, SSH traffic on Tailscale interface must be accepted"
         )
 
-        # Verify Requirement 8.9: Tailscale WireGuard traffic is allowed
+        # FW-12: Tailscale WireGuard traffic is allowed
         assert "udp dport {{ firewall_wireguard_port }}" in tailscale_block, (
-            "When Tailscale enabled, WireGuard UDP traffic must be allowed (8.9)"
+            "When Tailscale enabled, WireGuard UDP traffic must be allowed (FW-12)"
         )
 
-        # Verify Requirement 8.8: SSH allowed from all interfaces when disabled
+        # FW-13: SSH allowed from all interfaces when Tailscale and knocking are off
         # Extract the else block (Tailscale disabled)
         in_else_block = False
         else_block_lines = []
@@ -451,7 +451,7 @@ class TestNFTablesSSHAccessControlProperties:
         )
         # Verify no interface restriction in else block
         assert "iifname" not in else_block, (
-            "When Tailscale disabled, SSH should not be restricted to specific interface (8.8)"
+            "When Tailscale disabled, SSH should not be restricted to an interface (FW-13)"
         )
 
         # Read the firewall role defaults
@@ -512,9 +512,9 @@ class TestNFTablesSSHAccessControlProperties:
         )
 
         # Property verified: The firewall role configuration ensures that:
-        # - When Tailscale enabled: SSH restricted to Tailscale interface (8.7)
-        # - When Tailscale disabled: SSH allowed from all interfaces (8.8)
-        # - When Tailscale enabled: WireGuard traffic is allowed (8.9)
+        # - When Tailscale enabled: SSH restricted to the tailnet interface (FW-10)
+        # - When Tailscale disabled: SSH allowed from all interfaces (FW-13)
+        # - When Tailscale enabled: WireGuard traffic is allowed (FW-12)
         # - SSH port is configurable
         # - Tailscale interface is configurable
         # - WireGuard port is configurable
@@ -541,11 +541,11 @@ class TestNFTablesServicePersistenceProperties:
         For any execution of the bootstrap playbook, the NFTables service SHALL be
         enabled to start on boot, ensuring rules persist across system reboots.
 
-        Validates: Requirements 8.10, 8.11
+        Validates: FW-16, FW-17, FW-18, FW-19
         """
         # This property test verifies the firewall role's service persistence by checking:
-        # 1. NFTables service is enabled to start on boot (Requirement 8.10)
-        # 2. NFTables rules persist across system reboots (Requirement 8.11)
+        # 1. NFTables service is enabled to start on boot (FW-17)
+        # 2. The ruleset is deployed where the service reads it (FW-16)
         # 3. Configuration file is deployed to the correct location
         # 4. Service is started after configuration
 
@@ -555,13 +555,13 @@ class TestNFTablesServicePersistenceProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify Requirement 8.10: NFTables service is enabled to start on boot
+        # FW-17: the NFTables service is enabled to start on boot
         # The service must be enabled using systemd
         assert "name: nftables" in tasks_content, (
             "NFTables service must be referenced in tasks"
         )
         assert "enabled: true" in tasks_content or "enabled: yes" in tasks_content, (
-            "NFTables service must be enabled to start on boot (Requirement 8.10)"
+            "NFTables service must be enabled to start on boot (FW-17)"
         )
 
         # Verify service is started (not just enabled)
@@ -569,15 +569,14 @@ class TestNFTablesServicePersistenceProperties:
             "NFTables service must be started after configuration"
         )
 
-        # Verify Requirement 8.11: NFTables rules persist across system reboots
-        # This is achieved by:
+        # FW-16 and FW-17 together are what make the ruleset survive a reboot:
         # 1. Deploying configuration to /etc/nftables.conf (standard location)
         # 2. Enabling the nftables.service which loads rules from this file on boot
 
         # Verify configuration is deployed to standard location
         assert "dest: /etc/nftables.conf" in tasks_content, (
             "NFTables configuration must be deployed to /etc/nftables.conf "
-            "for persistence (Requirement 8.11)"
+            "for persistence (FW-16)"
         )
 
         # Verify configuration file has correct permissions for boot loading
@@ -694,15 +693,15 @@ class TestNFTablesServicePersistenceProperties:
                         found_start_task = True
 
         assert found_enable_task, (
-            "Must have a task that enables nftables service (Requirement 8.10)"
+            "Must have a task that enables nftables service (FW-17)"
         )
         assert found_start_task, (
             "Must have a task that starts nftables service"
         )
 
         # Property verified: The firewall role configuration ensures that:
-        # - NFTables service is enabled to start on boot (8.10)
-        # - NFTables configuration is deployed to /etc/nftables.conf (8.11)
+        # - NFTables service is enabled to start on boot (FW-17)
+        # - NFTables configuration is deployed to /etc/nftables.conf (FW-16)
         # - Configuration has correct permissions and ownership
         # - Service is started after configuration deployment
         # - Configuration changes trigger service reload via handlers

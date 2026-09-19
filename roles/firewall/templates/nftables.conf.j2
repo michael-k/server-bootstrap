@@ -5,12 +5,22 @@
 # This configuration implements a dual-stack (IPv4 + IPv6) stateful firewall
 # with default-deny policies and explicit allow rules.
 #
-# Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9
+# Requirements: FW-2, FW-3, FW-4, FW-5, FW-6, FW-7, FW-8, FW-9, FW-10, FW-11,
+# FW-12, FW-13, FW-14, FW-15 and FW-21. The port-knocking branch below belongs
+# to a separate spec that has not been written yet, so its sets and rules
+# carry no requirement IDs.
 
-# Flush existing rules
+# FW-15: the deployed ruleset replaces whatever the kernel is holding rather
+# than adding to it, so a re-run converges instead of accumulating rules. The
+# flush is part of the same transaction as everything below, so a file that
+# fails to load leaves the previous ruleset untouched — but it also removes
+# tables this file does not define, which is how a reload discards another
+# tool's rules. See the firewall design's failure modes.
 flush ruleset
 
-# Define table for both IPv4 and IPv6 (inet family)
+# FW-2: one inet table carries both address families, so every policy and
+# every rule below governs IPv4 and IPv6 identically — there is no second,
+# looser table for one of them to drift into.
 table inet filter {
 {% if not (firewall_tailscale_enabled | bool) and (firewall_port_knocking_enabled | bool) %}
     # Port knocking sets — track knock sequence progress per source IP
@@ -23,32 +33,41 @@ table inet filter {
 
 {% endif %}
     # Input chain - handles incoming traffic
-    # Default policy: drop (Requirement 8.5)
+    # FW-3: the policy is what decides every packet no rule below matched, so
+    # anything this file forgets is refused rather than admitted.
     chain input {
         type filter hook input priority 0; policy drop;
 
-        # Allow established and related connections (Requirement 8.3)
-        # This enables stateful firewall behavior
+        # FW-6: this is the rule that makes the firewall stateful — replies to
+        # connections this host opened, and their related flows, are admitted
+        # without a rule per service. It is first because most packets match
+        # it, and because an outbound-initiated exchange must never depend on
+        # the service rules further down.
         ct state established,related accept
 
-        # Allow loopback interface traffic (Requirement 8.4)
-        # Required for local services to communicate
+        # FW-7: local services address each other over the loopback
+        # interface, which the drop policy would otherwise break.
         iif lo accept
 
-        # Allow ICMPv4 and ICMPv6 for network diagnostics
-        # Ping, path MTU discovery, etc.
+        # FW-8: ICMPv4, for ping and path MTU discovery.
         ip protocol icmp accept
+        # FW-9: ICMPv6, which also carries neighbour discovery and router
+        # advertisement — dropping it breaks IPv6 itself, not just diagnostics.
         ip6 nexthdr icmpv6 accept
 
 {% if firewall_tailscale_enabled | bool %}
-        # Tailscale VPN is enabled - restrict SSH to Tailscale interface only
-        # (Requirements 8.7, 8.9)
+        # Tailscale VPN is enabled - reach this host over the tailnet only
 
-        # Allow SSH only from Tailscale interface
+        # FW-10, FW-11, FW-14: SSH is admitted only on packets that arrived
+        # over the tailnet interface. Matching the interface rather than a
+        # source address means a packet from the public interface claiming a
+        # tailnet source does not match.
         iifname "{{ firewall_tailscale_interface }}" tcp dport {{ firewall_ssh_port }} accept
 
-        # Allow Tailscale WireGuard traffic (UDP port {{ firewall_wireguard_port }})
-        # Required for Tailscale VPN to function
+        # FW-12: Tailscale's WireGuard traffic arrives from the internet on a
+        # public interface, so this rule is deliberately not narrowed - the
+        # tunnel that the rule above restricts SSH to cannot come up without
+        # it. It is the one port this host offers the open internet.
         udp dport {{ firewall_wireguard_port }} accept
 {% elif firewall_port_knocking_enabled | bool %}
         # Port knocking is enabled - SSH only after correct knock sequence
@@ -68,8 +87,10 @@ table inet filter {
         tcp dport {{ firewall_ssh_port }} ip saddr @knock4_passed accept
         tcp dport {{ firewall_ssh_port }} ip6 saddr @knock6_passed accept
 {% else %}
-        # Tailscale VPN is disabled, port knocking is disabled
-        # Allow SSH from all interfaces (Requirement 8.8)
+        # FW-13, FW-14: Tailscale and port knocking are both off, so there is
+        # no narrower path to this host and SSH is admitted on every
+        # interface. That is exposure, and it is exposure a requirement
+        # states outright rather than exposure left over by omission.
         tcp dport {{ firewall_ssh_port }} accept
 {% endif %}
 
@@ -79,7 +100,8 @@ table inet filter {
     }
 
     # Forward chain - handles forwarded traffic
-    # Default policy: drop (Requirement 8.6)
+    # FW-4: this host routes nothing for anybody, and the chain is left empty
+    # so that stays true without a rule having to say so.
     chain forward {
         type filter hook forward priority 0; policy drop;
 
@@ -88,14 +110,20 @@ table inet filter {
     }
 
     # Output chain - handles outgoing traffic
-    # Default policy: accept (allow all outbound traffic)
+    # FW-5: outbound traffic is not filtered. Egress control is a policy this
+    # bootstrap does not attempt; FW-6 is what lets the replies back in.
     chain output {
         type filter hook output priority 0; policy accept;
     }
 }
 
-# Include purpose-specific rules from drop-in directory
+# FW-21: purpose-specific rules from the drop-in directory, appended to the
+# chains above after everything this file defines. No chain here ends in a
+# terminal rule, so an appended accept is still reached; only the drop policy
+# comes after it.
 # Files must use "add rule" syntax (not "flush ruleset" or "table ... { }") since
 # the base table already exists. Example:
 #   add rule inet filter input tcp dport 443 accept
+# A glob that matches nothing is not an error, so an absent or empty
+# directory leaves this ruleset exactly as written.
 include "/etc/nftables.d/*.nft"

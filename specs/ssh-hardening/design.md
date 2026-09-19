@@ -398,19 +398,25 @@ break-glass interaction in `## Failure modes` a real one.
 - `PRJ` — `site.yml` orders the `tailscale` role ahead of this one and
   supplies the inventory that sets `ssh_port` and any algorithm or session
   overrides.
-- `INV-4` and the firewall spec — on a Tailscale-disabled host, `SSH-18`'s
-  open branch narrows nothing, and the only thing between sshd and the
-  internet is the firewall's default-deny posture and whichever SSH rule it
-  opened.
+- `INV-4` and `FW-3` — on a Tailscale-disabled host, `SSH-18`'s open branch
+  narrows nothing, and the only thing between sshd and the internet is the
+  firewall's default-deny input policy (`FW-3`) plus whichever SSH branch
+  that host's flags select. Which one matters: with port knocking at its
+  default of enabled the branch is knock-gated, and `FW-13`'s open rule —
+  reached only when knocking is disabled too — is not rendered at all.
+  `FW-14` is what makes whichever rule is rendered name the same port
+  `SSH-13` configured.
 
 **What others may assume of this spec:**
 
-- The firewall spec — `ssh_port` is the single source of the port number;
-  its own `firewall_ssh_port` derives from it, so its SSH rule and this
-  spec's `Port` directive agree by construction. It may also assume that on
-  a Tailscale-enabled host sshd is bound to the tailnet addresses only, so
-  its tailnet-interface rule and this binding are two independent
-  restrictions on the same path rather than one restriction stated twice.
+- `FW-14` — `ssh_port` is the single source of the port number; the
+  firewall's own `firewall_ssh_port` derives from it, so its SSH rules and
+  this spec's `Port` directive agree by construction. `FW-10` may also
+  assume that on a Tailscale-enabled host sshd is bound to the tailnet
+  addresses only, so its tailnet-interface rule and this binding are two
+  independent restrictions on the same path rather than one restriction
+  stated twice — `FW-10` filters the packets, `SSH-18` removes the
+  listener, and neither is a substitute for the other.
 - The emergency-access spec — the deployed `sshd_config` contains a `Port`
   line rendered from `ssh_port` and exactly two `ListenAddress` lines, which
   is the structure its break-glass script's `sed` edits depend on. It may
