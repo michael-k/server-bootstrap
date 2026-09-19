@@ -58,11 +58,11 @@ class TestSSHInterfaceRestrictionProperties:
         the playbook SHALL verify Tailscale connectivity before configuring SSHD
         to listen only on the Tailscale interface.
 
-        Validates: Requirements 5.1, 5.2
+        Validates: SSH-18, and TS-22 for the ordering it depends on
         """
         # This property test verifies the SSH hardening role's interface restriction by checking:
-        # 1. Tailscale connectivity is verified before SSH restriction (Requirement 5.1)
-        # 2. SSH is configured to listen only on Tailscale interface when enabled (Requirement 5.2)
+        # 1. TS-22: Tailscale connectivity is verified before SSH is narrowed
+        # 2. SSH-18: sshd binds the tailnet addresses only when Tailscale is on
         # 3. Verification prevents lockout scenarios
 
         # Read the SSH hardening role template
@@ -71,14 +71,14 @@ class TestSSHInterfaceRestrictionProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Requirement 5.2: SSH listens only on Tailscale interface when enabled
+        # SSH-18: sshd binds the tailnet addresses only when Tailscale is enabled
         # The template should have conditional logic for ListenAddress
         assert "{% if tailscale_enabled" in template_content, (
             "Template must have conditional logic for Tailscale-based interface restriction"
         )
         assert "ListenAddress {{ tailscale_ipv4 }}" in template_content, (
             "Template must configure SSH to listen on Tailscale IPv4 address when enabled "
-            "(Requirement 5.2)"
+            "(SSH-18)"
         )
 
         # Verify the conditional block checks for tailscale_ipv4 being defined
@@ -87,22 +87,24 @@ class TestSSHInterfaceRestrictionProperties:
         )
 
         # Verify comment indicates this is for Tailscale restriction
-        assert "Tailscale interface" in template_content or "Requirement 5.2" in template_content, (
+        assert "Tailscale interface" in template_content or (
+            "SSH-18, Tailscale branch" in template_content
+        ), (
             "Template should document Tailscale interface restriction"
         )
 
-        # Read the Tailscale verification tasks to verify safety check (Requirement 5.1)
+        # Read the Tailscale verification tasks; the ordering guarantee is TS-22's
         verify_tasks_path = Path("roles/tailscale/tasks/verify.yml")
         assert verify_tasks_path.exists(), "Tailscale verification tasks must exist"
 
         verify_tasks_content = verify_tasks_path.read_text()
 
-        # Verify Requirement 5.1: Connectivity verification before SSH restriction
-        # The verification tasks should run BEFORE ssh_hardening role in playbook execution
+        # TS-22: the verification tasks run before the ssh_hardening role, which is
+        # what makes SSH-18's narrowing safe. This test reads the task file only.
 
         # Verify interface existence check
         assert "ansible.builtin.wait_for:" in verify_tasks_content, (
-            "Must verify Tailscale interface exists before SSH restriction (Requirement 5.1)"
+            "Must verify Tailscale interface exists before SSH restriction (TS-15)"
         )
         assert "/sys/class/net/{{ tailscale_interface }}" in verify_tasks_content, (
             "Must check for Tailscale interface in /sys/class/net/"
@@ -110,7 +112,7 @@ class TestSSHInterfaceRestrictionProperties:
 
         # Verify connection state check
         assert "tailscale status" in verify_tasks_content, (
-            "Must verify Tailscale connection state before SSH restriction (Requirement 5.1)"
+            "Must verify Tailscale connection state before SSH restriction (TS-16)"
         )
         assert "BackendState" in verify_tasks_content, (
             "Must check Tailscale BackendState for connectivity"
@@ -118,7 +120,7 @@ class TestSSHInterfaceRestrictionProperties:
 
         # Verify IP address retrieval and validation
         assert "tailscale ip" in verify_tasks_content, (
-            "Must retrieve Tailscale IP address before SSH restriction (Requirement 5.1)"
+            "Must retrieve Tailscale IP address before SSH restriction (TS-17)"
         )
         assert "register: tailscale_ip" in verify_tasks_content, (
             "Must register Tailscale IP for use in SSH configuration"
@@ -133,7 +135,7 @@ class TestSSHInterfaceRestrictionProperties:
         # Verify connectivity test through Tailscale interface
         assert "ping" in verify_tasks_content, (
             "Must test connectivity through Tailscale interface before SSH restriction "
-            "(Requirement 5.1)"
+            "(TS-21)"
         )
         assert "-I {{ tailscale_interface }}" in verify_tasks_content, (
             "Ping test must use Tailscale interface"
@@ -189,6 +191,7 @@ class TestSSHInterfaceRestrictionProperties:
         )
 
         # Verify configuration validation before deployment
+        # SSH-19: the candidate file is parsed by sshd before it is installed.
         assert "validate:" in tasks_content, (
             "Must validate SSH configuration before deployment (prevents broken config)"
         )
@@ -197,13 +200,13 @@ class TestSSHInterfaceRestrictionProperties:
         )
 
         # Property verified: The SSH hardening role ensures that:
-        # - Tailscale connectivity is verified before SSH restriction (5.1)
-        # - Interface existence is checked (5.1)
-        # - Connection state is verified (5.1)
-        # - IP address is retrieved and validated (5.1)
-        # - Connectivity through Tailscale interface is tested (5.1)
-        # - Clear error messages prevent lockout scenarios (5.1)
-        # - SSH listens only on Tailscale interface when enabled (5.2)
+        # - Tailscale connectivity is verified before SSH is narrowed (TS-22)
+        # - Interface existence is checked (TS-15)
+        # - Connection state is verified (TS-16)
+        # - IP address is retrieved and published (TS-17)
+        # - Connectivity through the tailnet interface is tested (TS-21)
+        # - Failure messages name lockout prevention (TS-15)
+        # - sshd binds the tailnet addresses only when Tailscale is on (SSH-18)
         # - Configuration is validated before deployment
         # - This applies consistently across all valid IP addresses and interface names
 
@@ -224,10 +227,10 @@ class TestSSHInterfaceRestrictionProperties:
         For any execution of the bootstrap playbook WHERE Tailscale is disabled,
         the SSHD SHALL be configured to listen on all interfaces.
 
-        Validates: Requirement 5.3
+        Validates: SSH-18, else branch
         """
         # This property test verifies the SSH hardening role's interface configuration by checking:
-        # 1. SSH listens on all interfaces when Tailscale is disabled (Requirement 5.3)
+        # 1. SSH-18: sshd binds all interfaces when Tailscale is disabled
         # 2. Configuration adapts based on tailscale_enabled variable
         # 3. Default behavior is to listen on all interfaces
 
@@ -238,7 +241,7 @@ class TestSSHInterfaceRestrictionProperties:
         template_content = template_path.read_text()
         template_lines = template_content.split('\n')
 
-        # Verify Requirement 5.3: SSH listens on all interfaces when Tailscale is disabled
+        # SSH-18: sshd binds all interfaces when Tailscale is disabled
         # The template should have an else block for when Tailscale is not enabled
         assert "{% else %}" in template_content, (
             "Template must have else block for non-Tailscale configuration"
@@ -263,7 +266,7 @@ class TestSSHInterfaceRestrictionProperties:
 
         assert found_all_interfaces_config, (
             "Template must configure SSH to listen on all interfaces (0.0.0.0) "
-            "when Tailscale is disabled (Requirement 5.3)"
+            "when Tailscale is disabled (SSH-18)"
         )
 
         # Verify IPv6 listening is also configured
@@ -274,7 +277,7 @@ class TestSSHInterfaceRestrictionProperties:
         # Verify comment indicates this is for all interfaces
         has_all_interfaces_comment = False
         for line in template_lines:
-            if "all interfaces" in line.lower() or "requirement 5.3" in line.lower():
+            if "all interfaces" in line.lower() or "ssh-18, open branch" in line.lower():
                 has_all_interfaces_comment = True
                 break
 
@@ -303,7 +306,7 @@ class TestSSHInterfaceRestrictionProperties:
 
         # Verify defaults provide simple fallback values for non-tailscale path
         assert '0.0.0.0' in defaults_content, (
-            "Must default to 0.0.0.0 for listening on all IPv4 interfaces (Requirement 5.3)"
+            "Must default to 0.0.0.0 for listening on all IPv4 interfaces (SSH-18)"
         )
 
         # Read the Tailscale defaults to verify default disabled state
@@ -318,7 +321,7 @@ class TestSSHInterfaceRestrictionProperties:
             )
 
         # Property verified: The SSH hardening role ensures that:
-        # - SSH listens on all interfaces (0.0.0.0, ::) when Tailscale is disabled (5.3)
+        # - sshd binds all interfaces (0.0.0.0, ::) when Tailscale is disabled (SSH-18)
         # - Configuration adapts based on tailscale_enabled variable
         # - Default behavior is to listen on all interfaces (Tailscale disabled by default)
         # - Both IPv4 and IPv6 are configured for all interfaces

@@ -62,7 +62,7 @@ class TestServiceRestartProperties:
         is modified by the playbook, the service SHALL be restarted or reloaded after the
         configuration change.
 
-        Validates: Requirements 3.13, 8.10, LOG-4
+        Validates: SSH-17, 8.10, LOG-4
 
         This property test verifies that:
         1. Configuration changes trigger handler notifications
@@ -98,7 +98,7 @@ class TestServiceRestartProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify Requirement 3.13, 8.10, LOG-4: Configuration changes trigger handlers
+        # SSH-17, 8.10, LOG-4: configuration changes trigger handlers
         # Look for template or copy tasks that deploy configuration
         deploys_config = (
             "ansible.builtin.template:" in tasks_content
@@ -109,7 +109,7 @@ class TestServiceRestartProperties:
             # Verify configuration deployment notifies a handler
             assert "notify:" in tasks_content, (
                 f"Role {role_name} deploys configuration but doesn't notify handlers "
-                f"(Requirements 3.13, 8.10, LOG-4)"
+                f"(SSH-17, 8.10, LOG-4)"
             )
 
             # Verify handler name is meaningful
@@ -149,7 +149,7 @@ class TestServiceRestartProperties:
 
         assert uses_service_module, (
             f"Role {role_name} handlers must use service management modules "
-            f"to restart services (Requirements 3.13, 8.10, LOG-4)"
+            f"to restart services (SSH-17, 8.10, LOG-4)"
         )
 
         # Verify handlers use appropriate state (restarted or reloaded)
@@ -160,7 +160,7 @@ class TestServiceRestartProperties:
 
         assert has_restart_or_reload, (
             f"Role {role_name} handlers must use 'restarted' or 'reloaded' state "
-            f"to apply configuration changes (Requirements 3.13, 8.10, LOG-4)"
+            f"to apply configuration changes (SSH-17, 8.10, LOG-4)"
         )
 
         # Verify handlers don't use 'started' state
@@ -203,7 +203,7 @@ class TestServiceRestartProperties:
                 )
 
         # Property verified: The role ensures that:
-        # - Configuration changes trigger handler notifications (3.13, 8.10, LOG-4)
+        # - Configuration changes trigger handler notifications (SSH-17, 8.10, LOG-4)
         # - Handlers restart or reload the appropriate service
         # - Handlers use appropriate state (restarted or reloaded)
         # - Notified handlers are properly defined

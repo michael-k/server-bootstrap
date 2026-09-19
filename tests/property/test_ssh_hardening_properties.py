@@ -88,7 +88,8 @@ class TestSSHHardeningProperties:
         disable X11 forwarding, TCP forwarding, agent forwarding, tunneling, and
         empty passwords.
 
-        Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.14, 3.18
+        Validates: SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9,
+        SSH-10, SSH-11
 
         This property test verifies that:
         1. Password authentication is disabled globally
@@ -117,57 +118,58 @@ class TestSSHHardeningProperties:
 
         template_content = template_path.read_text()
 
-        # Verify password authentication is disabled (Requirement 3.1)
+        # SSH-1: password authentication is disabled
         assert "PasswordAuthentication no" in template_content, (
             "Template must disable password authentication"
         )
 
-        # Verify root login is disabled (Requirement 3.2)
+        # SSH-2: root login is disabled
         assert "PermitRootLogin no" in template_content, (
             "Template must disable root login"
         )
 
-        # Verify empty passwords are not permitted (Requirement 3.18)
+        # SSH-4: empty passwords are not permitted
         assert "PermitEmptyPasswords no" in template_content, (
             "Template must disable empty passwords"
         )
 
-        # Verify public key authentication is enabled (Requirement 3.14)
+        # SSH-3: public key authentication is enabled (the positive half only —
+        # nothing here checks ChallengeResponseAuthentication)
         assert "PubkeyAuthentication yes" in template_content, (
             "Template must enable public key authentication"
         )
 
-        # Verify key exchange algorithms are restricted (Requirement 3.3)
+        # SSH-5: a KexAlgorithms directive is present
         assert "KexAlgorithms" in template_content, (
             "Template must restrict key exchange algorithms"
         )
 
-        # Verify ciphers are restricted (Requirement 3.4)
+        # SSH-6: a Ciphers directive is present
         assert "Ciphers" in template_content, (
             "Template must restrict ciphers"
         )
 
-        # Verify MACs are restricted (Requirement 3.5)
+        # SSH-7: a MACs directive is present
         assert "MACs" in template_content, (
             "Template must restrict MACs"
         )
 
-        # Verify X11 forwarding is disabled (Requirement 3.6)
+        # SSH-8: X11 forwarding is disabled
         assert "X11Forwarding no" in template_content, (
             "Template must disable X11 forwarding"
         )
 
-        # Verify TCP forwarding is disabled (Requirement 3.7)
+        # SSH-9: TCP forwarding is disabled
         assert "AllowTcpForwarding no" in template_content, (
             "Template must disable TCP forwarding"
         )
 
-        # Verify agent forwarding is disabled (Requirement 3.8)
+        # SSH-10: agent forwarding is disabled
         assert "AllowAgentForwarding no" in template_content, (
             "Template must disable agent forwarding"
         )
 
-        # Verify tunneling is disabled (Requirement 3.9)
+        # SSH-11: tunnelling is disabled
         assert "PermitTunnel no" in template_content, (
             "Template must disable tunneling"
         )
@@ -178,7 +180,7 @@ class TestSSHHardeningProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify modern elliptic curve algorithms are defined (Requirement 3.3)
+        # SSH-5: the key exchange list is defined in the role defaults
         assert "ssh_kex_algorithms:" in defaults_content, (
             "Defaults must define key exchange algorithms"
         )
@@ -186,7 +188,7 @@ class TestSSHHardeningProperties:
             "Defaults must include curve25519 key exchange"
         )
 
-        # Verify AEAD ciphers are defined (Requirement 3.4)
+        # SSH-6: the cipher list is defined in the role defaults
         assert "ssh_ciphers:" in defaults_content, (
             "Defaults must define ciphers"
         )
@@ -194,7 +196,7 @@ class TestSSHHardeningProperties:
             "Defaults must include AEAD ciphers (chacha20-poly1305 or GCM)"
         )
 
-        # Verify Encrypt-Then-MAC MACs are defined (Requirement 3.5)
+        # SSH-7: the MAC list is defined in the role defaults
         assert "ssh_macs:" in defaults_content, (
             "Defaults must define MACs"
         )
@@ -220,7 +222,7 @@ class TestSSHHardeningProperties:
         For any execution of the bootstrap playbook with configured group name,
         the SSHD AllowGroups directive SHALL contain the ssh access group.
 
-        Validates: Requirements 3.10
+        Validates: SSH-12
 
         This property test verifies that:
         1. AllowGroups directive is present in configuration
@@ -241,7 +243,7 @@ class TestSSHHardeningProperties:
 
         template_content = template_path.read_text()
 
-        # Verify AllowGroups directive is present (Requirement 3.10)
+        # SSH-12: the AllowGroups directive is present
         assert "AllowGroups" in template_content, (
             "Template must include AllowGroups directive"
         )
@@ -279,7 +281,7 @@ class TestSSHHardeningProperties:
         variable, the SSHD SHALL listen on the specified port (or default port 22
         if not specified).
 
-        Validates: Requirements 3.11, 3.12
+        Validates: SSH-13
 
         This property test verifies that:
         1. Port directive is present in configuration
@@ -297,12 +299,12 @@ class TestSSHHardeningProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Port directive is present (Requirement 3.12)
+        # SSH-13: the Port directive is present
         assert "Port" in template_content, (
             "Template must include Port directive"
         )
 
-        # Verify Port uses variable (Requirement 3.11)
+        # SSH-13: the Port directive is rendered from the variable
         assert "{{ ssh_port }}" in template_content, (
             "Template must use ssh_port variable"
         )
@@ -313,7 +315,7 @@ class TestSSHHardeningProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify ssh_port default is 22 (Requirement 3.11)
+        # SSH-13: the default port is 22
         assert "ssh_port: 22" in defaults_content, (
             "Default SSH port must be 22"
         )
@@ -324,7 +326,8 @@ class TestSSHHardeningProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify template deployment uses validation (Requirement 3.13)
+        # SSH-19: the deployment validates the candidate file with sshd's own
+        # parser. This checks syntax, not that any ListenAddress is bindable.
         assert "validate:" in tasks_content, (
             "SSH config deployment must use validation"
         )
@@ -357,7 +360,7 @@ class TestSSHHardeningProperties:
         configure ClientAliveInterval and ClientAliveCountMax for idle session
         management.
 
-        Validates: Requirements 3.15, 3.16, 3.17
+        Validates: SSH-14, SSH-15, SSH-16
 
         This property test verifies that:
         1. MaxAuthTries is configured with a low value
@@ -376,7 +379,7 @@ class TestSSHHardeningProperties:
 
         template_content = template_path.read_text()
 
-        # Verify MaxAuthTries is configured (Requirement 3.15)
+        # SSH-14: MaxAuthTries is rendered from the variable
         assert "MaxAuthTries" in template_content, (
             "Template must include MaxAuthTries directive"
         )
@@ -385,7 +388,7 @@ class TestSSHHardeningProperties:
             "Template must use ssh_max_auth_tries variable"
         )
 
-        # Verify LoginGraceTime is configured (Requirement 3.16)
+        # SSH-15: LoginGraceTime is rendered from the variable
         assert "LoginGraceTime" in template_content, (
             "Template must include LoginGraceTime directive"
         )
@@ -394,7 +397,7 @@ class TestSSHHardeningProperties:
             "Template must use ssh_login_grace_time variable"
         )
 
-        # Verify ClientAliveInterval is configured (Requirement 3.17)
+        # SSH-16: ClientAliveInterval is rendered from the variable
         assert "ClientAliveInterval" in template_content, (
             "Template must include ClientAliveInterval directive"
         )
@@ -403,7 +406,7 @@ class TestSSHHardeningProperties:
             "Template must use ssh_client_alive_interval variable"
         )
 
-        # Verify ClientAliveCountMax is configured (Requirement 3.17)
+        # SSH-16: ClientAliveCountMax is rendered from the variable
         assert "ClientAliveCountMax" in template_content, (
             "Template must include ClientAliveCountMax directive"
         )
@@ -418,7 +421,8 @@ class TestSSHHardeningProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify MaxAuthTries default is low (Requirement 3.15)
+        # SSH-14: the default is present, and is asserted to be at most 6 below —
+        # the only value constraint anywhere in this spec's tests
         assert "ssh_max_auth_tries:" in defaults_content, (
             "Defaults must define ssh_max_auth_tries"
         )
@@ -434,17 +438,17 @@ class TestSSHHardeningProperties:
                         f"Default MaxAuthTries must be low (≤6), got {value}"
                     )
 
-        # Verify LoginGraceTime default is short (Requirement 3.16)
+        # SSH-15: the default is present. Its value is not constrained.
         assert "ssh_login_grace_time:" in defaults_content, (
             "Defaults must define ssh_login_grace_time"
         )
 
-        # Verify ClientAliveInterval is defined (Requirement 3.17)
+        # SSH-16: the interval default is present. Its value is not constrained.
         assert "ssh_client_alive_interval:" in defaults_content, (
             "Defaults must define ssh_client_alive_interval"
         )
 
-        # Verify ClientAliveCountMax is defined (Requirement 3.17)
+        # SSH-16: the count default is present. Its value is not constrained.
         assert "ssh_client_alive_count_max:" in defaults_content, (
             "Defaults must define ssh_client_alive_count_max"
         )
@@ -530,7 +534,7 @@ class TestSSHHardeningProperties:
         """
         Verify SSH hardening role has handler to restart sshd on config changes.
 
-        Validates: Requirement 3.13 (service restart on configuration change)
+        Validates: SSH-17 (service restart on configuration change)
         """
         # Verify SSH hardening role exists
         role_path = Path("roles/ssh_hardening")
@@ -569,7 +573,7 @@ class TestSSHHardeningProperties:
         """
         Verify SSH hardening tasks notify handler when configuration changes.
 
-        Validates: Requirement 3.13 (service restart on configuration change)
+        Validates: SSH-17 (service restart on configuration change)
         """
         # Verify SSH hardening role exists
         role_path = Path("roles/ssh_hardening")
@@ -607,7 +611,7 @@ class TestSSHHardeningProperties:
         When Tailscale is enabled, SSH should listen only on Tailscale interface.
         When Tailscale is disabled, SSH should listen on all interfaces.
 
-        Validates: Requirements 5.2, 5.3
+        Validates: SSH-18
         """
         # Verify SSH hardening role exists
         role_path = Path("roles/ssh_hardening")
@@ -726,7 +730,9 @@ class TestSSHHardeningProperties:
         """
         Verify SSH configuration is validated before deployment.
 
-        This prevents deploying invalid configuration that could lock out access.
+        Validates: SSH-19. Asserts the validate hook is configured, not that it
+        fires. It catches an unparseable file; it does not catch a parseable one
+        naming a ListenAddress the host cannot bind.
         """
         # Verify SSH hardening role exists
         role_path = Path("roles/ssh_hardening")

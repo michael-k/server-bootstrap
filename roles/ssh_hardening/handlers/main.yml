@@ -1,7 +1,9 @@
 ---
 # SSH Hardening Role - Handlers
 
-# Restart SSH daemon when configuration changes (Requirement 3.13)
+# SSH-17: sshd reads its configuration at startup, so a deployed file the
+# running daemon has not read leaves the host unhardened while reporting
+# success. Ansible flushes handlers at the end of the play, not of this role.
 - name: Restart sshd
   ansible.builtin.systemd:
     name: sshd

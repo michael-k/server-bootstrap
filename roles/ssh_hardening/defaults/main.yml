@@ -1,17 +1,17 @@
 ---
 # SSH Hardening Role - Default Variables
 
-# SSH port configuration (Requirement 3.11)
+# SSH-13: the port sshd listens on
 ssh_port: 22
 
-# SSH session security configuration (Requirements 3.15, 3.16, 3.17)
+# SSH-14, SSH-15, SSH-16: session limits
 ssh_max_auth_tries: 3
 ssh_login_grace_time: "30s"
 ssh_client_alive_interval: 300
 ssh_client_alive_count_max: 2
 
-# SSH algorithm restrictions (Requirements 3.3, 3.4, 3.5)
-# Modern elliptic curve key exchange algorithms only
+# SSH-5: key exchange algorithms. The client's order decides which one a
+# session uses, so what this list controls is which algorithms are allowed.
 ssh_kex_algorithms:
   - sntrup761x25519-sha512
   - curve25519-sha256
@@ -19,24 +19,23 @@ ssh_kex_algorithms:
   - diffie-hellman-group16-sha512
   - diffie-hellman-group18-sha512
 
-# Authenticated encryption (AEAD) ciphers only
+# SSH-6: ciphers
 ssh_ciphers:
   - chacha20-poly1305@openssh.com
   - aes256-gcm@openssh.com
   - aes128-gcm@openssh.com
 
-# Encrypt-Then-MAC variants only
+# SSH-7: MAC algorithms
 ssh_macs:
   - hmac-sha2-512-etm@openssh.com
   - hmac-sha2-256-etm@openssh.com
 
-# SSH access group (Requirement 3.10)
-# Members of this group can SSH into the server.
-# Bootstrap adds the manual and deploy users; purpose repos add their own.
+# SSH-12: the group whose members may log in over SSH. The group itself is
+# created and populated by the users role; this is only the name sshd is
+# told to admit.
 ssh_access_group: "ssh-users"
 
-# Default listen addresses (Requirements 5.2, 5.3)
-# Used when Tailscale is disabled; when enabled, the sshd_config
-# template uses tailscale_ipv4/tailscale_ipv6 directly.
+# SSH-18: the addresses sshd binds to when Tailscale is not enrolled. When
+# it is, the template binds tailscale_ipv4 and tailscale_ipv6 instead.
 ssh_listen_address_ipv4: "0.0.0.0"
 ssh_listen_address_ipv6: "::"

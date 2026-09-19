@@ -1,7 +1,15 @@
 ---
 # SSH Hardening Role - Tasks
 
-# Deploy hardened SSH daemon configuration (Requirements 3.1-3.18)
+# The whole of this spec is one rendered file. This task deploys it, so it is
+# the site of SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9,
+# SSH-10, SSH-11, SSH-12, SSH-13, SSH-14, SSH-15, SSH-16 and SSH-18; each
+# directive is cited individually in the template.
+#
+# SSH-19: validate runs sshd's own parser against the candidate file before it
+# is installed, so a file sshd cannot parse never replaces a working one. It
+# does not bind anything: an unbindable SSH-18 address passes this check. See
+# specs/ssh-hardening/design.md.
 - name: Deploy hardened sshd_config
   ansible.builtin.template:
     src: sshd_config.j2
@@ -11,4 +19,5 @@
     mode: "0644"
     validate: /usr/sbin/sshd -t -f %s
     backup: true
+  # SSH-17: a changed configuration file restarts the daemon that reads it.
   notify: Restart sshd
