@@ -3,8 +3,12 @@
 # Deploys the dual-stack NFTables ruleset and the service that loads it.
 # Every rule in the ruleset itself is cited in templates/nftables.conf.j2.
 
-# Validate port knocking sequence length when active. Port knocking belongs to
-# a spec that has not been written yet, so this task carries no requirement ID.
+# KNOCK-2: the knock rules are written out one stage at a time and index the
+# sequence by position, so a shorter list fails to render partway through and
+# a longer one has ports nothing reads. Failing here turns both into one
+# legible message before the firewall writes anything. KNOCK-1's condition
+# gates the check: a host that renders no knock rules has no sequence to
+# validate.
 - name: Verify port knocking sequence has exactly 3 ports
   ansible.builtin.assert:
     that:

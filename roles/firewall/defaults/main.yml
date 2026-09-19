@@ -26,9 +26,21 @@ firewall_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
 # this too, because nothing here reads the port back from the client.
 firewall_wireguard_port: 41641
 
-# Port knocking configuration (active only when Tailscale is disabled)
-# When enabled, SSH is hidden behind a knock sequence
+# KNOCK-10: the four knock variables, each derived from the identically named
+# top-level variable so an operator configures knocking once in inventory and
+# both the ruleset and site.yml's controller-side knock play see it.
+#
+# KNOCK-1: this flag, together with firewall_tailscale_enabled above, selects
+# the knock branch. It defaults to true, so a host with no tailnet is
+# knock-gated unless the operator turns it off.
 firewall_port_knocking_enabled: "{{ port_knocking_enabled | default(true) }}"
+# The sequence is exactly three ports (KNOCK-2) and its default is public,
+# so it buys removal from untargeted scanning and nothing against anyone who
+# has read this repository. See the port-knocking spec.
 firewall_port_knocking_sequence: "{{ port_knocking_sequence | default([7000, 8500, 9100]) }}"
+# KNOCK-7: the two windows the sets expire on. 30s is how long a completed
+# knock stays usable — long enough to open an SSH connection, after which
+# FW-6 keeps it alive regardless. 5s bounds how long a partial sequence is
+# worth anything. Neither is extended by re-knocking.
 firewall_port_knocking_timeout: "{{ port_knocking_timeout | default(30) }}"
 firewall_port_knocking_stage_timeout: "{{ port_knocking_stage_timeout | default(5) }}"

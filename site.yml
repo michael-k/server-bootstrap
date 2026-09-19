@@ -6,9 +6,13 @@
 # USAGE:
 #   make bootstrap
 
-# When port knocking is active, Ansible must knock before opening SSH connections.
-# This play runs locally (no SSH needed) and sends TCP SYN packets to the knock
-# sequence ports, unlocking SSH for the configured timeout window.
+# KNOCK-11: Ansible must knock before it opens an SSH connection to a host this
+# bootstrap has already put behind a knock sequence — otherwise the playbook
+# would work once and then lock out the tool that produced it. This play runs
+# on the controller with connection: local, because a task inside the bootstrap
+# play would need the very SSH connection it exists to enable. It sends TCP SYN
+# packets to the sequence ports, which admits the controller for KNOCK-7's pass
+# window; the run then survives on FW-6 regardless of that window expiring.
 - name: Port knock for SSH access
   hosts: all
   gather_facts: false
@@ -31,10 +35,16 @@
           - "{{ knock_sequence[1] }}"
           - "{{ knock_sequence[2] }}"
       vars:
+        # KNOCK-10: the same top-level variable and the same default the
+        # firewall role's firewall_port_knocking_sequence derives from, so an
+        # inventory that sets port_knocking_sequence moves the ruleset and
+        # this play together.
         knock_sequence: "{{ port_knocking_sequence | default([7000, 8500, 9100]) }}"
+      # KNOCK-1: skipped on exactly the hosts that render no knock rules.
       when:
         - not (tailscale_enabled | default(false) | bool)
         - port_knocking_enabled | default(true) | bool
+      # Knocking changes nothing on the host, so it never reports changed.
       changed_when: false
 
 - name: Bootstrap VPS with secure configuration

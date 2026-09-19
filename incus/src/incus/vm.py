@@ -158,6 +158,10 @@ class IncusVM:
     ip_address: str = ""
     ssh_port: int = 22
     ssh_user: str = "root"
+    # Consumes KNOCK-10: the ports a knock-gated VM requires. Left None for a
+    # VM that is not behind a knock sequence; knock() then falls back to a
+    # copy of the bootstrap's default, since this helper has no inventory to
+    # read the real value from.
     knock_sequence: list[int] | None = None
     name_hint: InitVar[str] = ""
     auto_launch: InitVar[bool] = False
@@ -286,7 +290,10 @@ class IncusVM:
         # Phase 4: Install openssh-server and inject SSH key via incus exec
         self._setup_ssh()
 
-        # Phase 5: Port knock (if configured) then wait for SSH to accept connections
+        # Phase 5: Port knock (if configured) then wait for SSH to accept
+        # connections. Consumes KNOCK-7: the 20-second threshold is chosen to
+        # re-knock with margin inside the 30-second pass window, so a poll
+        # loop never attempts SSH on an expired knock.
         while time.monotonic() < deadline:
             if self.knock_sequence is not None and (time.monotonic() - self._last_knock_time) > 20:
                 self.knock()
@@ -386,7 +393,8 @@ class IncusVM:
         """Run a command on the VM via SSH using the ephemeral key.
 
         If a knock_sequence is configured, automatically port-knocks when the
-        last knock was more than 20 seconds ago.
+        last knock was more than 20 seconds ago — consuming KNOCK-7, whose
+        pass window is 30 seconds, with 10 seconds of margin.
         """
         if self.knock_sequence is not None:
             elapsed = time.monotonic() - self._last_knock_time
@@ -416,7 +424,13 @@ class IncusVM:
 
         Sends a TCP SYN to each port in sequence with a short delay between.
         Uses *ports* if given, otherwise falls back to ``knock_sequence``,
-        otherwise the firewall role default ``[7000, 8500, 9100]``.
+        otherwise a copy of KNOCK-10's default ``[7000, 8500, 9100]``. The
+        copy is a copy, not a read: this helper drives a VM from outside
+        Ansible and has no inventory to take the configured value from, so a
+        deployment that changes the sequence must change it here too.
+
+        Order matters (KNOCK-5, KNOCK-6) and the delay must keep consecutive
+        knocks inside KNOCK-7's 5-second stage window.
         """
         import socket
 

@@ -744,7 +744,7 @@ class TestNFTablesPortKnockingProperties:
         Tailscale is disabled AND port_knocking_enabled is true. They SHALL NOT appear
         when Tailscale is enabled or when port knocking is disabled.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-1
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         assert template_path.exists(), "NFTables template must exist"
@@ -791,7 +791,9 @@ class TestNFTablesPortKnockingProperties:
         All ports from the configured knock sequence SHALL appear in the NFTables
         template rules for both IPv4 and IPv6 address families.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-4, KNOCK-5, KNOCK-6 — the three sequence positions
+        only. Nothing here checks the set-membership qualifier that makes the
+        second and third stages conditional on the one before them.
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -828,7 +830,7 @@ class TestNFTablesPortKnockingProperties:
         The NFTables template SHALL define knock sets for both IPv4 and IPv6
         address families.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-3
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -853,7 +855,7 @@ class TestNFTablesPortKnockingProperties:
         When port knocking is enabled, the SSH accept rule SHALL reference the
         knock_passed set for the given address family.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-9
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -878,7 +880,7 @@ class TestNFTablesPortKnockingProperties:
         Named NFTables sets SHALL be defined at the table level (outside chain
         blocks), as required by NFTables syntax.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-3
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -916,7 +918,7 @@ class TestNFTablesPortKnockingProperties:
 
         Knock set timeouts SHALL use the configured variables, not hardcoded values.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-7
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -944,7 +946,7 @@ class TestNFTablesPortKnockingProperties:
         Knock port packets SHALL be explicitly dropped after set processing
         to prevent leakage to later rules or logs.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-8
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -986,7 +988,7 @@ class TestNFTablesPortKnockingProperties:
         When port knocking is enabled, there SHALL NOT be an unconditional SSH
         accept rule (one without @knock_passed set membership check).
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-9
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -1027,7 +1029,8 @@ class TestNFTablesPortKnockingProperties:
         The firewall role defaults SHALL define all port knocking variables
         with the firewall_ prefix convention.
 
-        Validates: Port knocking design spec
+        Validates: KNOCK-10 — that the four keys exist, not what they are
+        derived from and not what values they carry.
         """
         defaults_path = Path("roles/firewall/defaults/main.yml")
         assert defaults_path.exists(), "Firewall defaults must exist"
@@ -1058,6 +1061,8 @@ class TestPortKnockPrePlayProperties:
         """
         The site.yml playbook SHALL contain a local port-knock play before the
         bootstrap play so that Ansible can reach hosts behind port knocking.
+
+        Validates: KNOCK-11
         """
         import yaml
 
@@ -1084,6 +1089,9 @@ class TestPortKnockPrePlayProperties:
         """
         The knock task SHALL be skipped when Tailscale is enabled or when
         port knocking is disabled.
+
+        Validates: KNOCK-11, KNOCK-1 — that both flags are named in the
+        condition. Their sense is not checked.
         """
         import yaml
 
@@ -1104,6 +1112,8 @@ class TestPortKnockPrePlayProperties:
         """
         The knock task SHALL set changed_when: false because knocking is
         idempotent and produces no state change.
+
+        Validates: KNOCK-11
         """
         import yaml
 

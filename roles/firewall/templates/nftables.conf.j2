@@ -6,9 +6,8 @@
 # with default-deny policies and explicit allow rules.
 #
 # Requirements: FW-2, FW-3, FW-4, FW-5, FW-6, FW-7, FW-8, FW-9, FW-10, FW-11,
-# FW-12, FW-13, FW-14, FW-15 and FW-21. The port-knocking branch below belongs
-# to a separate spec that has not been written yet, so its sets and rules
-# carry no requirement IDs.
+# FW-12, FW-13, FW-14, FW-15 and FW-21. The port-knocking sets and rules below
+# belong to a separate spec and carry KNOCK-N citations of their own.
 
 # FW-15: the deployed ruleset replaces whatever the kernel is holding rather
 # than adding to it, so a re-run converges instead of accumulating rules. The
@@ -23,8 +22,18 @@ flush ruleset
 # looser table for one of them to drift into.
 table inet filter {
 {% if not (firewall_tailscale_enabled | bool) and (firewall_port_knocking_enabled | bool) %}
-    # Port knocking sets — track knock sequence progress per source IP
-    # Sets must be at table level (outside chains) per NFTables syntax
+    # KNOCK-1: knocking is rendered only for a host with no tailnet that has
+    # not turned it off. A tailnet-enrolled host gets FW-10 instead, and
+    # nothing of this branch appears in its ruleset.
+    #
+    # KNOCK-3: six sets hold knock progress — a stage-1, a stage-2 and a
+    # passed set for each address family, because a set holds one address
+    # type and a lookup cannot span both. They are at table level because
+    # NFTables syntax requires it; a set inside a chain is a parse error, and
+    # a parse error here loads no ruleset at all.
+    # KNOCK-7: the timeouts are the only thing that ever removes an entry.
+    # Nothing deletes, so a wrong port costs time rather than progress, and
+    # re-knocking does not extend a window an entry already has.
 {% for af, addr_type in [('4', 'ipv4_addr'), ('6', 'ipv6_addr')] %}
     set knock{{ af }}_stage1 { type {{ addr_type }}; flags timeout; timeout {{ firewall_port_knocking_stage_timeout }}s; }
     set knock{{ af }}_stage2 { type {{ addr_type }}; flags timeout; timeout {{ firewall_port_knocking_stage_timeout }}s; }
@@ -70,20 +79,37 @@ table inet filter {
         # it. It is the one port this host offers the open internet.
         udp dport {{ firewall_wireguard_port }} accept
 {% elif firewall_port_knocking_enabled | bool %}
-        # Port knocking is enabled - SSH only after correct knock sequence
+        # KNOCK-1: the branch a host with no tailnet takes unless knocking
+        # was turned off. SSH is reachable only after the knock sequence.
         # Knock sequence: {{ firewall_port_knocking_sequence | join(' -> ') }}
 {% for af, saddr in [('4', 'ip saddr'), ('6', 'ip6 saddr')] %}
 
         # IPv{{ af }} knock sequence
+        # KNOCK-4: the first port admits any source — it is the one step that
+        # cannot require prior progress, and stage-1 membership grants nothing.
         tcp dport {{ firewall_port_knocking_sequence[0] }} add @knock{{ af }}_stage1 { {{ saddr }} }
+        # KNOCK-5: the membership test is what makes this a sequence rather
+        # than three independent ports. The rule only adds, so a source stays
+        # in stage 1 as well until that entry expires on its own.
         tcp dport {{ firewall_port_knocking_sequence[1] }} {{ saddr }} @knock{{ af }}_stage1 add @knock{{ af }}_stage2 { {{ saddr }} }
+        # KNOCK-6: the passed set is the only one any accept rule reads, and
+        # this is the rule that puts a source into it.
         tcp dport {{ firewall_port_knocking_sequence[2] }} {{ saddr }} @knock{{ af }}_stage2 add @knock{{ af }}_passed { {{ saddr }} }
 {% endfor %}
 
-        # Drop knock port packets after set processing
+        # KNOCK-8: not redundant with the FW-3 policy. The FW-21 drop-in
+        # include appends purpose-repo rules to the end of this chain, and a
+        # drop-in that accepted one of these ports would make it answer a SYN
+        # — the one signal knocking exists to withhold. This drop sits above
+        # the include, so the ports stay silent whatever is appended later.
+        # It comes after the rules above so the same packet still records
+        # progress before it is dropped.
         tcp dport { {{ firewall_port_knocking_sequence | join(', ') }} } drop
 
-        # SSH access (only for IPs that completed knock sequence)
+        # KNOCK-9: SSH is admitted only from a source in the passed set of
+        # that packet's own address family, and there is no other SSH accept
+        # in this branch. One rule per family because a set lookup cannot
+        # span both — a knock sent over IPv4 opens SSH over IPv4 only.
         tcp dport {{ firewall_ssh_port }} ip saddr @knock4_passed accept
         tcp dport {{ firewall_ssh_port }} ip6 saddr @knock6_passed accept
 {% else %}

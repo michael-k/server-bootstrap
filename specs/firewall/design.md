@@ -397,9 +397,9 @@ between them.
   was nothing to leave for the port-knocking spec.** Every superseded
   citation in this role sat on a rule or a task this spec now covers; the
   knock sets, the staged accepts, the knock-port drop and the four knock
-  defaults carried none. The port-knocking spec will have to add its
-  citations from scratch rather than rewrite existing ones, and the comments
-  left on those lines say so in prose.
+  defaults carried none. The port-knocking spec added its citations from
+  scratch rather than rewriting existing ones, and those lines now carry
+  `KNOCK-N` comments where this spec had left placeholder prose.
 
 ## Interactions
 
@@ -464,12 +464,14 @@ between them.
   are inserted into, the two flags that select between the three branches,
   and `FW-6`, which is what keeps an SSH session alive after its knock-passed
   set entry has expired. It also owns `FW-3`'s drop policy, which is what
-  makes the knock ports silent rather than refused. That spec is not yet
-  written, so this is stated in prose rather than against its requirement
-  IDs; when it is written, the knock sets and rules in
+  makes the knock ports silent rather than refused. That spec is now
+  written: the knock sets and rules in
   `roles/firewall/templates/nftables.conf.j2` and the four
-  `firewall_port_knocking_*` defaults are the sites its citations belong on,
-  and it should cite `FW-3` and `FW-6` here.
+  `firewall_port_knocking_*` defaults carry its `KNOCK-N` citations, and it
+  cites `FW-3`, `FW-6` and `FW-7` in return. `FW-7` belongs in that list —
+  the loopback accept is evaluated before the knock rules, so `KNOCK-8`'s
+  drop of the knock ports does not apply to loopback traffic, which is why
+  that requirement is scoped to the rules that follow it.
 - The fail2ban spec — it writes bans into the same kernel ruleset this spec
   flushes, in a table of its own. It may assume this spec leaves its table
   alone while the firewall is not being reloaded; it may **not** assume the

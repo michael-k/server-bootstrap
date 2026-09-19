@@ -49,9 +49,9 @@ through the drop-in directory this spec provides for exactly that.
 - The port-knocking branch of the ruleset — the knock sets, the staged
   accept rules, the explicit drop of the knock ports, the set-membership SSH
   accept and the four `firewall_port_knocking_*` defaults. They live in this
-  role's files but belong to the port-knocking spec, which is not yet
-  written. This spec states only that a third branch exists and that it is
-  mutually exclusive with the other two.
+  role's files but belong to the port-knocking spec, which owns them as
+  `KNOCK-1` through `KNOCK-11`. This spec states only that a third branch
+  exists and that it is mutually exclusive with the other two.
 - Choosing the SSH port. `SSH-13` owns it; `FW-14` consumes it so that the
   rule and the daemon cannot name different ports.
 - Bringing up the tailnet, publishing its addresses and proving it works
@@ -566,9 +566,11 @@ deployed ruleset.
 
 **Why:** the include is what makes `FW-20`'s directory an extension point
 rather than a folder. Placing it last means a purpose repo's `add rule`
-appends after everything this spec defines, which is reachable precisely
-because no chain here ends in a terminal rule — only the `FW-3` policy comes
-after it. The glob is deliberate: an `include` of a named file that does not
+appends after everything this spec defines, and no rule *this* spec renders
+is terminal, so an appended accept is reached — only the `FW-3` policy comes
+after it. The one exception is not this spec's: on a knock-gated host
+`KNOCK-8` renders a terminal `drop` of the three knock ports, so an appended
+rule accepting one of those ports is never reached. The glob is deliberate: an `include` of a named file that does not
 exist is a parse error that would fail the whole ruleset, whereas a wildcard
 matching nothing is not, so a host with an empty or absent drop-in directory
 loads exactly the ruleset written here.
