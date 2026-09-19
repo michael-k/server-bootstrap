@@ -1,3 +1,8 @@
 ---
 # Emergency Access Role - Handlers
-# No handlers needed for this role as the script is only deployed, not executed
+
+# EMRG-17: deliberately empty. A handler here would be the obvious way to
+# make a bootstrap run invoke the break-glass script, and the whole point of
+# this spec's allowance (ALW-1) is that the weakening it performs is a human
+# decision taken at a console, never something a playbook run does. The role
+# deploys the script and stops.

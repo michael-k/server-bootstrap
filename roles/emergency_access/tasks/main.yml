@@ -1,8 +1,15 @@
 ---
 # Emergency Access Role - Main Tasks
-# Deploys emergency script to toggle SSH restrictions when Tailscale VPN fails
-# Requirements: 9.1, 9.8
+# EMRG-1, EMRG-2, EMRG-17.
 
+# EMRG-1: mode 0700 under /root means the accounts that can execute this
+# script are the ones that could make the same edits with an editor, so the
+# script's own root check guards against mistake rather than against an
+# unprivileged caller.
+# EMRG-17: this is the role's only task, and it deploys the script without
+# running it. Nothing here notifies a handler and handlers/main.yml defines
+# none, so no bootstrap run can weaken this host's reachability by way of
+# this spec — the break-glass path always requires a person at a console.
 - name: Deploy emergency SSH access script
   ansible.builtin.template:
     src: emergency-ssh-access.sh.j2
@@ -11,4 +18,5 @@
     group: root
     mode: "0700"
   become: true
+  # EMRG-2: deployed only on a host Tailscale enrolment narrowed.
   when: emergency_access_enabled | bool

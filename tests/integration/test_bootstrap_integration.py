@@ -13,8 +13,7 @@ Tests cover:
   - Emergency script deployment (Tailscale-dependent tests skipped by default)
 
 Requirements: PRJ-1, PRJ-13, PRJ-14, SWAP-4, SWAP-5, SWAP-7, SWAP-11,
-SWAP-12, SWAP-14, SWAP-15, SWAP-16, and the legacy numbers 9.1-9.8 for
-emergency access, pending its own spec.
+SWAP-12, SWAP-14, SWAP-15, SWAP-16, EMRG-2.
 """
 
 import contextlib
@@ -463,7 +462,7 @@ class TestDisabledServices:
         assert "inactive" in result.stdout or result.returncode != 0
 
     def test_emergency_script_not_deployed_when_tailscale_disabled(self, bootstrap_vm):
-        """Req 9.8: Emergency script is NOT deployed when Tailscale is disabled."""
+        """EMRG-2: emergency script is NOT deployed when Tailscale is disabled."""
         result = bootstrap_vm.exec(
             "test ! -f /root/emergency-ssh-access.sh && echo ABSENT"
         )

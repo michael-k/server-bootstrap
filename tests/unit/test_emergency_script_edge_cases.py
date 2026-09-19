@@ -9,7 +9,11 @@ Tests cover:
 - Service restart failures
 - Idempotency in both modes
 
-Requirements: 9.2, 9.3, 9.4, 9.5, 9.6, 9.7
+Requirements: EMRG-3, EMRG-4, EMRG-8, EMRG-9, EMRG-10, EMRG-13, EMRG-14.
+
+Every test here replaces check_root with a no-op so the suite can run
+unprivileged, so the script's root-privilege check is not exercised here. The fixtures are
+hand-written miniatures of the files SSH and FW deploy, not those files.
 """
 
 import subprocess
@@ -139,7 +143,7 @@ def rendered_script(
 
 
 class TestMissingConfigurationFiles:
-    """Test script behavior when configuration files are missing."""
+    """EMRG-13: the script refuses to act when either file is absent."""
 
     def test_missing_sshd_config(
         self, rendered_script: Path, mock_sshd_config: Path
@@ -192,7 +196,7 @@ class TestMissingConfigurationFiles:
 
 
 class TestServiceRestartFailures:
-    """Test script behavior when service restarts fail."""
+    """EMRG-8: a failed restart or reload stops the script non-zero."""
 
     def test_sshd_restart_failure_unrestrict(
         self,
@@ -301,7 +305,7 @@ fi
 
 
 class TestIdempotency:
-    """Test that script is idempotent in both modes."""
+    """EMRG-9: neither direction changes anything when already in state."""
 
     def test_unrestrict_idempotency(
         self,
@@ -309,7 +313,7 @@ class TestIdempotency:
         mock_sshd_config: Path,
         mock_nftables_config: Path,
     ):
-        """Test that running unrestrict multiple times is idempotent."""
+        """EMRG-3, EMRG-9: unrestrict reaches its target state, then no-ops."""
         # First run: should make changes
         result1 = subprocess.run(
             [str(rendered_script)],
@@ -344,7 +348,7 @@ class TestIdempotency:
         mock_sshd_config: Path,
         mock_nftables_config: Path,
     ):
-        """Test that running restore multiple times is idempotent."""
+        """EMRG-4, EMRG-9: restore reaches its target state, then no-ops."""
         # First unrestrict to change state
         subprocess.run([str(rendered_script)], capture_output=True)
 
@@ -380,7 +384,7 @@ class TestIdempotency:
         mock_sshd_config: Path,
         mock_nftables_config: Path,
     ):
-        """Test idempotency when alternating between unrestrict and restore modes."""
+        """EMRG-9: alternating the two directions does not diverge."""
         # Run unrestrict
         result1 = subprocess.run([str(rendered_script)], capture_output=True, text=True)
         assert result1.returncode == 0
@@ -413,7 +417,7 @@ class TestIdempotency:
 
 
 class TestConfigurationBackups:
-    """Test that configuration backups are created correctly."""
+    """EMRG-10: both files are copied before any change, and only then."""
 
     def test_backup_created_on_unrestrict(
         self,
@@ -433,7 +437,7 @@ class TestConfigurationBackups:
         rendered_script: Path,
         temp_test_dir: Path,
     ):
-        """Test that no backup is created when no changes are needed."""
+        """EMRG-9, EMRG-10: an idempotent run takes no backup."""
         # First run to establish state
         subprocess.run([str(rendered_script)], capture_output=True)
 
@@ -451,7 +455,7 @@ class TestConfigurationBackups:
 
 
 class TestInvalidArguments:
-    """Test script behavior with invalid arguments."""
+    """EMRG-14: anything but no arguments or exactly --restore is refused."""
 
     def test_invalid_argument(self, rendered_script: Path):
         """Test that script exits with error for invalid arguments."""

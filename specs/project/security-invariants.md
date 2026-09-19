@@ -103,6 +103,7 @@ re-run from relaxing a restriction an earlier run put in place.
 
 | Allowance | Invariants | Claimed by | Compensating control |
 |---|---|---|---|
+| ALW-1 | INV-1 | EMRG-3 | Requires an existing root session on the host; is never invoked by the bootstrap itself; is reversible with `--restore`, which returns the host to the configuration it started from; adds no network-reachable interface of its own; and leaves a timestamped copy of both files it edits |
 
 Rows are added by the spec that needs one, not by this file. The checker
 fails if a row here names no claiming requirement, or if a requirement

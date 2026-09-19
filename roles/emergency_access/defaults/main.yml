@@ -1,20 +1,30 @@
 ---
 # Emergency Access Role - Default Variables
 
-# Emergency script deployment (Requirements 9.1, 9.8)
-# Script is only deployed when Tailscale is enabled
+# EMRG-2: the break-glass script is deployed only where Tailscale enrolment
+# narrowed this host's SSH access, because there is nothing to undo otherwise
+# and its --restore direction would bind sshd to addresses the host lacks.
+# Deriving the flag from tailscale_enabled rather than restating the condition
+# keeps the two from disagreeing. site.yml gates the whole role on the same
+# flag a second time.
 emergency_access_enabled: "{{ tailscale_enabled | default(false) }}"
 
-# SSH port configuration (inherited from ssh_hardening role)
+# EMRG-15: every edit the script makes is keyed to one of these values as a
+# literal, so a script rendered from a different port or interface than the
+# sshd configuration and the firewall ruleset were is a script that silently
+# edits nothing. They are inherited rather than configured again here.
 emergency_access_ssh_port: "{{ ssh_port | default(22) }}"
 
-# Tailscale interface name for SSH restriction
 emergency_access_tailscale_interface: "{{ tailscale_interface | default('tailscale0') }}"
 
-# Tailscale IP addresses for SSH restriction
-# Set by tailscale role's verify.yml tasks
+# EMRG-15: the two addresses the --restore direction writes into sshd's
+# ListenAddress lines, published as facts by the tailscale role's verify.yml
+# tasks. They are frozen into the script at render time; see the
+# emergency-access design's failure modes.
 emergency_access_tailscale_ipv4: "{{ tailscale_ipv4 | default('') }}"
 emergency_access_tailscale_ipv6: "{{ tailscale_ipv6 | default('') }}"
 
-# Emergency script deployment path (Requirement 9.1)
+# EMRG-1: the deployed path. Named here rather than written into the task so
+# that the playbook's closing message and docs/emergency-access.md cannot
+# drift from the path actually used.
 emergency_access_script_path: "/root/emergency-ssh-access.sh"

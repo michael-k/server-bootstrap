@@ -67,14 +67,14 @@ class TestEmergencyScriptDeploymentProperties:
         an emergency access script SHALL be deployed to /root/ that can toggle
         SSH restrictions.
 
-        Validates: Requirement 9.1
+        Validates: EMRG-1, EMRG-2
         """
         # This property test verifies the emergency_access role's deployment by checking:
-        # 1. Emergency script is deployed only when Tailscale is enabled (Requirement 9.1)
-        # 2. Script is deployed to /root/ directory (Requirement 9.1)
+        # 1. Emergency script is deployed only when Tailscale is enabled (EMRG-2)
+        # 2. Script is deployed to /root/ directory (EMRG-1)
         # 3. Script is executable
         # 4. Script contains proper configuration variables
-        # 5. Script deployment is conditional on tailscale_enabled variable (Requirement 9.8)
+        # 5. Script deployment is conditional on tailscale_enabled variable (EMRG-2)
 
         # Read the emergency_access role main tasks
         main_tasks_path = Path("roles/emergency_access/tasks/main.yml")
@@ -82,11 +82,11 @@ class TestEmergencyScriptDeploymentProperties:
 
         main_tasks_content = main_tasks_path.read_text()
 
-        # Verify conditional deployment based on emergency_access_enabled (Requirement 9.8)
+        # Verify conditional deployment based on emergency_access_enabled (EMRG-2)
         # The emergency_access_enabled variable defaults to tailscale_enabled
         assert "when: emergency_access_enabled | bool" in main_tasks_content, (
             "Emergency script deployment must be conditional on emergency_access_enabled "
-            "variable (Requirement 9.8)"
+            "variable (EMRG-2)"
         )
 
         # Verify script template deployment
@@ -99,7 +99,7 @@ class TestEmergencyScriptDeploymentProperties:
         assert (
             "dest: /root/emergency-ssh-access.sh" in main_tasks_content
             or "dest: \"{{ emergency_access_script_path }}\"" in main_tasks_content
-        ), "Script must be deployed to /root/ directory (Requirement 9.1)"
+        ), "Script must be deployed to /root/ directory (EMRG-1)"
 
         # Verify script is made executable
         assert (
@@ -168,12 +168,12 @@ class TestEmergencyScriptDeploymentProperties:
             "emergency_access_tailscale_ipv4 must be defined in defaults"
         )
 
-        # Verify emergency_access_enabled defaults to tailscale_enabled (Requirement 9.8)
+        # Verify emergency_access_enabled defaults to tailscale_enabled (EMRG-2)
         assert "emergency_access_enabled:" in defaults_content, (
             "emergency_access_enabled must be defined in defaults"
         )
         assert "tailscale_enabled" in defaults_content, (
-            "emergency_access_enabled must reference tailscale_enabled (Requirement 9.8)"
+            "emergency_access_enabled must reference tailscale_enabled (EMRG-2)"
         )
 
         # Verify tasks are properly tagged (optional - not all roles use tags)
@@ -184,8 +184,8 @@ class TestEmergencyScriptDeploymentProperties:
             )
 
         # Property verified: The emergency_access role ensures that:
-        # - Emergency script is deployed only when Tailscale is enabled (9.1, 9.8)
-        # - Script is deployed to /root/ directory (9.1)
+        # - Emergency script is deployed only when Tailscale is enabled (EMRG-1, EMRG-2)
+        # - Script is deployed to /root/ directory (EMRG-1)
         # - Script is executable with proper permissions (0700)
         # - Script is owned by root
         # - Script contains proper configuration variables
@@ -217,14 +217,14 @@ class TestEmergencyScriptOperationsProperties:
         SHALL reconfigure SSHD to listen on all interfaces and update NFTables
         to allow SSH from all interfaces, then restart SSHD and reload NFTables.
 
-        Validates: Requirements 9.2, 9.5, 9.6
+        Validates: EMRG-3, EMRG-6, EMRG-7, EMRG-9
         """
         # This property test verifies the emergency script's unrestrict operation by checking:
-        # 1. Script modifies SSHD configuration to listen on all interfaces (Requirement 9.2)
-        # 2. Script modifies NFTables configuration to allow SSH from all (Requirement 9.2)
-        # 3. Script restarts SSHD after configuration changes (Requirement 9.5)
-        # 4. Script reloads NFTables after configuration changes (Requirement 9.6)
-        # 5. Script is idempotent (Requirement 9.7)
+        # 1. Script modifies SSHD configuration to listen on all interfaces (EMRG-3)
+        # 2. Script modifies NFTables configuration to allow SSH from all (EMRG-3)
+        # 3. Script restarts SSHD after configuration changes (EMRG-6)
+        # 4. Script reloads NFTables after configuration changes (EMRG-7)
+        # 5. Script is idempotent (EMRG-9)
 
         # Read the emergency script template
         template_path = Path("roles/emergency_access/templates/emergency-ssh-access.sh.j2")
@@ -238,12 +238,13 @@ class TestEmergencyScriptOperationsProperties:
         )
 
         # Verify SSHD configuration modification for unrestrict
-        # Script should change ListenAddress from Tailscale IP to 0.0.0.0 and ::
+        # The script deletes every ListenAddress line and inserts these two after
+        # the Port line; it does not rewrite the Tailscale address in place.
         assert "ListenAddress 0.0.0.0" in template_content, (
-            "Unrestrict operation must configure SSHD to listen on 0.0.0.0 (Requirement 9.2)"
+            "Unrestrict operation must configure SSHD to listen on 0.0.0.0 (EMRG-3)"
         )
         assert "ListenAddress ::" in template_content, (
-            "Unrestrict operation must configure SSHD to listen on :: (IPv6) (Requirement 9.2)"
+            "Unrestrict operation must configure SSHD to listen on :: (IPv6) (EMRG-3)"
         )
 
         # Verify sed command for SSHD modification
@@ -263,23 +264,23 @@ class TestEmergencyScriptOperationsProperties:
             "Script must modify NFTables configuration file"
         )
 
-        # Verify SSHD service restart (Requirement 9.5)
+        # Verify SSHD service restart (EMRG-6)
         assert "systemctl restart sshd" in template_content, (
-            "Script must restart SSHD service after configuration changes (Requirement 9.5)"
+            "Script must restart SSHD service after configuration changes (EMRG-6)"
         )
 
-        # Verify NFTables reload (Requirement 9.6)
+        # Verify NFTables reload (EMRG-7)
         assert "systemctl reload nftables" in template_content, (
-            "Script must reload NFTables after configuration changes (Requirement 9.6)"
+            "Script must reload NFTables after configuration changes (EMRG-7)"
         )
 
-        # Verify idempotency checks (Requirement 9.7)
+        # Verify idempotency checks (EMRG-9)
         assert "grep -q" in template_content, (
-            "Script must check current state for idempotency (Requirement 9.7)"
+            "Script must check current state for idempotency (EMRG-9)"
         )
         assert "already unrestricted" in template_content.lower() or (
             "no changes needed" in template_content.lower()
-        ), "Script must detect and skip if already in unrestricted state (Requirement 9.7)"
+        ), "Script must detect and skip if already in unrestricted state (EMRG-9)"
 
         # Verify backup functionality
         assert "backup" in template_content.lower(), (
@@ -311,11 +312,11 @@ class TestEmergencyScriptOperationsProperties:
         )
 
         # Property verified: The emergency script unrestrict operation ensures that:
-        # - SSHD is reconfigured to listen on all interfaces (0.0.0.0, ::) (9.2)
-        # - NFTables is reconfigured to allow SSH from all interfaces (9.2)
-        # - SSHD service is restarted after configuration changes (9.5)
-        # - NFTables rules are reloaded after configuration changes (9.6)
-        # - Operation is idempotent (checks current state) (9.7)
+        # - SSHD is reconfigured to listen on all interfaces (0.0.0.0, ::) (EMRG-3)
+        # - NFTables is reconfigured to allow SSH from all interfaces (EMRG-3)
+        # - SSHD service is restarted after configuration changes (EMRG-6)
+        # - NFTables rules are reloaded after configuration changes (EMRG-7)
+        # - Operation is idempotent (checks current state) (EMRG-9)
         # - Configuration files are backed up before modification
         # - Proper error handling and user feedback
         # - This applies consistently across all valid configuration values
@@ -342,14 +343,14 @@ class TestEmergencyScriptOperationsProperties:
         and update NFTables to restrict SSH to the Tailscale interface, then
         restart SSHD and reload NFTables.
 
-        Validates: Requirements 9.3, 9.5, 9.6
+        Validates: EMRG-4, EMRG-6, EMRG-7, EMRG-9
         """
         # This property test verifies the emergency script's restore operation by checking:
-        # 1. Script modifies SSHD to listen only on Tailscale interface (Requirement 9.3)
-        # 2. Script modifies NFTables to restrict SSH to Tailscale interface (Requirement 9.3)
-        # 3. Script restarts SSHD after configuration changes (Requirement 9.5)
-        # 4. Script reloads NFTables after configuration changes (Requirement 9.6)
-        # 5. Script is idempotent (Requirement 9.7)
+        # 1. Script modifies SSHD to listen only on Tailscale interface (EMRG-4)
+        # 2. Script modifies NFTables to restrict SSH to Tailscale interface (EMRG-4)
+        # 3. Script restarts SSHD after configuration changes (EMRG-6)
+        # 4. Script reloads NFTables after configuration changes (EMRG-7)
+        # 5. Script is idempotent (EMRG-9)
 
         # Read the emergency script template
         template_path = Path("roles/emergency_access/templates/emergency-ssh-access.sh.j2")
@@ -371,10 +372,10 @@ class TestEmergencyScriptOperationsProperties:
         )
 
         # Verify SSHD configuration modification for restore
-        # Script should change ListenAddress from 0.0.0.0/:: to Tailscale IP
+        # Same deletion, with the tailnet pair inserted instead of the open one
         assert "ListenAddress ${TAILSCALE_IPV4}" in template_content or (
             "ListenAddress {{ emergency_access_tailscale_ipv4 }}" in template_content
-        ), "Restore operation must configure SSHD to listen on Tailscale IP (Requirement 9.3)"
+        ), "Restore operation must configure SSHD to listen on Tailscale IP (EMRG-4)"
 
         # Verify removal of unrestricted ListenAddress directives
         assert "/^ListenAddress /d" in template_content or (
@@ -384,13 +385,13 @@ class TestEmergencyScriptOperationsProperties:
         # Verify NFTables configuration modification for restore
         # Script should change from unrestricted to interface-restricted SSH rule
         assert "iifname" in template_content, (
-            "Restore operation must add interface restriction to NFTables rule (Requirement 9.3)"
+            "Restore operation must add interface restriction to NFTables rule (EMRG-4)"
         )
         assert "${TAILSCALE_INTERFACE}" in template_content or (
             "{{ emergency_access_tailscale_interface }}" in template_content
         ), "Restore operation must use Tailscale interface variable"
 
-        # Verify SSHD service restart (Requirement 9.5)
+        # Verify SSHD service restart (EMRG-6)
         # Already verified in unrestrict test, but confirm it's in restore function too
         restore_function_start = template_content.find("restore_ssh()")
         if restore_function_start != -1:
@@ -399,16 +400,16 @@ class TestEmergencyScriptOperationsProperties:
                 restore_function_start : restore_function_start + 3000
             ]
             assert "systemctl restart sshd" in restore_function_content, (
-                "Restore function must restart SSHD service (Requirement 9.5)"
+                "Restore function must restart SSHD service (EMRG-6)"
             )
             assert "systemctl reload nftables" in restore_function_content, (
-                "Restore function must reload NFTables (Requirement 9.6)"
+                "Restore function must reload NFTables (EMRG-7)"
             )
 
-        # Verify idempotency checks for restore mode (Requirement 9.7)
+        # Verify idempotency checks for restore mode (EMRG-9)
         assert "already restricted" in template_content.lower() or (
             "no changes needed" in template_content.lower()
-        ), "Script must detect and skip if already in restricted state (Requirement 9.7)"
+        ), "Script must detect and skip if already in restricted state (EMRG-9)"
 
         # Verify restore mode checks for Tailscale IP in SSHD config
         # This ensures idempotency
@@ -420,11 +421,11 @@ class TestEmergencyScriptOperationsProperties:
             )
 
         # Property verified: The emergency script restore operation ensures that:
-        # - SSHD is reconfigured to listen only on Tailscale interface (9.3)
-        # - NFTables is reconfigured to restrict SSH to Tailscale interface (9.3)
-        # - SSHD service is restarted after configuration changes (9.5)
-        # - NFTables rules are reloaded after configuration changes (9.6)
-        # - Operation is idempotent (checks current state) (9.7)
+        # - SSHD is reconfigured to listen only on Tailscale interface (EMRG-4)
+        # - NFTables is reconfigured to restrict SSH to Tailscale interface (EMRG-4)
+        # - SSHD service is restarted after configuration changes (EMRG-6)
+        # - NFTables rules are reloaded after configuration changes (EMRG-7)
+        # - Operation is idempotent (checks current state) (EMRG-9)
         # - Configuration files are backed up before modification
         # - Proper error handling and user feedback
         # - This applies consistently across all valid configuration values
@@ -450,10 +451,10 @@ class TestEmergencyScriptOperationsProperties:
         script without arguments and then with the restore argument SHALL return
         the system to the original restricted state.
 
-        Validates: Requirement 9.4
+        Validates: EMRG-5
         """
         # This property test verifies the emergency script's round-trip behavior by checking:
-        # 1. Unrestrict operation can be reversed by restore operation (Requirement 9.4)
+        # 1. Unrestrict operation can be reversed by restore operation (EMRG-5)
         # 2. Both operations modify the same configuration files
         # 3. Both operations use reversible transformations
         # 4. Final state matches initial restricted state
@@ -483,7 +484,7 @@ class TestEmergencyScriptOperationsProperties:
         ), "Both functions must modify NFTables configuration"
 
         # Verify unrestrict operation transformations
-        # SSHD: Tailscale IP -> 0.0.0.0 + ::
+        # SSHD: every ListenAddress deleted, 0.0.0.0 and :: inserted after Port
         unrestrict_start = template_content.find("unrestrict_ssh()")
         if unrestrict_start != -1:
             unrestrict_section = template_content[unrestrict_start:unrestrict_start + 2000]
@@ -502,7 +503,7 @@ class TestEmergencyScriptOperationsProperties:
             )
 
         # Verify restore operation transformations (reverse of unrestrict)
-        # SSHD: 0.0.0.0 + :: -> Tailscale IP
+        # SSHD: every ListenAddress deleted, the tailnet pair inserted after Port
         restore_start = template_content.find("restore_ssh()")
         if restore_start != -1:
             restore_section = template_content[restore_start:restore_start + 2000]
@@ -546,13 +547,13 @@ class TestEmergencyScriptOperationsProperties:
         )
 
         # Property verified: The emergency script round-trip restoration ensures that:
-        # - Unrestrict operation changes SSHD from Tailscale IP to 0.0.0.0/::
+        # - Unrestrict operation rewrites SSHD's ListenAddress pair to 0.0.0.0/::
         # - Unrestrict operation changes NFTables from restricted to unrestricted
-        # - Restore operation reverses SSHD changes back to Tailscale IP
+        # - Restore operation rewrites the same pair back to the tailnet addresses
         # - Restore operation reverses NFTables changes back to restricted
         # - Both operations modify the same configuration files
         # - Both operations restart/reload services for changes to take effect
-        # - Round-trip returns system to original restricted state (9.4)
+        # - Round-trip returns system to original restricted state (EMRG-5)
         # - Backup functionality provides recovery mechanism
         # - This applies consistently across all valid configuration values
 
@@ -583,11 +584,11 @@ class TestEmergencyScriptIdempotencyProperties:
         script multiple times in the same mode SHALL produce consistent results
         without errors.
 
-        Validates: Requirement 9.7
+        Validates: EMRG-9
         """
         # This property test verifies the emergency script's idempotency by checking:
-        # 1. Script checks current state before making changes (Requirement 9.7)
-        # 2. Script skips changes if already in target state (Requirement 9.7)
+        # 1. Script checks current state before making changes (EMRG-9)
+        # 2. Script skips changes if already in target state (EMRG-9)
         # 3. Script provides appropriate feedback for idempotent runs
         # 4. Script does not fail when run multiple times in same mode
 
@@ -604,18 +605,18 @@ class TestEmergencyScriptIdempotencyProperties:
 
             # Check for state verification before changes
             assert "grep -q" in unrestrict_section, (
-                "Unrestrict function must check current state (Requirement 9.7)"
+                "Unrestrict function must check current state (EMRG-9)"
             )
 
             # Check for early return when already in target state
             assert "return 0" in unrestrict_section or "exit 0" in unrestrict_section, (
-                "Unrestrict function must return early if already unrestricted (Requirement 9.7)"
+                "Unrestrict function must return early if already unrestricted (EMRG-9)"
             )
 
             # Check for appropriate feedback message
             assert "already" in unrestrict_section.lower() or (
                 "no changes" in unrestrict_section.lower()
-            ), "Unrestrict function must inform user when no changes needed (Requirement 9.7)"
+            ), "Unrestrict function must inform user when no changes needed (EMRG-9)"
 
         # Verify restore function has idempotency checks
         restore_start = template_content.find("restore_ssh()")
@@ -624,18 +625,18 @@ class TestEmergencyScriptIdempotencyProperties:
 
             # Check for state verification before changes
             assert "grep -q" in restore_section, (
-                "Restore function must check current state (Requirement 9.7)"
+                "Restore function must check current state (EMRG-9)"
             )
 
             # Check for early return when already in target state
             assert "return 0" in restore_section or "exit 0" in restore_section, (
-                "Restore function must return early if already restricted (Requirement 9.7)"
+                "Restore function must return early if already restricted (EMRG-9)"
             )
 
             # Check for appropriate feedback message
             assert "already" in restore_section.lower() or (
                 "no changes" in restore_section.lower()
-            ), "Restore function must inform user when no changes needed (Requirement 9.7)"
+            ), "Restore function must inform user when no changes needed (EMRG-9)"
 
         # Verify both functions check multiple conditions for state verification
         # This ensures accurate detection of current state
@@ -688,8 +689,8 @@ class TestEmergencyScriptIdempotencyProperties:
             )
 
         # Property verified: The emergency script idempotency ensures that:
-        # - Both unrestrict and restore functions check current state (9.7)
-        # - Both functions skip changes if already in target state (9.7)
+        # - Both unrestrict and restore functions check current state (EMRG-9)
+        # - Both functions skip changes if already in target state (EMRG-9)
         # - Both functions check multiple configuration aspects (SSHD + NFTables)
         # - Both functions provide appropriate feedback for idempotent runs
         # - Script does not create unnecessary backups on idempotent runs

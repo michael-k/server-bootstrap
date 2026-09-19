@@ -1,7 +1,14 @@
 #!/bin/bash
 # Emergency SSH Access Script
 # Toggles SSH access restrictions between Tailscale-only and public access
-# Requirements: 9.2, 9.3, 9.4, 9.5, 9.6, 9.7
+#
+# Requirements: EMRG-3, EMRG-4, EMRG-5, EMRG-6, EMRG-7, EMRG-8, EMRG-9,
+# EMRG-10, EMRG-11, EMRG-13, EMRG-14, EMRG-15 and EMRG-16.
+#
+# EMRG-12: everything below is local file editing and local service control.
+# This script opens no socket, fetches nothing and starts no service of its
+# own, so it runs to completion on a host with no working network — which is
+# the whole reason it counts towards INV-6.
 #
 # Usage:
 #   ./emergency-ssh-access.sh           # Unrestrict SSH (allow public access)
@@ -9,7 +16,11 @@
 
 set -euo pipefail
 
-# Configuration variables
+# EMRG-15: the port, the interface name and the two tailnet addresses are
+# baked in at render time from the same variables the sshd configuration and
+# the firewall ruleset are rendered from. Every edit below is keyed to one of
+# them as a literal, so agreement has to be established here — there is no
+# way to detect a mismatch at runtime.
 SSHD_CONFIG="/etc/ssh/sshd_config"
 NFTABLES_CONFIG="/etc/nftables.conf"
 SSH_PORT="{{ emergency_access_ssh_port }}"
@@ -36,7 +47,9 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Function to check if running as root
+# EMRG-11: mode 0700 under /root is what actually keeps unprivileged accounts
+# away from this script; this check turns a forgotten sudo into one clear line
+# instead of a permission error from the first cp.
 check_root() {
     if [[ $EUID -ne 0 ]]; then
         log_error "This script must be run as root"
@@ -44,7 +57,10 @@ check_root() {
     fi
 }
 
-# Function to validate configuration files exist
+# EMRG-13: both edits are in-place rewrites, and every one of them is a no-op
+# against a file that is not there. Checking first means the operator is told
+# which file is missing while they still have a console, rather than being
+# told the repair succeeded.
 validate_files() {
     if [[ ! -f "$SSHD_CONFIG" ]]; then
         log_error "SSH configuration file not found: $SSHD_CONFIG"
@@ -57,7 +73,13 @@ validate_files() {
     fi
 }
 
-# Function to backup configuration files
+# EMRG-10: the edits below are pattern substitutions against files this
+# script did not write, and a pattern that matches more than it should fails
+# silently. A copy taken first is what lets an operator put the host back by
+# hand. This is the recovery control, not the audit one: the record that the
+# path was taken, and in which direction, comes from sshd's own startup log
+# after the restart below. What it cannot give is the prior contents of
+# these two files, which is what these copies are.
 backup_configs() {
     local timestamp=$(date +%Y%m%d_%H%M%S)
     cp "$SSHD_CONFIG" "${SSHD_CONFIG}.backup.${timestamp}"
@@ -65,11 +87,18 @@ backup_configs() {
     log_info "Configuration files backed up with timestamp: ${timestamp}"
 }
 
-# Function to unrestrict SSH access (allow from all interfaces)
+# EMRG-3: the direction that weakens INV-1, under the allowance ALW-1. Both
+# halves of the narrowing have to be undone or the host stays unreachable and
+# the operator cannot tell which half failed: sshd has to be listening on the
+# public address and the packets have to arrive.
 unrestrict_ssh() {
     log_info "Unrestricting SSH access to allow public connections..."
 
-    # Check current state for idempotency
+    # EMRG-9: return before taking a backup or restarting anything if the host
+    # is already in this state. Note that the third clause below greps for a
+    # rule fragment that the drop-in documentation comment near the end of
+    # /etc/nftables.conf also contains when ssh_port is 443; the fourth clause
+    # is what keeps that from mattering today. See the design's failure modes.
     if grep -q "^ListenAddress 0.0.0.0" "$SSHD_CONFIG" && \
        grep -q "^ListenAddress ::" "$SSHD_CONFIG" && \
        grep -q "tcp dport ${SSH_PORT} accept" "$NFTABLES_CONFIG" && \
@@ -84,18 +113,31 @@ unrestrict_ssh() {
     # Modify SSHD configuration to listen on all interfaces
     log_info "Updating SSHD configuration to listen on all interfaces..."
     
-    # Remove all Tailscale-specific ListenAddress directives and replace with public
+    # EMRG-3: delete every ListenAddress and insert the open pair after the
+    # Port line. The anchors are the literal rendered Port directive and the
+    # two literal addresses — the same values sshd's own configuration was
+    # rendered with. EMRG-5: this rebuilds the directives rather than
+    # restoring a saved copy, so a round trip returns their values but not
+    # their original position in the file.
     sed -i '/^ListenAddress /d' "$SSHD_CONFIG"
     sed -i "/^Port ${SSH_PORT}/a ListenAddress ::" "$SSHD_CONFIG"
     sed -i "/^Port ${SSH_PORT}/a ListenAddress 0.0.0.0" "$SSHD_CONFIG"
 
     # Modify NFTables configuration to allow SSH from all interfaces
     log_info "Updating NFTables configuration to allow SSH from all interfaces..."
-    
-    # Replace Tailscale-specific SSH rule with unrestricted rule
+
+    # EMRG-16: this substitution matches the ruleset's interface-qualified SSH
+    # accept rule as literal text, with that word order and that spacing. sed
+    # exits 0 when it matches nothing, so rewording that rule does not fail
+    # here — it makes the script print SUCCESS on a host still refusing SSH.
+    # The rendered form of that rule is a published interface; see the
+    # emergency-access design's failure modes and interactions.
     sed -i "s|iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept|tcp dport ${SSH_PORT} accept|g" "$NFTABLES_CONFIG"
 
-    # Restart SSHD service
+    # EMRG-6: sshd reads its configuration at startup and never again, so the
+    # rewritten ListenAddress lines mean nothing until this restart.
+    # EMRG-8: a failed restart stops the script here rather than going on to
+    # open the firewall for a daemon that is not listening.
     log_info "Restarting SSH daemon..."
     if systemctl restart sshd; then
         log_info "SSH daemon restarted successfully"
@@ -104,7 +146,9 @@ unrestrict_ssh() {
         exit 1
     fi
 
-    # Reload NFTables rules
+    # EMRG-7: the kernel holds the rules the last load installed, not the
+    # contents of this file, so the edit above has no effect until the reload.
+    # EMRG-8: a failed reload is fatal for the same reason.
     log_info "Reloading NFTables rules..."
     if systemctl reload nftables; then
         log_info "NFTables rules reloaded successfully"
@@ -117,11 +161,16 @@ unrestrict_ssh() {
     log_warn "Remember to run this script with --restore to re-enable Tailscale restriction."
 }
 
-# Function to restore SSH restriction (Tailscale only)
+# EMRG-4: the way back, and the compensating control ALW-1 rests on. An
+# allowance that could not be given back would be a permanent change with an
+# apology attached.
 restore_ssh() {
     log_info "Restoring SSH restriction to Tailscale interface only..."
 
-    # Check current state for idempotency
+    # EMRG-9: return before taking a backup or restarting anything if the host
+    # is already restricted. The two negative clauses matter as much as the
+    # positive ones: a config carrying both the tailnet pair and 0.0.0.0 is
+    # still publicly reachable and must not be reported as restricted.
     if grep -q "^ListenAddress ${TAILSCALE_IPV4}" "$SSHD_CONFIG" && \
        grep -q "^ListenAddress ${TAILSCALE_IPV6}" "$SSHD_CONFIG" && \
        ! grep -q "^ListenAddress 0.0.0.0" "$SSHD_CONFIG" && \
@@ -137,21 +186,29 @@ restore_ssh() {
     # Modify SSHD configuration to listen only on Tailscale interface
     log_info "Updating SSHD configuration to listen on Tailscale interface..."
     
-    # Remove all ListenAddress directives and replace with Tailscale IP
+    # EMRG-4: removing the open addresses is a consequence of the same
+    # deletion that clears the way for the tailnet pair, not a separate step
+    # that could be forgotten — a restore that added without removing would
+    # report success on a host that is still publicly reachable. The two
+    # addresses are the ones this script was rendered with (EMRG-15); they
+    # are frozen at bootstrap time and are not re-read from the client.
     sed -i '/^ListenAddress /d' "$SSHD_CONFIG"
-    
-    # Add the Tailscale ListenAddress directives after the Port directive
     sed -i "/^Port ${SSH_PORT}/a ListenAddress ${TAILSCALE_IPV6}" "$SSHD_CONFIG"
     sed -i "/^Port ${SSH_PORT}/a ListenAddress ${TAILSCALE_IPV4}" "$SSHD_CONFIG"
 
     # Modify NFTables configuration to restrict SSH to Tailscale interface
     log_info "Updating NFTables configuration to restrict SSH to Tailscale interface..."
-    
-    # Replace unrestricted SSH rule with Tailscale-specific rule
-    # Handle both cases: with or without the iifname already present
+
+    # EMRG-16: the converse dependence on the ruleset's rendered rule text,
+    # matching the unqualified accept and putting the qualifier back. The ^\s*
+    # anchor is what keeps this from rewriting a comment that happens to
+    # contain the same fragment. It is as silent as the other direction when
+    # it matches nothing.
     sed -i "s|^\(\s*\)tcp dport ${SSH_PORT} accept|\1iifname \"${TAILSCALE_INTERFACE}\" tcp dport ${SSH_PORT} accept|g" "$NFTABLES_CONFIG"
 
-    # Restart SSHD service
+    # EMRG-6, EMRG-8: as in the other direction. Note that nothing validates
+    # the rewritten sshd_config before this restart, unlike the bootstrap's
+    # own deployment; see the emergency-access design's failure modes.
     log_info "Restarting SSH daemon..."
     if systemctl restart sshd; then
         log_info "SSH daemon restarted successfully"
@@ -160,7 +217,7 @@ restore_ssh() {
         exit 1
     fi
 
-    # Reload NFTables rules
+    # EMRG-7, EMRG-8: as in the other direction.
     log_info "Reloading NFTables rules..."
     if systemctl reload nftables; then
         log_info "NFTables rules reloaded successfully"
@@ -174,15 +231,21 @@ restore_ssh() {
 
 # Main script logic
 main() {
+    # EMRG-11, EMRG-13: both preconditions are checked before either
+    # direction can touch a file.
     check_root
     validate_files
 
-    # Parse command line arguments
+    # EMRG-3: no arguments is the reopening direction, because the state an
+    # operator is in when they need this is "locked out, at a provider's web
+    # console, typing a path read off a wiki".
+    # EMRG-14: anything that is neither an empty argument list nor exactly
+    # --restore is refused rather than falling through to the default. The two
+    # directions differ by one word and have opposite effects, so a mistyped
+    # --restor must not silently choose the dangerous one.
     if [[ $# -eq 0 ]]; then
-        # No arguments: unrestrict mode (default)
         unrestrict_ssh
     elif [[ $# -eq 1 ]] && [[ "$1" == "--restore" ]]; then
-        # --restore argument: restore restriction mode
         restore_ssh
     else
         log_error "Invalid arguments"

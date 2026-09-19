@@ -9,7 +9,8 @@ The existing test_emergency_script_edge_cases.py covers runtime execution
 (missing files, service failures, idempotency). This module focuses on
 template generation correctness.
 
-Requirements: 9.1-9.8
+Requirements: EMRG-1, EMRG-3, EMRG-4, EMRG-6, EMRG-7, EMRG-9, EMRG-10,
+EMRG-11, EMRG-13, EMRG-14, EMRG-15, EMRG-16
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ def render_script(env: Environment, variables: dict) -> str:
 
 
 class TestScriptGeneration:
-    """Tests for script generation with specific variable values (Requirement 9.1)."""
+    """Tests for script generation with specific variable values (EMRG-15)."""
 
     def test_script_is_bash(self, ea_env, base_vars):
         """Generated script must start with bash shebang."""
@@ -97,37 +98,41 @@ class TestScriptGeneration:
         assert 'NFTABLES_CONFIG="/etc/nftables.conf"' in script
 
     def test_script_deployed_to_root(self, ea_env, base_vars):
-        """Script is generated (deployment path is /root/ per requirement 9.1)."""
+        """The template renders cleanly; EMRG-1's path lives in the Ansible task."""
         # Verify the template renders without error — deployment path is in the
         # Ansible task, not the script itself. Just confirm it renders cleanly.
         script = render_script(ea_env, base_vars)
         assert len(script) > 0
 
     def test_usage_comment_present(self, ea_env, base_vars):
-        """Script includes usage documentation."""
+        """EMRG-14: script includes the usage text its argument check prints."""
         script = render_script(ea_env, base_vars)
         assert "--restore" in script
         assert "Usage:" in script
 
 
 class TestUnrestrictModeSedCommands:
-    """Tests for sed commands in unrestrict mode (Requirement 9.2)."""
+    """Tests for sed commands in unrestrict mode (EMRG-3)."""
 
     def test_unrestrict_replaces_tailscale_ip_with_all_interfaces(self, ea_env, base_vars):
-        """Req 9.2: Unrestrict mode sed replaces Tailscale IP with 0.0.0.0."""
+        """EMRG-3: the open ListenAddress pair the unrestrict direction writes."""
         script = render_script(ea_env, base_vars)
-        # The sed command should replace the Tailscale IP ListenAddress
+        # The unrestrict direction deletes every ListenAddress line and inserts
+        # these two after the Port line; it does not rewrite the Tailscale one
+        # in place. Both literals must therefore appear in the script.
         assert "ListenAddress 0.0.0.0" in script
         assert "ListenAddress ::" in script
 
-    def test_unrestrict_sed_uses_tailscale_ipv4_var(self, ea_env, base_vars):
-        """Req 9.2: Unrestrict sed pattern references TAILSCALE_IPV4 variable."""
+    def test_tailscale_ipv4_shell_var_present(self, ea_env, base_vars):
+        """EMRG-15: the rendered script carries the tailnet IPv4 as a shell variable."""
         script = render_script(ea_env, base_vars)
-        # The sed command in unrestrict_ssh function uses ${TAILSCALE_IPV4}
+        # ${TAILSCALE_IPV4} is read by restore_ssh, not by unrestrict_ssh — this
+        # asserts only that the variable survives into the rendered script, which
+        # is what makes the restore direction possible at all.
         assert "${TAILSCALE_IPV4}" in script
 
     def test_unrestrict_removes_interface_restriction_from_nftables(self, ea_env, base_vars):
-        """Req 9.2: Unrestrict mode sed removes iifname restriction from nftables."""
+        """EMRG-3, EMRG-16: unrestrict matches the ruleset's qualified rule text."""
         script = render_script(ea_env, base_vars)
         # sed replaces the iifname-restricted rule with a bare tcp dport rule
         assert 'iifname \\"${TAILSCALE_INTERFACE}\\" tcp dport ${SSH_PORT} accept' in script
@@ -135,91 +140,91 @@ class TestUnrestrictModeSedCommands:
         assert "tcp dport ${SSH_PORT} accept" in script
 
     def test_unrestrict_idempotency_check_present(self, ea_env, base_vars):
-        """Req 9.7: Unrestrict mode checks current state before making changes."""
+        """EMRG-9: Unrestrict mode checks current state before making changes."""
         script = render_script(ea_env, base_vars)
         assert "already unrestricted" in script
 
     def test_unrestrict_function_defined(self, ea_env, base_vars):
-        """Req 9.2: unrestrict_ssh function must be defined."""
+        """EMRG-3: unrestrict_ssh function must be defined."""
         script = render_script(ea_env, base_vars)
         assert "unrestrict_ssh()" in script
 
 
 class TestRestoreModeSedCommands:
-    """Tests for sed commands in restore mode (Requirement 9.3)."""
+    """Tests for sed commands in restore mode (EMRG-4)."""
 
     def test_restore_removes_all_listen_address_lines(self, ea_env, base_vars):
-        """Req 9.3: Restore mode sed deletes all ListenAddress directives."""
+        """EMRG-4: Restore mode sed deletes all ListenAddress directives."""
         script = render_script(ea_env, base_vars)
         # sed -i '/^ListenAddress /d' removes all ListenAddress lines
         assert "'/^ListenAddress /d'" in script
 
     def test_restore_adds_tailscale_listen_address(self, ea_env, base_vars):
-        """Req 9.3: Restore mode adds Tailscale IP as ListenAddress after Port."""
+        """EMRG-4: Restore mode adds Tailscale IP as ListenAddress after Port."""
         script = render_script(ea_env, base_vars)
         # sed inserts ListenAddress after the Port directive
         assert "ListenAddress ${TAILSCALE_IPV4}" in script
         assert "/^Port ${SSH_PORT}/a" in script
 
     def test_restore_adds_interface_restriction_to_nftables(self, ea_env, base_vars):
-        """Req 9.3: Restore mode sed adds iifname restriction to nftables SSH rule."""
+        """EMRG-4, EMRG-16: restore writes the ruleset's interface-qualified rule text."""
         script = render_script(ea_env, base_vars)
         # sed replaces bare tcp dport rule with iifname-restricted rule
         assert 'iifname \\"${TAILSCALE_INTERFACE}\\" tcp dport ${SSH_PORT} accept' in script
 
     def test_restore_idempotency_check_present(self, ea_env, base_vars):
-        """Req 9.7: Restore mode checks current state before making changes."""
+        """EMRG-9: Restore mode checks current state before making changes."""
         script = render_script(ea_env, base_vars)
         assert "already restricted" in script
 
     def test_restore_function_defined(self, ea_env, base_vars):
-        """Req 9.3: restore_ssh function must be defined."""
+        """EMRG-4: restore_ssh function must be defined."""
         script = render_script(ea_env, base_vars)
         assert "restore_ssh()" in script
 
 
 class TestServiceRestartCommands:
-    """Tests for service restart commands (Requirements 9.5, 9.6)."""
+    """Tests for service restart commands (EMRG-6, EMRG-7)."""
 
     def test_sshd_restart_command_present(self, ea_env, base_vars):
-        """Req 9.5: Script must restart SSHD after configuration changes."""
+        """EMRG-6: Script must restart SSHD after configuration changes."""
         script = render_script(ea_env, base_vars)
         assert "systemctl restart sshd" in script
 
     def test_nftables_reload_command_present(self, ea_env, base_vars):
-        """Req 9.6: Script must reload NFTables after configuration changes."""
+        """EMRG-7: Script must reload NFTables after configuration changes."""
         script = render_script(ea_env, base_vars)
         assert "systemctl reload nftables" in script
 
     def test_sshd_restart_failure_handled(self, ea_env, base_vars):
-        """Req 9.5: Script handles SSHD restart failure with error message."""
+        """EMRG-6: Script handles SSHD restart failure with error message."""
         script = render_script(ea_env, base_vars)
         assert "Failed to restart SSH daemon" in script
 
     def test_nftables_reload_failure_handled(self, ea_env, base_vars):
-        """Req 9.6: Script handles NFTables reload failure with error message."""
+        """EMRG-7: Script handles NFTables reload failure with error message."""
         script = render_script(ea_env, base_vars)
         assert "Failed to reload NFTables rules" in script
 
     def test_both_services_restarted_in_unrestrict(self, ea_env, base_vars):
-        """Req 9.5, 9.6: Both services are restarted in unrestrict mode."""
+        """EMRG-6, EMRG-7: Both services are restarted in unrestrict mode."""
         script = render_script(ea_env, base_vars)
         # Both restart commands appear (at least twice — once per mode)
         assert script.count("systemctl restart sshd") >= 2
         assert script.count("systemctl reload nftables") >= 2
 
     def test_root_check_present(self, ea_env, base_vars):
-        """Script must check for root privileges before executing."""
+        """EMRG-11: script must check for root privileges before executing."""
         script = render_script(ea_env, base_vars)
         assert "check_root" in script
         assert "EUID" in script
 
     def test_file_validation_present(self, ea_env, base_vars):
-        """Script must validate config files exist before proceeding."""
+        """EMRG-13: script must validate config files exist before proceeding."""
         script = render_script(ea_env, base_vars)
         assert "validate_files" in script
 
     def test_backup_function_present(self, ea_env, base_vars):
-        """Script must back up config files before making changes."""
+        """EMRG-10: script must back up config files before making changes."""
         script = render_script(ea_env, base_vars)
         assert "backup_configs" in script

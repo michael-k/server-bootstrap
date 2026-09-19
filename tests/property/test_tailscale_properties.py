@@ -442,11 +442,11 @@ class TestTailscaleConditionalExecutionProperties:
         the playbook SHALL skip all Tailscale installation, configuration, and
         SSH restriction steps.
 
-        Validates: TS-1, TS-2, and Requirement 9.8 (emergency access)
+        Validates: TS-1, TS-2, EMRG-2
         """
         # This property test verifies the Tailscale role's conditional execution by checking:
         # 1. All Tailscale tasks are conditional on tailscale_enabled (TS-2)
-        # 2. Emergency script deployment is conditional on tailscale_enabled (Requirement 9.8)
+        # 2. Emergency script deployment is conditional on tailscale_enabled (EMRG-2)
         # 3. SSH restriction is conditional on tailscale_enabled
 
         # Read the Tailscale role main tasks
@@ -494,7 +494,7 @@ class TestTailscaleConditionalExecutionProperties:
             # The role uses emergency_access_enabled which defaults to tailscale_enabled
             assert "when: emergency_access_enabled | bool" in emergency_access_content, (
                 "Emergency script deployment must be conditional on emergency_access_enabled "
-                "(Requirement 9.8)"
+                "(EMRG-2)"
             )
 
             # Verify the defaults file links emergency_access_enabled to tailscale_enabled
@@ -505,12 +505,12 @@ class TestTailscaleConditionalExecutionProperties:
                     "emergency_access_enabled must be defined in defaults"
                 )
                 assert "tailscale_enabled" in emergency_defaults_content, (
-                    "emergency_access_enabled must reference tailscale_enabled (Requirement 9.8)"
+                    "emergency_access_enabled must reference tailscale_enabled (EMRG-2)"
                 )
 
         # Property verified: The Tailscale role configuration ensures that:
         # - Both task includes are conditional on tailscale_enabled (TS-2)
-        # - Emergency script deployment is conditional on tailscale_enabled (9.8)
+        # - Emergency script deployment is conditional on tailscale_enabled (EMRG-2)
         # - The flag defaults to false, so enrolment is opt-in (TS-1)
         # - When disabled, all Tailscale-related tasks are skipped
         # - This applies consistently regardless of enabled value
