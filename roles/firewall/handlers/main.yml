@@ -6,7 +6,9 @@
 # reports success. A reload re-executes the whole file, flush and drop-in
 # include alike, as one transaction: if any part of it fails to parse, nothing
 # is applied and the rules already loaded stay exactly as they were.
-# Ansible flushes handlers at the end of the play, not of this role.
+# Ansible does not flush handlers at the end of this role: this one runs at
+# the next flush after it, which roles/logging/tasks/main.yml forces as its
+# last task. (filesystem_hardening flushes earlier, but before this role.)
 - name: Reload nftables
   ansible.builtin.systemd:
     name: nftables

@@ -81,8 +81,13 @@ keeps SSH from ever accepting a password, which means SSH presents
 password attempt for `common-auth` to see, because there is no password
 prompt. Guarding the SSH surface against repeated connection attempts is
 therefore a different mechanism entirely, owned by the `fail2ban` spec, not
-by anything here; `## Interactions` names that split without assuming
-`fail2ban`'s own requirement numbering, which does not yet exist.
+by anything here; `## Interactions` names that split against `F2B`'s own
+requirement IDs.
+
+It also relies on `INV-3` and `INV-6`. `PAM-5` locks root out under the
+same policy as every other account, which is acceptable only because root
+has no remote login path (`INV-3`) and a lockout stays recoverable (`INV-6`);
+`design.md` sets out both, and records how the recovery works.
 
 This spec claims no allowance: it does not bend `INV-7`, it hardens the one
 path (`sudo`'s password prompt) that gives `INV-7`'s named principals

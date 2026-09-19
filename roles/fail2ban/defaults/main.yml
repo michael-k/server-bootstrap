@@ -1,23 +1,37 @@
 ---
 # Fail2ban Role - Default Variables
 
-# Fail2ban configuration (Requirements 10.3, 10.4)
-# Maximum number of failed authentication attempts before banning
+# F2B-9: number of matched failures from one source address that triggers a
+# ban. These are log lines the filter matched, not authentication attempts:
+# with passwords refused outright there is no credential being guessed here.
 fail2ban_max_retry: 5
 
-# Duration to ban an IP address after max_retry failures
+# F2B-10: how long a ban is held. Short enough that an operator banned by the
+# aggressive filter waits it out instead of reaching for the console.
 fail2ban_ban_time: "10m"
 
-# Time window for counting failed authentication attempts
+# F2B-9: the window the failures must fall within to be counted together.
 fail2ban_find_time: "10m"
 
-# SSH jail configuration
-# Enable SSH monitoring by default
+# F2B-4: whether the SSH jail exists at all. With this false, fail2ban runs
+# supervising no jail.
 fail2ban_ssh_enabled: true
 
-# Backend for log monitoring (journald for systemd-based systems)
+# F2B-7: the backend written into the jail file's [DEFAULT] section. Note that
+# it does not reach the SSH jail: the distribution's own
+# jail.d/defaults-debian.conf sets [sshd] backend = systemd, which outranks
+# [DEFAULT] from any file. Changing paths-debian.conf's sshd_backend does not
+# help either - measured, the drop-in's literal value is what is in force.
+# F2B-6 is what the SSH jail actually reads; see specs/fail2ban/design.md.
 fail2ban_ssh_backend: "systemd"
 
-# Firewall integration (Requirement 10.5)
-# Use nftables for dynamic IP blocking
+# F2B-11: the ban action, used for both banaction and banaction_allports.
+# This pins the action rather than choosing nftables over iptables: Debian's
+# jail.d/defaults-debian.conf already sets banaction = nftables, whose type
+# defaults to multiport, so the action this produces is byte-identical to the
+# inherited one apart from its name - and "nftables-multiport" is marked
+# Obsolete in its own packaged header. Applying it to banaction_allports as
+# well overrides the package's nftables[type=allports] with a port-scoped
+# action; nothing here uses that setting, but a later jail would get a
+# narrower ban than it asked for. See specs/fail2ban/design.md.
 fail2ban_banaction: "nftables-multiport"

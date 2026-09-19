@@ -28,9 +28,12 @@ address the host does not have, which is the failure mode
 `## Failure modes` opens with. That asymmetry is why `SSH-19` is written as
 a well-formedness requirement and nothing more.
 
-The restart is a handler rather than an inline task, which means Ansible
-defers it to the end of the *play*, not the end of this role. The firewall,
-emergency-access, fail2ban, logging and swap roles all run in between.
+The restart is a handler rather than an inline task, so it does not run at
+the end of this role. It runs at the next handler flush after this role,
+which is the one `roles/logging/tasks/main.yml` forces with
+`meta: flush_handlers`: the firewall, emergency-access, fail2ban and
+logging roles all run in between. `swap` does not — it runs after that
+flush, against the restarted daemon.
 
 ## Implementation map
 
@@ -184,18 +187,35 @@ break-glass interaction in `## Failure modes` a real one.
   unknown directive. It does not attempt to bind anything: a file naming a
   `ListenAddress` that is syntactically valid but assigned to no interface
   on this host passes validation with a zero exit status. The file is then
-  installed and the handler restarts sshd at the end of the play. What
-  happens next depends on how many of the configured addresses are
-  unbindable, and the two cases behave very differently:
+  installed and the handler restarts sshd at the next handler flush after
+  this role, which is the last task of the logging role — see the
+  deferred-restart failure mode below. What happens next depends on how many
+  of the configured addresses are unbindable, and the two cases behave very
+  differently:
   - If **no** `ListenAddress` can be bound, sshd logs `Cannot bind any
     address.` and exits. systemd reports the restart as failed, the handler
-    task fails, and the run fails with it. The operator does get a signal —
-    but at the very end, on a host the firewall has already narrowed, with
-    the daemon down and the provider's console the only remaining way in.
+    task fails, and the run fails with it — and the failure stops more than
+    this handler. Measured, with ansible-core 2.20.3 on a play of the same
+    shape: when the first handler at a flush point fails, the host is marked
+    failed and **none of the remaining handlers runs**, the rest of the
+    flushing role's tasks are abandoned, and so are every later role and the
+    play's `post_tasks`. Neither `ansible.cfg` nor `site.yml` sets
+    `force_handlers`. Because this role is listed before `firewall`, its
+    handler is the one that runs first, so in this case `FW-19`'s reload
+    never happens at all: the host is left with the daemon down, the
+    *previous* ruleset still loaded, and the provider's console the only
+    remaining way in. The narrowing this bullet used to describe as
+    simultaneous does not occur — what occurs is worse in one respect and
+    better in another, and an operator diagnosing it should not be looking
+    for a new firewall rule.
   - If **at least one** address binds, sshd logs the individual bind
     failure, carries on, and serves on the addresses it did get. The restart
     succeeds, the handler succeeds, and the run reports success on a host
-    listening on fewer addresses than `SSH-18` requires.
+    listening on fewer addresses than `SSH-18` requires. This is the case in
+    which `FW-19`'s handler does run — immediately after this one, since
+    handlers run in role-definition order and `firewall` is listed next — so
+    here the two narrowings do land close enough together to be hard to tell
+    apart.
 
   `SSH-19` prevents neither, by construction: it parses, it does not bind.
   The entire protection is upstream: `TS-15` through `TS-21`
@@ -205,15 +225,20 @@ break-glass interaction in `## Failure modes` a real one.
   final connectivity check pings the host's own address and so proves less
   than it appears to, which makes the address-assignment checks
   (`TS-19`, `TS-20`) the load-bearing ones for this spec.
-- **The restart is deferred to the end of the play, so the lockout lands
-  after every other role has run.** `SSH-17`'s handler fires when Ansible
-  flushes handlers, which is after the firewall, emergency-access, fail2ban,
-  logging and swap roles. On a host where the new configuration is one sshd
-  cannot bind, this means the run appears to succeed through all of those
-  roles and then loses the daemon at the very end — and, because the
-  firewall has by then applied its own tailnet-only rule, the two
-  narrowings take effect close enough together that neither is
-  distinguishable as the cause. It also means the existing SSH session
+- **The restart is deferred, so the lockout lands long after this role
+  has finished.** `SSH-17`'s handler fires at the next handler flush after
+  this role — not the play's first, which is
+  `roles/filesystem_hardening/tasks/main.yml`'s and runs before this role,
+  and not the end of the play, but the one
+  `roles/logging/tasks/main.yml` forces with `meta: flush_handlers` as its
+  last task. So it is after the firewall, emergency-access, fail2ban and
+  logging roles in their entirety, and before `swap`. On a host where the
+  new configuration is one sshd cannot bind, this means the run appears to
+  succeed through all of those roles and then loses the daemon well after
+  the task that caused it. What happens to `FW-19`'s handler at that moment
+  depends on which of the two cases below is in force, and it is not what
+  an earlier revision of this bullet said; the cases spell it out. It also
+  means the existing SSH session
   Ansible is running over survives — sshd's restart does not terminate
   established sessions — so the run is never cut off mid-flight and reports
   its result normally, whether that result is the handler failure of the
@@ -426,10 +451,18 @@ break-glass interaction in `## Failure modes` a real one.
   not yet written, so this is stated in prose rather than against its
   requirement IDs; when it is written, it should cite `SSH-13` for the port
   anchor and `SSH-18` for the address pair.
-- The fail2ban spec — `SSH-14` caps authentication attempts within one
-  connection, which is what forces a brute-force attempt to open new
-  connections and therefore what makes a connection-counting jail able to
-  see it at all. Not yet written; same prose-not-IDs caveat.
+- `F2B` — `SSH-14` caps authentication attempts within one connection,
+  which is what forces a brute-force attempt to open new connections and
+  therefore what makes a connection-counting jail able to see it at all.
+  That spec is now written and cites `SSH-14` in return, for this reason
+  and also because `SSH-14`'s own
+  `Disconnecting: Too many authentication failures` is one of the lines its
+  filter counts. It records two further inputs from this spec, and they
+  have different causes: `SSH-5`, `SSH-6` and `SSH-7` feed its counter with
+  algorithm-negotiation refusals, which a client on old software produces,
+  and `SSH-15` feeds it with grace-time expiries, which a slow or stalled
+  connection produces regardless of the client's age. Neither is an
+  authentication attempt, and both count.
 - `PAM` and `LOGIN` — `UsePAM yes` means sshd consults the PAM stack those
   specs harden for account and session management. `SSH-3` closes the
   keyboard-interactive path, so PAM's *authentication* phase is not reachable

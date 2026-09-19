@@ -187,9 +187,11 @@ this matters to `VRFY`, below. Using a handler means a converged host is not
 disturbed by a run that changed nothing — with an unconditional restart,
 every `make bootstrap` would briefly flush the firewall of a host whose
 configuration was already correct. The cost is Ansible's deferral: the
-handler fires at the end of the *play*, not of this role, so on a run that
-changes the ruleset the host enforces the old rules through every role that
-follows.
+handler fires not at the end of this role but at the next handler flush
+after it, which `roles/logging/tasks/main.yml` forces as its last task, so
+on a run that changes the ruleset the host enforces the old rules through
+emergency-access, fail2ban and logging. `swap`, which follows that flush,
+runs against the new ones.
 
 **Enable and start as two tasks, not one.** `systemd` would accept
 `enabled: true` and `state: started` in a single task. They are separate
@@ -260,9 +262,12 @@ between them.
   them. The case that matters here is fail2ban, which `F2B` configures to
   use the `nftables-multiport` ban action: on a reboot fail2ban restarts too
   and rebuilds its jail, so the window is short and self-healing, but on a
-  reload the firewall is reloaded by a handler at the end of a play and
-  nothing restarts fail2ban after it, so a host can run with its active bans
-  silently discarded until something else does. Nothing in either role
+  reload the firewall is reloaded by a handler — at the next flush point
+  after this role, which is the logging role's last task — and nothing
+  restarts fail2ban after it *unless its own configuration also changed*,
+  so a host can run with its active bans silently discarded until something
+  else does.
+  `specs/fail2ban/design.md` sets out both cases. Nothing in either role
   notices, and no test covers it. The narrower `flush table inet filter`
   would avoid it, at the cost of leaving behind tables an earlier revision of
   this file created.
@@ -272,7 +277,8 @@ between them.
   re-renders from this role's template on every run, so the next
   `make bootstrap` against that host puts the `iifname` qualifier back —
   silently, as one `changed` result among many, with `FW-19`'s handler
-  reloading the narrowed ruleset at the end of the play. An operator who
+  reloading the narrowed ruleset at the logging role's handler flush. An
+  operator who
   used the break-glass path, fixed the tailnet and then re-ran the playbook
   gets the right outcome; one who used it and re-ran the playbook for an
   unrelated reason while the tailnet was still broken is locked out again by
@@ -363,11 +369,19 @@ between them.
   branch is never exercised live, and `FW-10`'s branch is exercised only in
   the tailscale integration environment, where `SSH-18` is narrowing the
   same path at the same time.
-- **The handler is deferred to the end of the play, so the ruleset the host
-  enforces during a run is the previous one.** Ansible flushes handlers at
-  the end of the play, not of this role. On a run that changes the ruleset,
-  every role after this one — emergency-access, fail2ban, logging, swap —
-  executes against the old firewall. That is normally harmless and is
+- **The handler is deferred, so the ruleset the host enforces for most of a
+  run is the previous one.** Ansible flushes handlers at the end of the
+  play's task section, not of this role — but this play flushes earlier than
+  that: `roles/logging/tasks/main.yml` calls `meta: flush_handlers`
+  unconditionally, as its last task, so on a run that changes the ruleset
+  the reload lands there. Every role between this one and that point —
+  emergency-access, fail2ban and logging itself — executes against the old
+  firewall; `swap`, which follows, runs against the new one.
+  `specs/fail2ban/design.md` sets the ordering out, and the split in its
+  evidence is worth carrying over: the flush *semantics* and handler order
+  are measured, the flush *location in this play* is read off `site.yml` and
+  `roles/logging/tasks/main.yml`. It matters to that spec because the reload
+  discards its ban table. That is normally harmless and is
   occasionally the only reason the run survives: the connection Ansible is
   using was admitted under the old rules and, being established, continues
   to be admitted under the new ones by `FW-6` regardless of what changed.
@@ -477,9 +491,14 @@ between them.
   alone while the firewall is not being reloaded; it may **not** assume the
   table survives a reload, a re-run that changes the ruleset, or a reboot,
   because `FW-15`'s flush removes every table in the kernel. It may also
-  assume `FW-3`'s drop policy handles everything its jails never see. Not
-  yet written; same prose-not-IDs caveat — when it is, the interaction to
-  record against an ID is the flush.
+  assume `FW-3`'s drop policy handles everything its jails never see. That
+  spec is now written: `F2B-11`'s ban action is what builds the table, and
+  `F2B-15`'s restart is the only thing in a bootstrap run that starts the
+  jail again — a jail start being the only thing that puts back a ban for a
+  source that does not offend again, a reboot included. fail2ban rebuilds
+  the table itself, at its next ban, and re-bans the source that triggered
+  the rebuild, but never an address that has gone quiet. Those are the two
+  IDs its `## Interactions` records the flush against.
 - The emergency-access spec — its break-glass script repairs **both** halves
   of the narrowing, this spec's included, and may assume it can. It edits
   `/etc/nftables.conf` in place, strips the `iifname` qualifier off
@@ -528,7 +547,13 @@ between them.
   carries says what this spec says it says. What a completed run does *not*
   establish is that the kernel is enforcing that file: the start task
   succeeds on a host whose service was already running an older ruleset, and
-  the handler that would have fixed that is deferred to the end of the play.
+  the handler that would have fixed that only fires if *this run* changed
+  the file. The deferral is not what creates this gap, and an earlier
+  revision of this bullet said it was: the handler runs at the logging
+  role's flush, which is inside the run, so a completed run that did notify
+  it has already reloaded. What a completed run cannot tell you about is the
+  converged case — file unchanged, no notification, nothing reloaded, and a
+  kernel free to be holding something older.
   The unit's own state does not close that gap either — it is `oneshot` with
   `RemainAfterExit=yes`, so `ActiveState == active` means the last load
   exited zero, not that the rules it loaded are still in the kernel.

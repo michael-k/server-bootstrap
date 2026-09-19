@@ -249,11 +249,12 @@ than a separate variable), never permanently.
   to count; the SSH surface's brute-force resistance is the `fail2ban`
   spec's mechanism, not this one's, and it works by an entirely different
   method (parsing connection/authentication logs and adding firewall
-  rules) rather than by consulting `common-auth`. The `fail2ban` spec does
-  not exist yet as of this writing, so this interaction is described here
-  in prose rather than by requirement ID; the `fail2ban` spec, once
-  written, is expected to record the reciprocal side of this split and
-  reference this spec's `PAM-2` through `PAM-7` by ID.
+  rules) rather than by consulting `common-auth`. That spec is now
+  written: `F2B-8` through `F2B-11` are the mechanism, and
+  `specs/fail2ban/design.md`'s `## Interactions` records the reciprocal
+  side of this split against `PAM-2` through `PAM-7` by ID, including the
+  half this spec keeps — a source address means nothing at a console, so
+  those requirements remain the only bound on password guessing there.
 - `VRFY` — post-bootstrap verification and the integration suite may rely
   on `faillock.conf`, both PAM profiles, the legacy profile's absence, and
   `50-hardening.conf` matching this spec's settings exactly, including the

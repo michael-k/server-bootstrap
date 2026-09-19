@@ -9,7 +9,8 @@ rendered content; parse YAML task files to verify task parameters.
 
 Covers roles: fail2ban, logging, system_config, swap.
 
-Requirements: 10.1-10.7, LOG-1, LOG-2, LOG-3, LOG-4, LOG-5, TIME-1, TIME-2,
+Requirements: F2B-1, F2B-4, F2B-5, F2B-7, F2B-9, F2B-10, F2B-11, F2B-13,
+F2B-14, F2B-15, LOG-1, LOG-2, LOG-3, LOG-4,
 TIME-3, SWAP-1, SWAP-2, SWAP-5, SWAP-9, SWAP-10,
 SWAP-12, SWAP-15, SWAP-16
 """
@@ -51,7 +52,8 @@ def find_task(tasks: list[dict[str, Any]], name_fragment: str) -> dict[str, Any]
 # ---------------------------------------------------------------------------
 
 class TestFail2banConfiguration:
-    """Tests for fail2ban jail configuration values (Requirements 10.1-10.7)."""
+    """Tests for fail2ban jail configuration values (F2B-1, F2B-4, F2B-5, F2B-7,
+    F2B-9, F2B-10, F2B-11, F2B-13, F2B-14, F2B-15)."""
 
     @pytest.fixture
     def default_vars(self) -> dict:
@@ -69,55 +71,61 @@ class TestFail2banConfiguration:
         return make_env("fail2ban").get_template("jail.local.j2").render(**variables)
 
     def test_sshd_jail_enabled(self, default_vars):
-        """Req 10.2: [sshd] jail must be enabled."""
+        """F2B-4: the [sshd] jail is enabled when fail2ban_ssh_enabled is true."""
         config = self.render(default_vars)
         assert "[sshd]" in config
         assert "enabled = true" in config
 
     def test_banaction_is_nftables(self, default_vars):
-        """Req 10.5: banaction must use nftables integration."""
+        """F2B-11: banaction names the nftables action."""
         config = self.render(default_vars)
         assert "banaction = nftables-multiport" in config
 
     def test_max_retry_rendered(self, default_vars):
-        """Req 10.3: maxretry must reflect the configured value."""
+        """F2B-9: maxretry reflects the configured failure count."""
         config = self.render(default_vars)
         assert "maxretry = 5" in config
 
     def test_ban_time_rendered(self, default_vars):
-        """Req 10.4: bantime must reflect the configured value."""
+        """F2B-10: bantime reflects the configured ban duration."""
         config = self.render(default_vars)
         assert "bantime = 10m" in config
 
     def test_find_time_rendered(self, default_vars):
-        """Req 10.3: findtime must reflect the configured value."""
+        """F2B-9: findtime reflects the configured counting window."""
         config = self.render(default_vars)
         assert "findtime = 10m" in config
 
     def test_backend_is_systemd(self, default_vars):
-        """Req 10.2: backend must be systemd for journald log monitoring."""
+        """F2B-7: the [DEFAULT] backend is rendered from fail2ban_ssh_backend.
+
+        This is a claim about the rendered file, not about the [sshd] jail:
+        the distribution's jail.d/defaults-debian.conf sets backend at jail
+        level, which outranks [DEFAULT], so nothing here establishes what
+        that jail actually reads. See specs/fail2ban/design.md.
+        """
         config = self.render(default_vars)
         assert "backend = systemd" in config
 
     def test_ssh_port_in_jail(self, default_vars):
-        """Req 10.2: SSH port must be configured in the sshd jail."""
+        """F2B-5: the sshd jail names the port ssh_port configures."""
         config = self.render(default_vars)
         assert "port = 22" in config
 
     def test_custom_max_retry(self, default_vars):
-        """Req 10.3: Custom maxretry value is rendered correctly."""
+        """F2B-9: a custom maxretry value is rendered correctly."""
         default_vars["fail2ban_max_retry"] = 3
         config = self.render(default_vars)
         assert "maxretry = 3" in config
 
     def test_custom_ban_time(self, default_vars):
-        """Req 10.4: Custom ban time is rendered correctly."""
+        """F2B-10: a custom ban time is rendered correctly."""
         default_vars["fail2ban_ban_time"] = "1h"
         config = self.render(default_vars)
         assert "bantime = 1h" in config
 
     def test_install_task_exists(self):
-        """Req 10.1: A task to install fail2ban must exist."""
+        """F2B-1: fail2ban is installed from the distribution's repository."""
         tasks = load_tasks("fail2ban")
         task = find_task(tasks, "install fail2ban package")
         assert task is not None
@@ -126,7 +134,7 @@ class TestFail2banConfiguration:
         assert apt_params.get("state") == "present"
 
     def test_service_enabled_task_exists(self):
-        """Req 10.6: A task to enable fail2ban service must exist."""
+        """F2B-13: the fail2ban service is enabled at boot."""
         tasks = load_tasks("fail2ban")
         task = find_task(tasks, "enable fail2ban service")
         assert task is not None
@@ -135,7 +143,7 @@ class TestFail2banConfiguration:
         assert systemd_params.get("enabled") is True
 
     def test_service_started_task_exists(self):
-        """Req 10.7: A task to start fail2ban service must exist."""
+        """F2B-14: the fail2ban service is started."""
         tasks = load_tasks("fail2ban")
         task = find_task(tasks, "start fail2ban service")
         assert task is not None
@@ -144,11 +152,12 @@ class TestFail2banConfiguration:
         assert systemd_params.get("state") == "started"
 
     def test_template_deploy_notifies_restart(self):
-        """Fail2ban's own template-deploy-notifies-restart pattern.
+        """F2B-15: the jail configuration task notifies the restart handler.
 
         Tests fail2ban's "deploy fail2ban jail configuration" task, not
-        journald's. Fail2ban's own requirement for this pattern belongs to
-        its own spec, not yet written.
+        journald's. This asserts only that the task notifies something; it
+        does not assert the "and only when" half of F2B-15, which would need
+        a count of the notifying tasks in the role.
         """
         tasks = load_tasks("fail2ban")
         task = find_task(tasks, "deploy fail2ban jail configuration")

@@ -1,6 +1,21 @@
 ---
 # Fail2ban Role - Handlers
 
+# F2B-15: fail2ban reads its configuration when the server starts and not
+# afterwards, so a re-rendered jail.local takes effect only here. A jail start
+# also restores the currently banned sources from the server's own database,
+# which makes this restart the only thing in a bootstrap run that starts the
+# jail again - and a jail start is the only thing that puts back a ban
+# FW-15's flush discarded for a source that does not offend again. fail2ban
+# rebuilds the table on its own, at the next ban, and re-bans whoever
+# triggered that rebuild, but never an address that has gone quiet; a reboot
+# starts the jail too. Handlers run in
+# role-definition order and site.yml lists firewall first, so at the next
+# flush point - which is the logging role's own meta: flush_handlers, not the
+# end of the play - the nftables reload runs before this restart. On a run
+# that changes both files this restart therefore repairs the loss; on a run
+# that changes only the ruleset, nothing here runs.
+# See specs/fail2ban/design.md.
 - name: Restart fail2ban
   ansible.builtin.systemd:
     name: fail2ban

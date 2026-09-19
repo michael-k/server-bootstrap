@@ -1,6 +1,6 @@
 ---
 # Fail2ban Role - Main Tasks
-# Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7
+# Requirements: F2B-1, F2B-2, F2B-3, F2B-13, F2B-14, F2B-15
 
 - name: Install fail2ban package
   ansible.builtin.apt:
@@ -10,7 +10,10 @@
   tags:
     - fail2ban
     - security
-  # Requirement 10.1: Install fail2ban from Debian repository
+  # F2B-1: the distribution's package supplies the jail definitions, the sshd
+  # filter's regular expressions, the nftables ban action and a unit ordered
+  # after nftables.service; the cache refresh is for a host whose package
+  # index predates this run.
 
 - name: Ensure fail2ban configuration directory exists
   ansible.builtin.file:
@@ -22,6 +25,9 @@
   tags:
     - fail2ban
     - security
+  # F2B-2: the package already creates this directory, so this task states its
+  # mode and ownership rather than creating it, and reconverges a host where
+  # either has drifted.
 
 - name: Deploy fail2ban jail configuration
   ansible.builtin.template:
@@ -34,11 +40,11 @@
   tags:
     - fail2ban
     - security
-  # Requirements:
-  # 10.2: Configure fail2ban to monitor SSHD logs
-  # 10.3: Configure max_retry and find_time
-  # 10.4: Configure ban_time
-  # 10.5: Configure NFTables integration via banaction
+  # F2B-3: jail.local is read after the packaged jail.conf and after
+  # jail.d/*.conf, so this project overrides the package without editing a
+  # file a package upgrade would replace.
+  # F2B-15: this is the only task in the role that notifies the handler, so an
+  # unchanged jail configuration leaves the running server alone.
 
 - name: Enable fail2ban service
   ansible.builtin.systemd:
@@ -47,7 +53,8 @@
   tags:
     - fail2ban
     - security
-  # Requirement 10.6: Enable fail2ban service to start on boot
+  # F2B-13: the packaged unit declares After=nftables.service, so enabling it
+  # is what puts the jail's table back after every boot's ruleset load.
 
 - name: Start fail2ban service
   ansible.builtin.systemd:
@@ -56,4 +63,5 @@
   tags:
     - fail2ban
     - security
-  # Requirement 10.7: Start fail2ban service
+  # F2B-14: the deployed configuration does nothing until a server reads it,
+  # so a completed run leaves the service running, not merely enabled.

@@ -583,10 +583,11 @@ along with several others and asserts that a role deploying a template
 notifies a handler, that the handler uses a service module and a
 restarted-or-reloaded state, and — its one structural check — that every
 notified handler name is actually defined in `handlers/main.yml`. Note that
-Ansible runs handlers at the end of the play, not at the end of this role,
-so the restart happens after every later role has run; `design.md`'s
-`## Failure modes` records what that means when the new configuration is
-one sshd cannot bind.
+the handler does not run at the end of this role: it runs at the next
+handler flush after it, which the logging role forces as its last task, so
+the restart happens after the firewall, emergency-access, fail2ban and
+logging roles and before `swap`. `design.md`'s `## Failure modes` records
+what that means when the new configuration is one sshd cannot bind.
 
 ### SSH-18 — Listen addresses bound to the tailnet when enrolled, to all interfaces otherwise
 
@@ -670,7 +671,8 @@ variable, a list that joins to nothing, a value that is not of the type the
 directive takes — produces a file sshd refuses to load, and sshd refuses by
 exiting rather than by falling back. Without this check the sequence is:
 Ansible writes the broken file, reports success, `SSH-17` restarts the
-daemon at the end of the play, and the daemon does not come back. Running
+daemon at the logging role's handler flush, and the daemon does not come
+back. Running
 sshd's own parser over the candidate first turns that into an ordinary task
 failure with the previous, working configuration untouched and the host as
 reachable as it was — which is `INV-6`'s recoverability expressed as a

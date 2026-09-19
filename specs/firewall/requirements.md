@@ -507,8 +507,11 @@ THE Bootstrap SHALL start the nftables service.
 **Why:** a first run must end with the rules in force, not with a correct
 file waiting for a reboot. On a host where the service was not previously
 running, this task is what first loads the ruleset: `FW-19`'s handler does
-not fire until the end of the play, so without this the host would spend
-every remaining role unfiltered.
+not fire until the next handler flush after this role, which the logging
+role forces as its last task, so without this the host would spend the
+emergency-access, fail2ban and logging roles unfiltered. That is a shorter
+span than "the rest of the play" — `swap` runs after the flush — and it is
+still every role that opens or reacts to network exposure.
 **Verified:** `test_property_18_nftables_stateful_firewall_rules` and
 `test_property_21_nftables_service_persistence` assert `state: started`
 appears in the tasks file, the latter confirming it sits on a systemd task

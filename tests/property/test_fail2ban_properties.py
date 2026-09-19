@@ -95,16 +95,22 @@ class TestFail2banProperties:
         configured to monitor SSHD logs, configured with a configurable ban threshold
         and duration, integrated with NFTables, enabled to start on boot, and started.
 
-        Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7
+        Validates: F2B-1, F2B-2, F2B-3, F2B-4, F2B-5, F2B-7, F2B-9, F2B-10,
+        F2B-11, F2B-13, F2B-14, F2B-15
         """
-        # This property test verifies the fail2ban role's behavior by checking:
-        # 1. fail2ban is installed from Debian repository (Requirement 10.1)
-        # 2. fail2ban is configured to monitor SSHD logs (Requirement 10.2)
-        # 3. fail2ban is configured with max_retry and find_time (Requirement 10.3)
-        # 4. fail2ban is configured with ban_time (Requirement 10.4)
-        # 5. fail2ban is integrated with NFTables (Requirement 10.5)
-        # 6. fail2ban service is enabled to start on boot (Requirement 10.6)
-        # 7. fail2ban service is started (Requirement 10.7)
+        # This property test reads the role's files and asserts on their text:
+        # 1. fail2ban is installed from the distribution's repository (F2B-1)
+        # 2. the configuration directory and the jail file are managed
+        #    (F2B-2, F2B-3)
+        # 3. the SSH jail exists and names the SSH port (F2B-4, F2B-5)
+        # 4. the counters and the ban duration are configurable
+        #    (F2B-9, F2B-10)
+        # 5. bans go in through nftables (F2B-11)
+        # 6. the service is enabled at boot and started (F2B-13, F2B-14)
+        # 7. a jail configuration change notifies the restart handler (F2B-15)
+        #
+        # Every assertion below is a substring check against a file's text.
+        # None of them starts fail2ban or observes a ban.
 
         # Read the fail2ban role tasks
         tasks_path = Path("roles/fail2ban/tasks/main.yml")
@@ -112,12 +118,12 @@ class TestFail2banProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # Verify Requirement 10.1: fail2ban is installed from Debian repository
+        # F2B-1: fail2ban is installed from the distribution's repository
         assert "ansible.builtin.apt:" in tasks_content, (
             "Fail2ban must be installed using ansible.builtin.apt module"
         )
         assert "name: fail2ban" in tasks_content, (
-            "Fail2ban package must be installed (Requirement 10.1)"
+            "Fail2ban package must be installed (F2B-1)"
         )
         assert "state: present" in tasks_content, (
             "Fail2ban package state must be present"
@@ -152,7 +158,7 @@ class TestFail2banProperties:
             "Configuration changes must trigger fail2ban service restart"
         )
 
-        # Verify Requirement 10.6: fail2ban service is enabled
+        # F2B-13: fail2ban service is enabled at boot
         assert "ansible.builtin.systemd:" in tasks_content, (
             "Fail2ban service must be managed using systemd module"
         )
@@ -160,12 +166,12 @@ class TestFail2banProperties:
             "Service name must be fail2ban"
         )
         assert "enabled: true" in tasks_content or "enabled: yes" in tasks_content, (
-            "Fail2ban service must be enabled to start on boot (Requirement 10.6)"
+            "Fail2ban service must be enabled to start on boot (F2B-13)"
         )
 
-        # Verify Requirement 10.7: fail2ban service is started
+        # F2B-14: fail2ban service is started
         assert "state: started" in tasks_content, (
-            "Fail2ban service must be started (Requirement 10.7)"
+            "Fail2ban service must be started (F2B-14)"
         )
 
         # Verify tasks are properly tagged
@@ -185,17 +191,17 @@ class TestFail2banProperties:
 
         defaults_content = defaults_path.read_text()
 
-        # Verify Requirement 10.3: max_retry and find_time are configurable
+        # F2B-9: max retry and find time are configurable
         assert "fail2ban_max_retry:" in defaults_content, (
-            "fail2ban_max_retry must be defined in defaults (Requirement 10.3)"
+            "fail2ban_max_retry must be defined in defaults (F2B-9)"
         )
         assert "fail2ban_find_time:" in defaults_content, (
-            "fail2ban_find_time must be defined in defaults (Requirement 10.3)"
+            "fail2ban_find_time must be defined in defaults (F2B-9)"
         )
 
-        # Verify Requirement 10.4: ban_time is configurable
+        # F2B-10: ban time is configurable
         assert "fail2ban_ban_time:" in defaults_content, (
-            "fail2ban_ban_time must be defined in defaults (Requirement 10.4)"
+            "fail2ban_ban_time must be defined in defaults (F2B-10)"
         )
 
         # Verify SSH jail is configurable
@@ -208,14 +214,14 @@ class TestFail2banProperties:
             "fail2ban backend must be configurable"
         )
 
-        # Verify Requirement 10.5: NFTables integration is configured
+        # F2B-11: the nftables ban action is configured
         assert "fail2ban_banaction:" in defaults_content, (
-            "fail2ban banaction must be defined for NFTables integration (Requirement 10.5)"
+            "fail2ban banaction must be defined for NFTables integration (F2B-11)"
         )
 
         # Verify default banaction uses nftables
         assert "nftables" in defaults_content.lower(), (
-            "Default banaction must use nftables for firewall integration (Requirement 10.5)"
+            "Default banaction must use nftables for firewall integration (F2B-11)"
         )
 
         # Read the jail configuration template
@@ -224,9 +230,9 @@ class TestFail2banProperties:
 
         template_content = template_path.read_text()
 
-        # Verify Requirement 10.2: SSHD monitoring is configured
+        # F2B-4: the SSH jail exists and is gated on fail2ban_ssh_enabled
         assert "[sshd]" in template_content, (
-            "SSH jail must be configured to monitor SSHD (Requirement 10.2)"
+            "SSH jail must be configured to monitor SSHD (F2B-4)"
         )
         assert "enabled = " in template_content, (
             "SSH jail must have enabled directive"
@@ -240,24 +246,24 @@ class TestFail2banProperties:
             "SSH jail must use sshd filter for log parsing"
         )
 
-        # Verify Requirement 10.3: max_retry is configured
+        # F2B-9: max retry is rendered from the variable
         assert "maxretry = {{ fail2ban_max_retry }}" in template_content, (
-            "SSH jail must use fail2ban_max_retry variable (Requirement 10.3)"
+            "SSH jail must use fail2ban_max_retry variable (F2B-9)"
         )
 
-        # Verify Requirement 10.4: ban_time is configured
+        # F2B-10: ban time is rendered from the variable
         assert "bantime = {{ fail2ban_ban_time }}" in template_content, (
-            "SSH jail must use fail2ban_ban_time variable (Requirement 10.4)"
+            "SSH jail must use fail2ban_ban_time variable (F2B-10)"
         )
 
-        # Verify Requirement 10.3: find_time is configured
+        # F2B-9: find time is rendered from the variable
         assert "findtime = {{ fail2ban_find_time }}" in template_content, (
-            "SSH jail must use fail2ban_find_time variable (Requirement 10.3)"
+            "SSH jail must use fail2ban_find_time variable (F2B-9)"
         )
 
-        # Verify Requirement 10.5: NFTables banaction is configured
+        # F2B-11: the ban action is rendered from the variable
         assert "banaction = {{ fail2ban_banaction }}" in template_content, (
-            "Jail configuration must use fail2ban_banaction variable (Requirement 10.5)"
+            "Jail configuration must use fail2ban_banaction variable (F2B-11)"
         )
 
         # Verify backend is configured
@@ -340,17 +346,12 @@ class TestFail2banProperties:
             "Restart handler must restart the service"
         )
 
-        # Property verified: The fail2ban role configuration ensures that:
-        # - fail2ban is installed from Debian repository (10.1)
-        # - fail2ban is configured to monitor SSHD logs (10.2)
-        # - max_retry and find_time are configurable (10.3)
-        # - ban_time is configurable (10.4)
-        # - NFTables integration is configured via banaction (10.5)
-        # - fail2ban service is enabled to start on boot (10.6)
-        # - fail2ban service is started (10.7)
-        # - Configuration changes trigger service restart
-        # - Tasks are properly tagged for selective execution
-        # - This applies consistently across all valid configuration values
+        # What this establishes: the role's files contain the strings above
+        # for every generated combination of configuration values. What it
+        # does not establish: that any of it takes effect. The values the
+        # strategies generate are never rendered into the template and never
+        # reach fail2ban, so this property holds identically for a role that
+        # is deployed and one that is not.
 
 
 class TestFail2banJournaldIntegrationProperties:
@@ -366,9 +367,14 @@ class TestFail2banJournaldIntegrationProperties:
         """
         Feature: vps-bootstrap-playbook, Fail2ban Journald Backend Configuration
 
-        For any execution of the bootstrap playbook with systemd-based logging,
-        fail2ban SHALL be configured to use the journald backend for log monitoring,
-        ensuring compatibility with modern systemd-based systems.
+        Validates: F2B-7
+
+        This asserts on the rendered jail file's backend line and on the
+        defaults file, which is F2B-7's claim. It does not establish what
+        backend the [sshd] jail is created with: the distribution's
+        jail.d/defaults-debian.conf sets backend at jail level, which
+        outranks [DEFAULT]. Note also that the template assertion below is
+        not scoped to the [DEFAULT] section. See specs/fail2ban/design.md.
 
         This property verifies that:
         - Backend is configurable
@@ -438,9 +444,14 @@ class TestFail2banNFTablesIntegrationProperties:
         """
         Feature: vps-bootstrap-playbook, Fail2ban NFTables Integration
 
-        For any execution of the bootstrap playbook, fail2ban SHALL be configured
-        to use NFTables for dynamic IP blocking, ensuring integration with the
-        firewall component.
+        Validates: F2B-11
+
+        Asserts on the rendered text only. Nothing here observes the table the
+        ban action builds, nor that a ban is ever installed. The
+        banaction_allports assertion's failure message says "for all-port
+        blocking", which the value it asserts does not produce - Debian's own
+        default for that setting is nftables[type=allports] and this project
+        replaces it with a multiport action. See specs/fail2ban/design.md.
 
         This property verifies that:
         - Banaction is configurable
@@ -520,14 +531,19 @@ class TestFail2banConfigurationValidationProperties:
         """
         Feature: vps-bootstrap-playbook, Fail2ban Configuration Consistency
 
-        For any execution of the bootstrap playbook with configured fail2ban parameters,
-        the configuration SHALL be consistent between DEFAULT section and SSH jail section,
-        ensuring predictable behavior.
+        Validates: F2B-9, F2B-10, F2B-12
+
+        F2B-12's coverage here is presence only. This asserts that the three
+        counters appear in both sections; it does not establish what the
+        restatement buys, which is that a jail-level setting outranks
+        [DEFAULT] from every file fail2ban reads. The assertion below that the
+        template mentions inheritance is a substring check on the word, so it
+        passes whether the surrounding sentence is true or false.
 
         This property verifies that:
-        - Configuration parameters are defined in DEFAULT section
-        - SSH jail inherits from DEFAULT section
-        - SSH jail can override DEFAULT values if needed
+        - Configuration parameters are defined in the DEFAULT section
+        - The SSH jail restates them at jail level
+        - Both copies render from the same variable
         """
         # Read the jail configuration template
         template_path = Path("roles/fail2ban/templates/jail.local.j2")

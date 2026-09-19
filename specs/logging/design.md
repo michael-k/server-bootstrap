@@ -99,8 +99,10 @@ already-active mount unit, there is no equivalent gap here: `systemd`'s
   from a test whose own text denied verifying `LOG-4`. The fix was to drop
   the numeric citation from that test entirely rather than launder it — the
   docstring now names the shared pattern in plain English and points at
-  `fail2ban` as its owner, with no requirement ID of any prefix, since
-  `fail2ban`'s own spec (`F2B`) does not exist yet. This spec's `LOG-4`
+  `fail2ban` as its owner. `F2B` has since been written, and that docstring
+  now carries `F2B-15` — fail2ban's own requirement for the pattern — which
+  is the citation it should always have had; what it still does not carry is
+  any `LOG` citation, which was the point. This spec's `LOG-4`
   `**Verified:**` line never credited that test.
 - **The task named "Ensure journald configuration directory exists" creates
   `/var/log/journal`, which is the journal's storage directory, not

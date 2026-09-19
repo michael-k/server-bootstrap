@@ -270,7 +270,8 @@ it — and is not guaranteed to have `knockd` installed. It reports
 - **Turning `port_knocking_enabled` off on a re-run silently publishes the
   SSH port.** The flag selects between this spec's branch and `FW-13`'s, so
   a re-run with the flag flipped renders the unqualified accept, and
-  `FW-19`'s handler loads it at the end of the play. Nothing warns, and the
+  `FW-19`'s handler loads it at the logging role's handler flush. Nothing
+  warns, and the
   run reports one changed template among many. `INV-9` is not violated —
   the operator asked for it — but the gap between the size of the inventory
   edit and the size of the change to the host's exposure is worth naming.
@@ -400,10 +401,12 @@ it — and is not guaranteed to have `knockd` installed. It reports
   assume it will see none, and nothing here changes what it does: the jail
   reads sshd's log, which is written after the firewall has already admitted
   the connection, so the two are independent layers and fail2ban's bans
-  apply to knock-passed sources exactly as they would to any other. Not yet
-  written; when it is, the interaction worth recording against an ID is that
-  a ban table of its own is not disturbed by anything here, and that this
-  spec is upstream of its evidence, not a substitute for it.
+  apply to knock-passed sources exactly as they would to any other. That
+  spec is now written and its `## Interactions` records both halves against
+  `KNOCK-9`: that nothing here disturbs its own ban table, since this spec's
+  sets and rules all live inside `FW`'s `inet filter` table and only
+  `FW-15`'s flush reaches `inet f2b-table`, and that this spec is upstream
+  of its evidence rather than a substitute for it.
 - `VRFY` — that a completed bootstrap leaves the six sets and the staged
   rules in the deployed file, that the SSH port is open to no source that
   has not knocked, and that the sequence in the file is the one

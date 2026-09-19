@@ -3,7 +3,10 @@
 
 # SSH-17: sshd reads its configuration at startup, so a deployed file the
 # running daemon has not read leaves the host unhardened while reporting
-# success. Ansible flushes handlers at the end of the play, not of this role.
+# success. Ansible does not flush handlers at the end of this role: this one
+# runs at the next flush after it, which roles/logging/tasks/main.yml forces
+# as its last task, so the restart lands after the firewall, emergency-access
+# and fail2ban roles.
 - name: Restart sshd
   ansible.builtin.systemd:
     name: sshd
