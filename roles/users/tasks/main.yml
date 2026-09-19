@@ -247,6 +247,9 @@
 # Login Policy Hardening
 # Harden login.defs, restrict console TTYs, enforce shell idle timeout
 
+# LOGIN-1: render the whole file from a template so every hardened setting
+# is reviewed in one place, while everything else Debian shipped is left
+# untouched.
 - name: Deploy hardened login.defs
   ansible.builtin.template:
     src: login.defs.j2
@@ -258,6 +261,9 @@
     - users
     - login_policy
 
+# LOGIN-3: this is what makes /etc/securetty (LOGIN-4) actually enforced
+# for root at the console; scoped to /etc/pam.d/login only, not sshd, su
+# or sudo.
 - name: Ensure pam_securetty is enabled for console login
   ansible.builtin.lineinfile:
     path: /etc/pam.d/login
@@ -268,6 +274,9 @@
     - users
     - login_policy
 
+# LOGIN-4: the fixed TTY allow-list pam_securetty consults. No pts/ entry
+# is present, which is what keeps a network-terminated session from ever
+# presenting a tty this file accepts.
 - name: Deploy securetty for console TTY restrictions
   ansible.builtin.template:
     src: securetty.j2
@@ -279,6 +288,9 @@
     - users
     - login_policy
 
+# LOGIN-5, LOGIN-6: a configurable, exported TMOUT marked readonly in the
+# shell that sources it — advisory, not enforcement; see the login-policy
+# design's Key decisions for what readonly does and does not cover.
 - name: Deploy shell idle timeout
   ansible.builtin.template:
     src: shell-timeout.sh.j2

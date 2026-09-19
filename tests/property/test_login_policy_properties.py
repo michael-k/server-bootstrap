@@ -3,6 +3,9 @@ Property-based tests for login policy hardening in VPS Bootstrap Playbook.
 
 These tests verify universal properties about the login policy templates
 and the users role tasks that deploy login hardening.
+
+Requirements: LOGIN-1, LOGIN-2, LOGIN-3, LOGIN-4, LOGIN-5, LOGIN-6, LOGIN-7,
+LOGIN-8, LOGIN-9
 """
 
 from pathlib import Path
@@ -23,7 +26,7 @@ class TestLoginPolicyDefaults:
 
         The users role defaults SHALL define login_policy_tmout.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-5
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         assert defaults_path.exists(), "Users defaults must exist"
@@ -42,7 +45,7 @@ class TestLoginPolicyDefaults:
 
         The users role defaults SHALL define login_policy_umask.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-7
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -59,7 +62,7 @@ class TestLoginPolicyDefaults:
 
         The users role defaults SHALL define login_policy_retries.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-8
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -76,7 +79,7 @@ class TestLoginPolicyDefaults:
 
         The users role defaults SHALL define login_policy_timeout.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-9
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -98,7 +101,7 @@ class TestShellTimeoutProperties:
         The shell timeout template SHALL set the TMOUT variable
         using the login_policy_tmout variable.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-5
         """
         template_path = Path("roles/users/templates/shell-timeout.sh.j2")
         assert template_path.exists(), "Shell timeout template must exist"
@@ -116,10 +119,13 @@ class TestShellTimeoutProperties:
         """
         Feature: vps-bootstrap-playbook, Shell Timeout Is Readonly
 
-        The shell timeout template SHALL mark TMOUT as readonly
-        to prevent users from disabling the timeout.
+        The shell timeout template SHALL mark TMOUT as readonly, which
+        stops the shell that sourced it from reassigning or unsetting it
+        later in the same session — advisory, not a guarantee that no
+        shell ever runs without the timeout (see the login-policy design's
+        Key decisions for what readonly does not cover).
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-6
         """
         template_path = Path("roles/users/templates/shell-timeout.sh.j2")
         content = template_path.read_text()
@@ -137,7 +143,7 @@ class TestShellTimeoutProperties:
         The shell timeout template SHALL export TMOUT so it applies
         to child shells.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-5
         """
         template_path = Path("roles/users/templates/shell-timeout.sh.j2")
         content = template_path.read_text()
@@ -178,7 +184,7 @@ class TestSecurettyProperties:
         The securetty template SHALL list tty1 through tty6
         for KVM/physical console access.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-4
         """
         template_path = Path("roles/users/templates/securetty.j2")
         assert template_path.exists(), "Securetty template must exist"
@@ -207,7 +213,7 @@ class TestSecurettyProperties:
         The securetty template SHALL list ttyS0 and ttyS1
         for serial console access.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-4
         """
         template_path = Path("roles/users/templates/securetty.j2")
         content = template_path.read_text()
@@ -226,7 +232,7 @@ class TestSecurettyProperties:
         The securetty template SHALL NOT contain pts/ entries.
         Root should not be able to log in via pseudo-terminals.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-4
         """
         template_path = Path("roles/users/templates/securetty.j2")
         content = template_path.read_text()
@@ -269,7 +275,7 @@ class TestLoginDefsProperties:
         The login.defs template SHALL contain all hardened settings
         using their corresponding configurable variables.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-7, LOGIN-8, LOGIN-9
         """
         template_path = Path("roles/users/templates/login.defs.j2")
         assert template_path.exists(), "login.defs template must exist"
@@ -293,7 +299,7 @@ class TestLoginDefsProperties:
         The login.defs template SHALL set LOG_OK_LOGINS to yes
         to log successful console logins.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-2
         """
         template_path = Path("roles/users/templates/login.defs.j2")
         content = template_path.read_text()
@@ -317,7 +323,7 @@ class TestLoginDefsProperties:
         The login.defs template SHALL preserve Debian's default UID
         ranges (UID_MIN 1000, UID_MAX 60000) to avoid breaking user creation.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-1
         """
         template_path = Path("roles/users/templates/login.defs.j2")
         content = template_path.read_text()
@@ -336,7 +342,7 @@ class TestLoginDefsProperties:
         The login.defs template SHALL preserve ENCRYPT_METHOD YESCRYPT
         to maintain password hashing compatibility.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-1
         """
         template_path = Path("roles/users/templates/login.defs.j2")
         content = template_path.read_text()
@@ -357,7 +363,7 @@ class TestLoginDefsProperties:
         The login.defs template SHALL preserve HOME_MODE 0700
         for secure home directory permissions.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-1
         """
         template_path = Path("roles/users/templates/login.defs.j2")
         content = template_path.read_text()
@@ -377,7 +383,7 @@ class TestLoginPolicyTasksProperties:
 
         The users role tasks SHALL deploy the login.defs template.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-1
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         assert tasks_path.exists(), "Users tasks must exist"
@@ -399,7 +405,7 @@ class TestLoginPolicyTasksProperties:
 
         The users role tasks SHALL deploy the securetty template.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-4
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()
@@ -420,7 +426,7 @@ class TestLoginPolicyTasksProperties:
         The users role tasks SHALL deploy the shell timeout template
         to /etc/profile.d/.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-5
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()
@@ -441,7 +447,7 @@ class TestLoginPolicyTasksProperties:
         The users role tasks SHALL ensure pam_securetty.so is enabled
         in /etc/pam.d/login.
 
-        Validates: Login policy hardening design spec
+        Validates: LOGIN-3
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()

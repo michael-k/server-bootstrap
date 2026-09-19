@@ -1,5 +1,8 @@
 # Console TTY restrictions — deployed by Ansible
 # Only listed TTYs allow root login. pam_securetty.so enforces this.
+# LOGIN-4: no pseudo-terminal entry is listed here — that is what keeps a
+# network-terminated session (SSH included) from ever presenting a tty
+# this file accepts for direct root login.
 
 # Virtual console TTYs (KVM/physical console)
 tty1

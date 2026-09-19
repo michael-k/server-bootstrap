@@ -1,6 +1,10 @@
 # Shell idle timeout — deployed by Ansible
 # Logs out idle interactive shells after the configured timeout.
 # Only affects shells waiting at the prompt, not running commands.
+# LOGIN-5: configurable timeout, exported so child shells inherit it.
 TMOUT={{ login_policy_tmout }}
+# LOGIN-6: advisory only — stops this shell reassigning TMOUT later in
+# the same session, not a shell that never sources this file at all. See
+# the login-policy design's Key decisions for what this does not cover.
 readonly TMOUT
 export TMOUT

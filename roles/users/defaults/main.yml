@@ -38,9 +38,15 @@ authorized_keys_mode: "0600"
 sudo_timestamp_timeout: 5
 
 # Login policy hardening
+# LOGIN-5: shell idle timeout in seconds, configurable.
 login_policy_tmout: 600
+# LOGIN-7: default file-creation mask, hardened from Debian's implicit 022.
 login_policy_umask: "027"
+# LOGIN-8: console login retry limit, configurable; matches SSH's own
+# MaxAuthTries by design.
 login_policy_retries: 3
+# LOGIN-9: console login timeout in seconds, configurable; matches SSH's
+# own LoginGraceTime by design.
 login_policy_timeout: 30
 
 # PAM hardening — account lockout

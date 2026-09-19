@@ -17,6 +17,7 @@ MAIL_DIR        /var/mail
 LOG_UNKFAIL_ENAB    no
 
 # [HARDENED] Log successful logins (Debian default: no)
+# LOGIN-2: gives console login an audit trail parallel to sshd's own.
 LOG_OK_LOGINS       yes
 
 #
@@ -46,6 +47,8 @@ KILLCHAR    025
 #
 # Home directory permissions for new users
 #
+# LOGIN-1: preserved at Debian's shipped value; not one of this spec's
+# hardened settings.
 HOME_MODE   0700
 
 #
@@ -58,6 +61,8 @@ PASS_WARN_AGE   7
 #
 # UID/GID allocation ranges
 #
+# LOGIN-1: preserved at Debian's shipped values; not one of this spec's
+# hardened settings.
 UID_MIN         1000
 UID_MAX         60000
 
@@ -79,9 +84,13 @@ SUB_GID_COUNT   65536
 # Console login security
 #
 # [HARDENED] Max login attempts before failure (Debian default: 5)
+# LOGIN-8: configurable; matches SSH's own MaxAuthTries by design, not by
+# a shared variable.
 LOGIN_RETRIES   {{ login_policy_retries }}
 
 # [HARDENED] Seconds to complete login (Debian default: 60)
+# LOGIN-9: configurable; matches SSH's own LoginGraceTime by design, not
+# by a shared variable.
 LOGIN_TIMEOUT   {{ login_policy_timeout }}
 
 #
@@ -89,6 +98,8 @@ LOGIN_TIMEOUT   {{ login_policy_timeout }}
 #
 # [HARDENED] Default umask (Debian default: 022 implicit)
 # 027 = files rw-r-----, directories rwxr-x---
+# LOGIN-7: configurable; removes the "other" bits Debian's implicit 022
+# leaves in place.
 UMASK       {{ login_policy_umask }}
 
 #
@@ -99,6 +110,8 @@ CHFN_RESTRICT   rwh
 #
 # Password encryption method
 #
+# LOGIN-1: preserved at Debian's shipped value; not one of this spec's
+# hardened settings.
 ENCRYPT_METHOD  YESCRYPT
 
 #
