@@ -2,14 +2,23 @@
 # Prevents fork bombs, caps file descriptors, disables core dumps.
 # Only affects PAM-authenticated sessions (login shells, SSH).
 # Systemd services set their own limits via LimitNOFILE= independently.
+# PAM-16: this whole file is rendered from this one template.
+# PAM-15: every directive below is a hard limit; none is a soft one.
 
 # Prevent fork bombs — hard limit on number of processes
+# PAM-10: max processes for ordinary accounts, configurable.
+# PAM-11: max processes for root, configurable separately from PAM-10.
 *               hard    nproc           {{ pam_limits_nproc }}
 root            hard    nproc           {{ pam_limits_nproc_root }}
 
 # Cap open file descriptors — prevents fd exhaustion
+# PAM-12: max open file descriptors for ordinary accounts, configurable.
+# PAM-13: max open file descriptors for root, configurable separately
+# from PAM-12.
 *               hard    nofile          {{ pam_limits_nofile }}
 root            hard    nofile          {{ pam_limits_nofile_root }}
 
 # Disable core dumps — prevents credential leaks in dumps
+# PAM-14: hardcoded to 0, not exposed as a variable — this is security
+# policy, not a tunable.
 *               hard    core            0

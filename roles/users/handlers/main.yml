@@ -1,6 +1,11 @@
 ---
 # Handlers for users role
 
+# PAM-9: rebuilds /etc/pam.d/common-auth from the pam-auth-update source
+# files the tasks above deploy or remove; nothing else regenerates
+# common-auth from those sources. changed_when: true because
+# pam-auth-update has no notion of a no-op — see design.md's Failure
+# modes for what that means on every notified run.
 - name: Rebuild PAM common-auth
   ansible.builtin.command:
     cmd: pam-auth-update --enable faillock-preauth faillock-authfail

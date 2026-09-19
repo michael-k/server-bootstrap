@@ -23,7 +23,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_faillock_deny.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-2
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         assert defaults_path.exists(), "Users defaults must exist"
@@ -42,7 +42,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_faillock_unlock_time.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-3
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -59,7 +59,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_faillock_fail_interval.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-4
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -76,7 +76,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_limits_nproc.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-10
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -93,7 +93,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_limits_nproc_root.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-11
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -110,7 +110,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_limits_nofile.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-12
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -127,7 +127,7 @@ class TestPamHardeningDefaults:
 
         The users role defaults SHALL define pam_limits_nofile_root.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-13
         """
         defaults_path = Path("roles/users/defaults/main.yml")
         content = defaults_path.read_text()
@@ -170,7 +170,7 @@ class TestFaillockConfProperties:
         The faillock.conf template SHALL contain deny, unlock_time, and
         fail_interval using their corresponding configurable variables.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-2, PAM-3, PAM-4
         """
         template_path = Path("roles/users/templates/faillock.conf.j2")
         assert template_path.exists(), "faillock.conf template must exist"
@@ -194,7 +194,7 @@ class TestFaillockConfProperties:
         The faillock.conf template SHALL hardcode even_deny_root = true.
         Root lockout is security policy, not configurable.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-5
         """
         template_path = Path("roles/users/templates/faillock.conf.j2")
         content = template_path.read_text()
@@ -217,7 +217,7 @@ class TestFaillockConfProperties:
         The faillock.conf template SHALL set root_unlock_time using the
         pam_faillock_unlock_time variable (same as regular users).
 
-        Validates: PAM hardening design spec
+        Validates: PAM-5
         """
         template_path = Path("roles/users/templates/faillock.conf.j2")
         content = template_path.read_text()
@@ -247,7 +247,7 @@ class TestFaillockPamProfileProperties:
         The preauth profile SHALL have priority > 256 (pam_unix) so it
         runs before password authentication.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-6
         """
         template_path = Path("roles/users/templates/faillock-preauth-pam-config.j2")
         assert template_path.exists(), "Faillock preauth profile template must exist"
@@ -267,7 +267,7 @@ class TestFaillockPamProfileProperties:
         The authfail profile SHALL have priority < 256 (pam_unix) so it
         runs after password authentication.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-7
         """
         template_path = Path("roles/users/templates/faillock-authfail-pam-config.j2")
         assert template_path.exists(), "Faillock authfail profile template must exist"
@@ -287,7 +287,7 @@ class TestFaillockPamProfileProperties:
         The preauth profile SHALL contain the pam_faillock.so preauth
         directive in both Auth and Auth-Initial sections.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-6
         """
         template_path = Path("roles/users/templates/faillock-preauth-pam-config.j2")
         content = template_path.read_text()
@@ -311,7 +311,7 @@ class TestFaillockPamProfileProperties:
         The authfail profile SHALL contain the pam_faillock.so authfail
         directive in both Auth and Auth-Initial sections.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-7
         """
         template_path = Path("roles/users/templates/faillock-authfail-pam-config.j2")
         content = template_path.read_text()
@@ -335,7 +335,7 @@ class TestFaillockPamProfileProperties:
         The authfail profile SHALL contain an Account section to reset
         the failure counter on successful login.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-17
         """
         template_path = Path("roles/users/templates/faillock-authfail-pam-config.j2")
         content = template_path.read_text()
@@ -356,7 +356,7 @@ class TestFaillockPamProfileProperties:
         Both faillock profiles SHALL set Default to yes so
         pam-auth-update enables them automatically.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-6, PAM-7
         """
         for name in ("faillock-preauth-pam-config.j2", "faillock-authfail-pam-config.j2"):
             template_path = Path(f"roles/users/templates/{name}")
@@ -392,7 +392,7 @@ class TestResourceLimitsProperties:
         The resource limits template SHALL contain nproc, nofile, and
         core limit definitions.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-10, PAM-11, PAM-12, PAM-13, PAM-14
         """
         template_path = Path("roles/users/templates/50-hardening.conf.j2")
         assert template_path.exists(), "Resource limits template must exist"
@@ -412,7 +412,7 @@ class TestResourceLimitsProperties:
         The resource limits template SHALL hardcode core to 0 to prevent
         credential leaks in core dumps.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-14
         """
         template_path = Path("roles/users/templates/50-hardening.conf.j2")
         content = template_path.read_text()
@@ -435,7 +435,7 @@ class TestResourceLimitsProperties:
         The resource limits template SHALL define a separate nproc limit
         for root using the pam_limits_nproc_root variable.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-10, PAM-11
         """
         template_path = Path("roles/users/templates/50-hardening.conf.j2")
         content = template_path.read_text()
@@ -456,7 +456,7 @@ class TestResourceLimitsProperties:
         The resource limits template SHALL define a separate nofile limit
         for root using the pam_limits_nofile_root variable.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-12, PAM-13
         """
         template_path = Path("roles/users/templates/50-hardening.conf.j2")
         content = template_path.read_text()
@@ -477,7 +477,7 @@ class TestResourceLimitsProperties:
         The resource limits template SHALL use hard limits only (not soft).
         Hard limits set the ceiling; users keep flexibility below it.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-15
         """
         template_path = Path("roles/users/templates/50-hardening.conf.j2")
         content = template_path.read_text()
@@ -504,7 +504,7 @@ class TestPamHardeningTasksProperties:
 
         The users role tasks SHALL deploy the faillock.conf template.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-1
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         assert tasks_path.exists(), "Users tasks must exist"
@@ -527,7 +527,7 @@ class TestPamHardeningTasksProperties:
         The users role tasks SHALL deploy both faillock PAM profiles
         (preauth and authfail) to /usr/share/pam-configs/.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-6, PAM-7
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()
@@ -554,7 +554,7 @@ class TestPamHardeningTasksProperties:
         The users role SHALL run pam-auth-update to enable faillock
         after deploying the PAM profile (via handler or task).
 
-        Validates: PAM hardening design spec
+        Validates: PAM-9
         """
         handlers_path = Path("roles/users/handlers/main.yml")
         tasks_path = Path("roles/users/tasks/main.yml")
@@ -579,7 +579,7 @@ class TestPamHardeningTasksProperties:
         The users role tasks SHALL deploy the resource limits template
         to /etc/security/limits.d/.
 
-        Validates: PAM hardening design spec
+        Validates: PAM-16
         """
         tasks_path = Path("roles/users/tasks/main.yml")
         content = tasks_path.read_text()

@@ -50,12 +50,20 @@ login_policy_retries: 3
 login_policy_timeout: 30
 
 # PAM hardening — account lockout
+# PAM-2: failed attempts allowed before lockout.
 pam_faillock_deny: 5
+# PAM-3: seconds until automatic unlock; the template also reuses this
+# value as root's own unlock timeout.
 pam_faillock_unlock_time: 600
+# PAM-4: sliding window in seconds for counting failures.
 pam_faillock_fail_interval: 900
 
 # PAM hardening — resource limits
+# PAM-10: max processes for ordinary accounts.
 pam_limits_nproc: 1024
+# PAM-11: max processes for root, set separately from PAM-10.
 pam_limits_nproc_root: 2048
+# PAM-12: max open file descriptors for ordinary accounts.
 pam_limits_nofile: 4096
+# PAM-13: max open file descriptors for root, set separately from PAM-12.
 pam_limits_nofile_root: 8192

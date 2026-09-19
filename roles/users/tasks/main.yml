@@ -305,6 +305,9 @@
 # PAM Hardening
 # Account lockout via pam_faillock, resource limits via pam_limits
 
+# PAM-1: renders the whole lockout policy from one template; the
+# individual configurable directives are cited in the template itself,
+# not here.
 - name: Deploy faillock configuration
   ansible.builtin.template:
     src: faillock.conf.j2
@@ -316,6 +319,10 @@
     - users
     - pam_hardening
 
+# PAM-8: removes the pre-ec94b3d single-profile deployment that PAM-6 and
+# PAM-7 superseded, so a host still carrying it self-heals on the next
+# run. PAM-9: the notify below is what makes this removal, and both
+# profile deployments after it, actually take effect in common-auth.
 - name: Remove legacy faillock PAM profile
   ansible.builtin.file:
     path: /usr/share/pam-configs/faillock
@@ -325,6 +332,12 @@
     - pam_hardening
   notify: Rebuild PAM common-auth
 
+# PAM-6: priority 512, ahead of pam_unix's 256 (see
+# /usr/share/pam-configs/unix) — checks whether the account is already
+# locked out before pam_unix gets a chance to prompt for a password. The
+# template itself carries no citation: it is a pam-auth-update source
+# file with no comment syntax, and its deploying task carries a notify —
+# see design.md's Approach for why the citation sits here instead.
 - name: Deploy faillock preauth PAM profile
   ansible.builtin.template:
     src: faillock-preauth-pam-config.j2
@@ -337,6 +350,13 @@
     - pam_hardening
   notify: Rebuild PAM common-auth
 
+# PAM-7: priority 128, behind pam_unix's 256 — reacts to this attempt's
+# own pass/fail result and denies past the configured limit. Running this
+# ahead of pam_unix instead, as the single profile ec94b3d replaced did,
+# is why deny= was never actually enforced; see design.md's Key
+# decisions. PAM-17: this same profile's Account section separately
+# resets the failure counter once an account authenticates successfully.
+# Same no-citation-in-template constraint as the preauth profile above.
 - name: Deploy faillock authfail PAM profile
   ansible.builtin.template:
     src: faillock-authfail-pam-config.j2
@@ -349,6 +369,9 @@
     - pam_hardening
   notify: Rebuild PAM common-auth
 
+# PAM-16: renders the whole resource-limits file from one template; the
+# individual directives it sets are cited in the template itself, not
+# here.
 - name: Deploy resource limits
   ansible.builtin.template:
     src: 50-hardening.conf.j2
