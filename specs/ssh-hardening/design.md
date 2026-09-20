@@ -254,10 +254,10 @@ break-glass interaction in `## Failure modes` a real one.
   without IPv6 — sshd logs the one failure, starts, and serves IPv4 only.
   The handler succeeds, the run reports success, and nothing in the role or
   the play distinguishes that host from a correctly narrowed one.
-  `verify_bootstrap.yml`'s "Test 14.20" does not close this: it asserts that
-  `sshd -T` reports *a* `listenaddress` and does not report
-  `listenaddress 0.0.0.0`, both of which an IPv4-only tailnet binding
-  satisfies. This is `INV-4`'s "no separate, looser path for one family"
+  `verify_bootstrap.yml`'s `Verify SSH-18: SSH is restricted to Tailscale
+  interface` does not close this: it asserts that `sshd -T` reports *a*
+  `listenaddress` and does not report `listenaddress 0.0.0.0`, both of which
+  an IPv4-only tailnet binding satisfies. This is `INV-4`'s "no separate, looser path for one family"
   failing in the other direction — not a hole, but a half-narrowing whose
   IPv6 half is simply absent, so an operator whose only route to the host is
   IPv6 is locked out while every check reports success. A check asserting an

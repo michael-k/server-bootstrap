@@ -419,7 +419,8 @@ them.
   still works after the script has run.
 - `VRFY` — that on a Tailscale-enabled host the script exists at
   `/root/emergency-ssh-access.sh` and is executable, which is what its
-  "Test 14.21" checks. What a completed bootstrap establishes is `EMRG-1`,
+  `Verify EMRG-1: emergency script exists` checks. What a completed
+  bootstrap establishes is `EMRG-1`,
   `EMRG-2` and `EMRG-17` — a file was rendered, to the right path, with the
   right mode, and nothing ran it. Every other requirement in this spec is a
   claim about what happens when a human runs the script *later*, and no

@@ -173,9 +173,10 @@ reference, one of three spellings of mode `0700`, `owner: root` and
 `group: root` — all as substrings of the tasks file, so they are asserted
 to be present somewhere in it rather than to sit on the same task. Since
 the file contains exactly one task that is not a coincidence today, but
-nothing enforces it. The verification play's "Test 14.21", which runs only
-on a Tailscale-enabled host, `stat`s the deployed path and asserts it
-exists and is executable — the only check anywhere of real system state on
+nothing enforces it. The verification play's
+`Verify EMRG-1: emergency script exists`, which runs only on a
+Tailscale-enabled host, `stat`s the deployed path and asserts it exists and
+is executable — the only check anywhere of real system state on
 the positive side, and it confirms neither the mode nor the owner this
 requirement names. Nothing reads the file's actual `0700` or its
 `root:root` ownership from any host.

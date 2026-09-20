@@ -323,8 +323,9 @@ it — and is not guaranteed to have `knockd` installed. It reports
   operator needs to know that `make verify` is not a command they can run
   unaided on a knock-gated host.
 - **`verify_bootstrap.yml` also dereferences `port_knocking_sequence` with
-  no default.** Its "Verify port knocking sequence ports in NFTables" task is
-  gated on `port_knocking_enabled | default(true)`, so it is selected on a
+  no default.** Its `Verify KNOCK-4, KNOCK-5, KNOCK-6: port knocking
+  sequence ports in NFTables` task is gated on
+  `port_knocking_enabled | default(true)`, so it is selected on a
   host that configured nothing, and then evaluates
   `port_knocking_sequence[0]`, which has no `| default(...)` and is defined
   in none of the inventory examples. Ansible fails hard on that — measured:

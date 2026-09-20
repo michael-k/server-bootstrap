@@ -142,9 +142,9 @@ directive appears in the output;
 `test_property_5_ssh_daemon_hardening_configuration` asserts the same string
 against the template file's text. Two checks ask a *running* sshd what it
 resolved to rather than reading a file: the verification play's
-"Test 14.5", which asserts `passwordauthentication no` in `sshd -T` output,
-and the integration suite's `sshd -T | grep passwordauthentication` on a
-bootstrapped host. Neither runs in `make test-unit` or `make test-property`
+`Verify SSH-1: SSHD password authentication is disabled`, which asserts
+`passwordauthentication no` in `sshd -T` output, and the integration suite's
+`sshd -T | grep passwordauthentication` on a bootstrapped host. Neither runs in `make test-unit` or `make test-property`
 — the first needs a live target, the second needs Incus — so on an ordinary
 developer machine this requirement is verified entirely by substring checks
 against template text, which cannot tell whether a later line re-enables the
@@ -256,9 +256,10 @@ rendered `KexAlgorithms` line contains a comma;
 `test_no_weak_kex_algorithms` asserts four excluded-algorithm substrings
 are absent; `test_ssh_algorithm_restrictions_use_modern_standards` and
 `test_property_5_ssh_daemon_hardening_configuration` assert list membership
-against the defaults file. The verification play's "Test 14.9" asserts
-`kexalgorithms` and `curve25519-sha256` in a live `sshd -T` output; it runs
-only against a real target.
+against the defaults file. The verification play's
+`Verify SSH-5: SSHD key exchange algorithms` asserts `kexalgorithms` and
+`curve25519-sha256` in a live `sshd -T` output; it runs only against a real
+target.
 
 Two gaps. **No test asserts the post-quantum algorithm against the
 defaults file at all**: the unit suite asserts it in the rendered
@@ -294,9 +295,9 @@ a comma; `test_no_cbc_ciphers` asserts three CBC substrings are absent;
 `test_property_5_ssh_daemon_hardening_configuration` assert membership
 against the defaults file — the latter only that the string `ssh_ciphers:`
 is present and that either `chacha20-poly1305` or `gcm` appears somewhere in
-the file. The verification play's "Test 14.10" asserts `ciphers` and one of
-the two named AEAD ciphers in a live `sshd -T` output, and runs only against
-a real target. Two weaknesses, both shared with `SSH-5`: the negative check
+the file. The verification play's `Verify SSH-6: SSHD ciphers` asserts
+`ciphers` and one of the two named AEAD ciphers in a live `sshd -T` output,
+and runs only against a real target. Two weaknesses, both shared with `SSH-5`: the negative check
 is a three-string denylist rather than an allowlist, so a fourth, non-AEAD
 cipher added to the defaults is caught only if it is one of the three named
 CBC ciphers; and the three positive assertions render the template from the
@@ -326,9 +327,9 @@ a newline-anchored `hmac-sha2-512` are absent;
 `test_ssh_algorithm_restrictions_use_modern_standards` and
 `test_property_5_ssh_daemon_hardening_configuration` assert membership
 against the defaults file, the latter needing only the substring `etm` to
-appear anywhere in it. The verification play's "Test 14.11" asserts `macs`
-and the substring `etm@openssh.com` in a live `sshd -T` output, and runs
-only against a real target. Three weaknesses: the `hmac-sha2-512\n` check is
+appear anywhere in it. The verification play's `Verify SSH-7: SSHD MACs`
+asserts `macs` and the substring `etm@openssh.com` in a live `sshd -T`
+output, and runs only against a real target. Three weaknesses: the `hmac-sha2-512\n` check is
 positional rather than semantic and would not catch a non-ETM MAC appearing
 anywhere but at the end of a line; the negative checks are a denylist rather
 than an allowlist; and the two positive assertions render the template from
@@ -426,8 +427,9 @@ of permitted users could drift out of agreement with itself.
 on the rendered `AllowGroups` line, including with an overridden group name;
 `test_property_6_ssh_access_restriction` asserts the directive, the variable
 name and the defaults entry as substrings. The verification play's
-"Test 14.8" asserts `allowgroups` and the configured group name in a live
-`sshd -T` output, and runs only against a real target. Note that the three
+`Verify SSH-12: SSHD AllowGroups is restricted` asserts `allowgroups` and
+the configured group name in a live `sshd -T` output, and runs only against
+a real target. Note that the three
 unit assertions render from the unit suite's `base_vars` fixture, a
 hand-written copy of the role defaults, so the two that use the default
 group name confirm the fixture's value rather than the deployed one; only
@@ -459,8 +461,10 @@ with `ssh_port` overridden to 2222 and asserts both that the new port
 appears and that the old one does not;
 `test_property_7_ssh_port_configuration` asserts the `Port` directive, the
 `{{ ssh_port }}` interpolation and the `ssh_port: 22` default as substrings.
-The verification play's "Test 14.7" asserts the configured port in a live
-`sshd -T` output, and the integration suite bootstraps with
+The verification play's
+`Verify SSH-13: SSHD is listening on configured port only` asserts the
+configured port in a live `sshd -T` output, and the integration suite
+bootstraps with
 `ssh_port: 2222` and then connects on that port — the only end-to-end
 evidence that the directive takes effect, and it runs only under Incus.
 `test_ssh_port_rendered`'s `Port 22` comes from the unit suite's
@@ -631,8 +635,9 @@ all-interfaces `ListenAddress`, which is the only placement-aware assertion
 in this spec.
 `test_ssh_interface_restriction_based_on_tailscale_status` and
 `test_ssh_interface_restriction_variable_propagation` add substring checks
-on the same construction. The verification play's "Test 14.20", which runs
-only when Tailscale is enabled, asserts that a live `sshd -T` reports a
+on the same construction. The verification play's
+`Verify SSH-18: SSH is restricted to Tailscale interface`, which runs only
+when Tailscale is enabled, asserts that a live `sshd -T` reports a
 `listenaddress` and does *not* report `listenaddress 0.0.0.0`. That is the
 only check anywhere that reads what a running daemon resolved — but note
 what it reads: `sshd -T` prints the configuration sshd parsed, not the

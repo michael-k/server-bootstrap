@@ -1,7 +1,9 @@
 ---
 # Verification Playbook for VPS Bootstrap Configuration
-# This playbook implements the 44 verification tasks from Requirement 14
-# to ensure the bootstrap playbook has correctly configured the VPS.
+# This playbook implements the mechanism specs/verification/requirements.md
+# describes as VRFY-1 through VRFY-6. Each check below cites, in its task
+# name, the ID of the feature requirement it verifies; see that requirement's
+# own **Verified:** note for what the check does and does not establish.
 #
 # Usage:
 #   make verify
@@ -23,10 +25,13 @@
     tests_skipped: 0
 
   tasks:
-    # This play declares no `roles:`, so roles/*/defaults/main.yml is not in scope.
-    # Load the defaults this playbook asserts against under their own namespace, so
-    # they stay a fallback for `| default(...)` rather than overriding an inventory
-    # that sets them - include_vars outranks inventory variables.
+    # VRFY-2: this play declares no `roles:`, so roles/*/defaults/main.yml is not
+    # in scope. Load the defaults this playbook asserts against under their own
+    # namespace, so they stay a fallback for `| default(...)` rather than
+    # overriding an inventory that sets them - include_vars outranks inventory
+    # variables. See specs/verification/requirements.md for the requirement this
+    # task realises, and for the one other reference in this file (KNOCK-4,
+    # KNOCK-5, KNOCK-6's block, below) that does not follow it.
     - name: Load users role defaults as fallbacks for login policy assertions
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../roles/users/defaults/main.yml"
@@ -34,10 +39,10 @@
       tags: ["always"]
 
     # ==============================================================================
-    # USER ACCOUNT VERIFICATION (Requirements 14.1-14.4)
+    # USER ACCOUNT VERIFICATION (USR)
     # ==============================================================================
 
-    - name: "Test 14.1: Verify manual access user exists with uid 1000"
+    - name: "Verify USR-1: manual access user exists with uid 1000"
       block:
         - name: Get manual user information
           ansible.builtin.command: "getent passwd {{ manual_user_name }}"
@@ -53,7 +58,7 @@
             fail_msg: "Manual user {{ manual_user_name }} does not exist with uid 1000"
             success_msg: "✓ Manual user {{ manual_user_name }} exists with uid 1000"
 
-    - name: "Test 14.2: Verify Ansible user exists with uid 1999"
+    - name: "Verify USR-4: Ansible user exists with uid 1999"
       block:
         - name: Get Ansible user information
           ansible.builtin.command: "getent passwd {{ deploy_user_name }}"
@@ -69,7 +74,7 @@
             fail_msg: "Ansible user {{ deploy_user_name }} does not exist with uid 1999"
             success_msg: "✓ Ansible user {{ deploy_user_name }} exists with uid 1999"
 
-    - name: "Test 14.3: Verify manual access user has sudo privileges"
+    - name: "Verify SUDO-2: manual access user has sudo privileges"
       block:
         - name: Check manual user sudo configuration
           ansible.builtin.stat:
@@ -91,7 +96,7 @@
             fail_msg: "Manual user {{ manual_user_name }} does not have proper sudo privileges"
             success_msg: "✓ Manual user {{ manual_user_name }} has sudo privileges"
 
-    - name: "Test 14.4: Verify Ansible user has passwordless sudo privileges"
+    - name: "Verify SUDO-3: Ansible user has passwordless sudo privileges"
       block:
         - name: Check Ansible user sudo configuration
           ansible.builtin.stat:
@@ -114,10 +119,10 @@
             success_msg: "✓ Ansible user {{ deploy_user_name }} has passwordless sudo"
 
     # ==============================================================================
-    # SUDO HARDENING VERIFICATION
+    # SUDO HARDENING VERIFICATION (SUDO)
     # ==============================================================================
 
-    - name: "Verify sudo security defaults are deployed"
+    - name: "Verify SUDO-5, SUDO-6, SUDO-9, SUDO-10: sudo security defaults are deployed"
       block:
         - name: Check sudo security defaults file exists
           ansible.builtin.stat:
@@ -141,7 +146,7 @@
             fail_msg: "Sudo security defaults are missing or incomplete"
             success_msg: "✓ Sudo security defaults are properly configured"
 
-    - name: "Verify wheel group and su restriction"
+    - name: "Verify SUDO-11, SUDO-12, SUDO-13: wheel group and su restriction"
       block:
         - name: Check wheel group exists
           ansible.builtin.command: getent group wheel
@@ -168,10 +173,10 @@
             success_msg: "✓ Wheel group exists, manual user is a member, su restricted to wheel"
 
     # ==============================================================================
-    # SSH CONFIGURATION VERIFICATION (Requirements 14.5-14.17)
+    # SSH CONFIGURATION VERIFICATION (SSH)
     # ==============================================================================
 
-    - name: "Test 14.5: Verify SSHD password authentication is disabled"
+    - name: "Verify SSH-1: SSHD password authentication is disabled"
       block:
         - name: Check SSHD password authentication setting
           ansible.builtin.command: sshd -T
@@ -185,7 +190,7 @@
             fail_msg: "SSHD password authentication is not disabled"
             success_msg: "✓ SSHD password authentication is disabled"
 
-    - name: "Test 14.6: Verify SSHD root login is disabled"
+    - name: "Verify SSH-2: SSHD root login is disabled"
       block:
         - name: Check SSHD root login setting
           ansible.builtin.command: sshd -T
@@ -199,7 +204,7 @@
             fail_msg: "SSHD root login is not disabled"
             success_msg: "✓ SSHD root login is disabled"
 
-    - name: "Test 14.7: Verify SSHD is listening on configured port only"
+    - name: "Verify SSH-13: SSHD is listening on configured port only"
       block:
         - name: Check SSHD port setting
           ansible.builtin.command: sshd -T
@@ -213,7 +218,7 @@
             fail_msg: "SSHD is not listening on port {{ ssh_port }}"
             success_msg: "✓ SSHD is listening on port {{ ssh_port }}"
 
-    - name: "Test 14.8: Verify SSHD AllowGroups is restricted"
+    - name: "Verify SSH-12: SSHD AllowGroups is restricted"
       block:
         - name: Check SSHD AllowGroups setting
           ansible.builtin.command: sshd -T
@@ -228,7 +233,7 @@
             fail_msg: "SSHD AllowGroups is not properly restricted"
             success_msg: "✓ SSHD AllowGroups is restricted to {{ ssh_access_group | default('ssh-users') }}"
 
-    - name: "Test 14.9: Verify SSHD key exchange algorithms"
+    - name: "Verify SSH-5: SSHD key exchange algorithms"
       block:
         - name: Check SSHD KexAlgorithms setting
           ansible.builtin.command: sshd -T
@@ -243,7 +248,7 @@
             fail_msg: "SSHD key exchange algorithms are not properly configured"
             success_msg: "✓ SSHD key exchange algorithms are hardened"
 
-    - name: "Test 14.10: Verify SSHD ciphers"
+    - name: "Verify SSH-6: SSHD ciphers"
       block:
         - name: Check SSHD Ciphers setting
           ansible.builtin.command: sshd -T
@@ -258,7 +263,7 @@
             fail_msg: "SSHD ciphers are not properly configured"
             success_msg: "✓ SSHD ciphers are hardened"
 
-    - name: "Test 14.11: Verify SSHD MACs"
+    - name: "Verify SSH-7: SSHD MACs"
       block:
         - name: Check SSHD MACs setting
           ansible.builtin.command: sshd -T
@@ -273,7 +278,7 @@
             fail_msg: "SSHD MACs are not properly configured"
             success_msg: "✓ SSHD MACs are hardened"
 
-    - name: "Test 14.12: Verify X11 forwarding is disabled"
+    - name: "Verify SSH-8: X11 forwarding is disabled"
       block:
         - name: Check SSHD X11Forwarding setting
           ansible.builtin.command: sshd -T
@@ -287,7 +292,7 @@
             fail_msg: "SSHD X11 forwarding is not disabled"
             success_msg: "✓ SSHD X11 forwarding is disabled"
 
-    - name: "Test 14.13: Verify TCP forwarding is disabled"
+    - name: "Verify SSH-9: TCP forwarding is disabled"
       block:
         - name: Check SSHD AllowTcpForwarding setting
           ansible.builtin.command: sshd -T
@@ -301,7 +306,7 @@
             fail_msg: "SSHD TCP forwarding is not disabled"
             success_msg: "✓ SSHD TCP forwarding is disabled"
 
-    - name: "Test 14.14: Verify agent forwarding is disabled"
+    - name: "Verify SSH-10: agent forwarding is disabled"
       block:
         - name: Check SSHD AllowAgentForwarding setting
           ansible.builtin.command: sshd -T
@@ -315,7 +320,7 @@
             fail_msg: "SSHD agent forwarding is not disabled"
             success_msg: "✓ SSHD agent forwarding is disabled"
 
-    - name: "Test 14.15: Verify tunneling is disabled"
+    - name: "Verify SSH-11: tunneling is disabled"
       block:
         - name: Check SSHD PermitTunnel setting
           ansible.builtin.command: sshd -T
@@ -329,7 +334,11 @@
             fail_msg: "SSHD tunneling is not disabled"
             success_msg: "✓ SSHD tunneling is disabled"
 
-    - name: "Test 14.16: Verify SSHD service is running"
+    # No SSH-* requirement states this: this project's SSH spec configures
+    # sshd's file and restarts it on change, never its service state, which the
+    # base Debian image ships already enabled and running. This checks that
+    # default, not anything this bootstrap sets. See VRFY-4.
+    - name: "Verify sshd service is running"
       block:
         - name: Check SSHD service status
           ansible.builtin.systemd:
@@ -344,7 +353,8 @@
             fail_msg: "SSHD service is not running"
             success_msg: "✓ SSHD service is running"
 
-    - name: "Test 14.17: Verify SSHD service is enabled"
+    # Same note as above: no SSH-* requirement states this either. See VRFY-4.
+    - name: "Verify sshd service is enabled"
       block:
         - name: Check SSHD service enablement
           ansible.builtin.systemd:
@@ -359,10 +369,13 @@
             success_msg: "✓ SSHD service is enabled"
 
     # ==============================================================================
-    # TAILSCALE VERIFICATION (Requirements 14.18-14.21)
+    # TAILSCALE VERIFICATION (TS, EMRG)
     # ==============================================================================
 
-    - name: "Test 14.18: Verify Tailscale service is running"
+    # VRFY-5: the `when:` on this and the next three blocks skips the whole
+    # check, assert included, when Tailscale is disabled - rather than run
+    # the assert and fail it.
+    - name: "Verify TS-13: Tailscale service is running"
       when: tailscale_enabled | default(false)
       block:
         - name: Check Tailscale service status
@@ -378,7 +391,7 @@
             fail_msg: "Tailscale service is not running"
             success_msg: "✓ Tailscale service is running"
 
-    - name: "Test 14.19: Verify Tailscale service is enabled"
+    - name: "Verify TS-12: Tailscale service is enabled"
       when: tailscale_enabled | default(false)
       block:
         - name: Check Tailscale service enablement
@@ -393,7 +406,7 @@
             fail_msg: "Tailscale service is not enabled"
             success_msg: "✓ Tailscale service is enabled"
 
-    - name: "Test 14.20: Verify SSH is restricted to Tailscale interface"
+    - name: "Verify SSH-18: SSH is restricted to Tailscale interface"
       when: tailscale_enabled | default(false)
       block:
         - name: Check SSHD ListenAddress setting
@@ -416,7 +429,7 @@
             fail_msg: "SSH is not restricted to Tailscale interface"
             success_msg: "✓ SSH is restricted to Tailscale interface"
 
-    - name: "Test 14.21: Verify emergency script exists"
+    - name: "Verify EMRG-1: emergency script exists"
       when: tailscale_enabled | default(false)
       block:
         - name: Check emergency script file
@@ -433,10 +446,10 @@
             success_msg: "✓ Emergency script exists at /root/emergency-ssh-access.sh"
 
     # ==============================================================================
-    # NFTABLES FIREWALL VERIFICATION (Requirements 14.22-14.28)
+    # NFTABLES FIREWALL VERIFICATION (FW, KNOCK)
     # ==============================================================================
 
-    - name: "Test 14.22: Verify NFTables service is active"
+    - name: "Verify FW-18: NFTables service is active"
       block:
         - name: Check NFTables service status
           ansible.builtin.systemd:
@@ -450,7 +463,7 @@
             fail_msg: "NFTables service is not active"
             success_msg: "✓ NFTables service is active"
 
-    - name: "Test 14.23: Verify NFTables service is enabled"
+    - name: "Verify FW-17: NFTables service is enabled"
       block:
         - name: Check NFTables service enablement
           ansible.builtin.systemd:
@@ -464,7 +477,7 @@
             fail_msg: "NFTables service is not enabled"
             success_msg: "✓ NFTables service is enabled"
 
-    - name: "Test 14.24: Verify NFTables default input policy is drop"
+    - name: "Verify FW-3: NFTables default input policy is drop"
       block:
         - name: Get NFTables ruleset
           ansible.builtin.command: nft list ruleset
@@ -478,7 +491,7 @@
             fail_msg: "NFTables input policy is not drop"
             success_msg: "✓ NFTables input policy is drop"
 
-    - name: "Test 14.25: Verify NFTables default forward policy is drop"
+    - name: "Verify FW-4: NFTables default forward policy is drop"
       block:
         - name: Get NFTables ruleset
           ansible.builtin.command: nft list ruleset
@@ -492,7 +505,7 @@
             fail_msg: "NFTables forward policy is not drop"
             success_msg: "✓ NFTables forward policy is drop"
 
-    - name: "Test 14.26: Verify NFTables allows established/related connections"
+    - name: "Verify FW-6: NFTables allows established/related connections"
       block:
         - name: Get NFTables ruleset
           ansible.builtin.command: nft list ruleset
@@ -506,7 +519,7 @@
             fail_msg: "NFTables does not allow established/related connections"
             success_msg: "✓ NFTables allows established/related connections"
 
-    - name: "Test 14.27: Verify NFTables allows loopback traffic"
+    - name: "Verify FW-7: NFTables allows loopback traffic"
       block:
         - name: Get NFTables ruleset
           ansible.builtin.command: nft list ruleset
@@ -520,7 +533,7 @@
             fail_msg: "NFTables does not allow loopback traffic"
             success_msg: "✓ NFTables allows loopback traffic"
 
-    - name: "Test 14.28: Verify SSH port is accessible through firewall"
+    - name: "Verify FW-14: SSH port is accessible through firewall"
       block:
         - name: Get NFTables ruleset
           ansible.builtin.command: nft list ruleset
@@ -534,7 +547,7 @@
             fail_msg: "SSH port {{ ssh_port }} is not accessible through firewall"
             success_msg: "✓ SSH port {{ ssh_port }} is accessible through firewall"
 
-    - name: "Verify port knocking sets exist in NFTables"
+    - name: "Verify KNOCK-3: port knocking sets exist in NFTables"
       when: not (tailscale_enabled | default(false) | bool) and (port_knocking_enabled | default(true) | bool)
       block:
         - name: Get NFTables ruleset
@@ -552,7 +565,14 @@
             fail_msg: "Port knocking sets not found in NFTables ruleset"
             success_msg: "✓ Port knocking sets exist for both IPv4 and IPv6"
 
-    - name: "Verify port knocking sequence ports in NFTables"
+    # KNOWN DEFECT, not fixed by this task - see specs/verification/requirements.md
+    # (VRFY-2) and specs/verification/design.md's ## Failure modes.
+    # `port_knocking_sequence` is an externally supplied variable this play
+    # references directly - not in `vars:`, not `register:`ed, not a role
+    # default, not a fact - with no `| default(...)` guard here and not
+    # loaded by the `include_vars` task above. On the shipped example
+    # inventory it is undefined, and this block aborts the run.
+    - name: "Verify KNOCK-4, KNOCK-5, KNOCK-6: port knocking sequence ports in NFTables"
       when: not (tailscale_enabled | default(false) | bool) and (port_knocking_enabled | default(true) | bool)
       block:
         - name: Get NFTables ruleset
@@ -570,10 +590,10 @@
             success_msg: "✓ Port knocking sequence ports are configured"
 
     # ==============================================================================
-    # HOSTNAME VERIFICATION (Requirement 14.29)
+    # HOSTNAME VERIFICATION (HOST)
     # ==============================================================================
 
-    - name: "Test 14.29: Verify system hostname matches configured value"
+    - name: "Verify HOST-1: system hostname matches configured value"
       when: system_hostname is defined and system_hostname | length > 0
       block:
         - name: Get current hostname
@@ -589,10 +609,10 @@
             success_msg: "✓ System hostname is {{ system_hostname }}"
 
     # ==============================================================================
-    # FAIL2BAN VERIFICATION (Requirements 14.30-14.32)
+    # FAIL2BAN VERIFICATION (F2B)
     # ==============================================================================
 
-    - name: "Test 14.30: Verify fail2ban service is active"
+    - name: "Verify F2B-14: fail2ban service is active"
       block:
         - name: Check fail2ban service status
           ansible.builtin.systemd:
@@ -606,7 +626,7 @@
             fail_msg: "Fail2ban service is not active"
             success_msg: "✓ Fail2ban service is active"
 
-    - name: "Test 14.31: Verify fail2ban service is enabled"
+    - name: "Verify F2B-13: fail2ban service is enabled"
       block:
         - name: Check fail2ban service enablement
           ansible.builtin.systemd:
@@ -620,7 +640,12 @@
             fail_msg: "Fail2ban service is not enabled"
             success_msg: "✓ Fail2ban service is enabled"
 
-    - name: "Test 14.32: Verify fail2ban is monitoring SSHD"
+    # KNOWN DEFECT, not fixed by this task - see specs/verification/requirements.md
+    # (VRFY-5). This block has no `when:` guard, but F2B-4 makes fail2ban's
+    # own SSH-jail enablement flag, set to false, a valid, working
+    # configuration with no jail at all. On such a host this assert fails
+    # where VRFY-5 requires it to skip.
+    - name: "Verify F2B-4: fail2ban is monitoring SSHD"
       block:
         - name: Check fail2ban status
           ansible.builtin.command: fail2ban-client status
@@ -635,10 +660,10 @@
             success_msg: "✓ Fail2ban is monitoring SSHD"
 
     # ==============================================================================
-    # JOURNALD VERIFICATION (Requirement 14.33)
+    # JOURNALD VERIFICATION (LOG)
     # ==============================================================================
 
-    - name: "Test 14.33: Verify journald is configured to persist logs"
+    - name: "Verify LOG-1: journald is configured to persist logs"
       block:
         - name: Check journald configuration
           ansible.builtin.slurp:
@@ -653,10 +678,10 @@
             success_msg: "✓ Journald is configured for persistent storage"
 
     # ==============================================================================
-    # TIME SYNCHRONIZATION VERIFICATION (Requirements 14.34-14.36)
+    # TIME SYNCHRONIZATION VERIFICATION (TIME)
     # ==============================================================================
 
-    - name: "Test 14.34: Verify time sync service is active"
+    - name: "Verify TIME-5: time sync service is active"
       block:
         - name: Check time sync service status (chrony)
           ansible.builtin.systemd:
@@ -678,7 +703,7 @@
             fail_msg: "No time synchronization service is active"
             success_msg: "✓ Time synchronization service is active"
 
-    - name: "Test 14.35: Verify time sync service is enabled"
+    - name: "Verify TIME-4: time sync service is enabled"
       block:
         - name: Check time sync service enablement (chrony)
           ansible.builtin.systemd:
@@ -700,7 +725,7 @@
             fail_msg: "No time synchronization service is enabled"
             success_msg: "✓ Time synchronization service is enabled"
 
-    - name: "Test 14.36: Verify time synchronization is active"
+    - name: "Verify TIME-6: time synchronization is active"
       block:
         - name: Check chrony tracking status
           ansible.builtin.command: chronyc tracking
@@ -723,10 +748,10 @@
             success_msg: "✓ Time synchronization is active"
 
     # ==============================================================================
-    # SWAP CONFIGURATION VERIFICATION (Requirements 14.37-14.43)
+    # SWAP CONFIGURATION VERIFICATION (SWAP)
     # ==============================================================================
 
-    - name: "Test 14.37: Verify zram device exists"
+    - name: "Verify SWAP-4: zram device exists"
       when: zram_enabled | default(false)
       block:
         - name: Check for zram device
@@ -741,7 +766,7 @@
             fail_msg: "Zram device does not exist"
             success_msg: "✓ Zram device exists"
 
-    - name: "Test 14.38: Verify zram device is active as swap"
+    - name: "Verify SWAP-7: zram device is active as swap"
       when: zram_enabled | default(false)
       block:
         - name: Get swap status
@@ -756,7 +781,7 @@
             fail_msg: "Zram device is not active as swap"
             success_msg: "✓ Zram device is active as swap"
 
-    - name: "Test 14.39: Verify zram compression algorithm is lz4"
+    - name: "Verify SWAP-5: zram compression algorithm is lz4"
       when: zram_enabled | default(false)
       block:
         - name: Check zram compression algorithm
@@ -771,7 +796,10 @@
             fail_msg: "Zram compression algorithm is not lz4"
             success_msg: "✓ Zram compression algorithm is lz4"
 
-    - name: "Test 14.40: Verify zram has higher priority than disk swap"
+    # This asserts the zram device's own rendered priority (100, the default);
+    # it does not read /swapfile's priority, so it does not establish SWAP-16's
+    # comparison. See specs/verification/design.md's ## Failure modes.
+    - name: "Verify SWAP-9: zram device has its configured swap priority"
       when: zram_enabled | default(false) and disk_swap_size is defined and disk_swap_size | length > 0
       block:
         - name: Get swap priorities
@@ -786,7 +814,7 @@
             fail_msg: "Zram does not have priority 100"
             success_msg: "✓ Zram has priority 100 (higher than disk swap)"
 
-    - name: "Test 14.41: Verify disk swap file exists"
+    - name: "Verify SWAP-11, SWAP-12: disk swap file exists"
       when: disk_swap_size is defined and disk_swap_size | length > 0
       block:
         - name: Check for swap file
@@ -802,7 +830,7 @@
             fail_msg: "Swap file does not exist or has incorrect permissions"
             success_msg: "✓ Swap file exists with correct permissions"
 
-    - name: "Test 14.42: Verify disk swap file is active"
+    - name: "Verify SWAP-14: disk swap file is active"
       when: disk_swap_size is defined and disk_swap_size | length > 0
       block:
         - name: Get swap status
@@ -817,7 +845,7 @@
             fail_msg: "Disk swap file is not active"
             success_msg: "✓ Disk swap file is active"
 
-    - name: "Test 14.43: Verify disk swap file is in fstab"
+    - name: "Verify SWAP-15: disk swap file is in fstab"
       when: disk_swap_size is defined and disk_swap_size | length > 0
       block:
         - name: Check fstab for swap entry
@@ -835,10 +863,10 @@
             success_msg: "✓ Disk swap file is in /etc/fstab"
 
     # ==============================================================================
-    # FILESYSTEM HARDENING VERIFICATION
+    # FILESYSTEM HARDENING VERIFICATION (FS)
     # ==============================================================================
 
-    - name: "Verify /tmp has noexec,nosuid,nodev"
+    - name: "Verify FS-1: /tmp has noexec,nosuid,nodev"
       block:
         - name: Get mount options for /tmp
           ansible.builtin.command: findmnt -n -o OPTIONS /tmp
@@ -856,7 +884,7 @@
             fail_msg: "/tmp does not have required mount options (noexec,nosuid,nodev). Got: {{ tmp_mount_options.stdout | default('N/A') }}"
             success_msg: "✓ /tmp is mounted with noexec,nosuid,nodev"
 
-    - name: "Verify /dev/shm has noexec,nosuid,nodev"
+    - name: "Verify FS-3: /dev/shm has noexec,nosuid,nodev"
       block:
         - name: Get mount options for /dev/shm
           ansible.builtin.command: findmnt -n -o OPTIONS /dev/shm
@@ -874,7 +902,7 @@
             fail_msg: "/dev/shm does not have required mount options (noexec,nosuid,nodev). Got: {{ shm_mount_options.stdout | default('N/A') }}"
             success_msg: "✓ /dev/shm is mounted with noexec,nosuid,nodev"
 
-    - name: "Verify /var/tmp has noexec,nosuid,nodev"
+    - name: "Verify FS-2: /var/tmp has noexec,nosuid,nodev"
       block:
         - name: Get mount options for /var/tmp
           ansible.builtin.command: findmnt -n -o OPTIONS /var/tmp
@@ -893,10 +921,10 @@
             success_msg: "✓ /var/tmp is mounted with noexec,nosuid,nodev"
 
     # ==============================================================================
-    # LOGIN POLICY HARDENING VERIFICATION
+    # LOGIN POLICY HARDENING VERIFICATION (LOGIN)
     # ==============================================================================
 
-    - name: "Verify login.defs hardening"
+    - name: "Verify LOGIN-2, LOGIN-7, LOGIN-8, LOGIN-9: login.defs hardening"
       block:
         - name: Read login.defs
           ansible.builtin.slurp:
@@ -923,7 +951,7 @@
               LOGIN_TIMEOUT {{ login_policy_timeout | default(users_role_defaults.login_policy_timeout) }},
               LOG_OK_LOGINS yes)
 
-    - name: "Verify securetty and shell timeout"
+    - name: "Verify LOGIN-4, LOGIN-5: securetty and shell timeout"
       block:
         - name: Check securetty exists
           ansible.builtin.stat:
@@ -959,10 +987,10 @@
 
 
     # ==============================================================================
-    # PAM HARDENING VERIFICATION
+    # PAM HARDENING VERIFICATION (PAM)
     # ==============================================================================
 
-    - name: "Verify faillock configuration"
+    - name: "Verify PAM-2, PAM-5, PAM-6, PAM-7, PAM-8, PAM-9: faillock configuration"
       block:
         - name: Read faillock.conf
           ansible.builtin.slurp:
@@ -1013,7 +1041,9 @@
               Got: {{ pam_auth_ordering.stdout_lines | default([]) }}
             success_msg: "✓ Faillock enabled in PAM (preauth → pam_unix → authfail)"
 
-    - name: "Verify resource limits"
+    # success_msg below names "nofile", but no condition checks for it - see
+    # specs/verification/design.md's ## Failure modes.
+    - name: "Verify PAM-10, PAM-14: resource limits"
       block:
         - name: Check resource limits file exists
           ansible.builtin.stat:
@@ -1039,7 +1069,9 @@
     # FINAL SUMMARY
     # ==============================================================================
 
-    - name: "Test 14.44: Display verification summary"
+    # This is VRFY's own reporting, not a check of a feature requirement, so it
+    # names none. See VRFY-4.
+    - name: "Display verification summary"
       block:
         - name: Count test results
           ansible.builtin.set_fact:

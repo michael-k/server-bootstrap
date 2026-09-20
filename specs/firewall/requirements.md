@@ -182,8 +182,9 @@ can only ever be as complete as the author's imagination.
 `hook input priority 0; policy drop;` is in the rendered output, and
 `test_property_18_nftables_stateful_firewall_rules` asserts a `policy drop`
 line follows `chain input` in the template. `verify_bootstrap.yml`'s
-"Test 14.24" matches `type filter hook input.*policy drop` against a live
-`nft list ruleset`, and the integration suite's
+`Verify FW-3: NFTables default input policy is drop` matches
+`type filter hook input.*policy drop` against a live `nft list ruleset`,
+and the integration suite's
 `test_non_ssh_port_blocked_despite_listening_service` starts a real listener
 on port 8080 inside the VM and fails if it can be reached, while
 `test_only_ssh_reachable_after_knock` requires ten common ports to be
@@ -209,8 +210,9 @@ construction: there is no rule to delete and no ordering to get wrong.
 `hook forward priority 0; policy drop;` is in the rendered output, and
 `test_property_18_nftables_stateful_firewall_rules` asserts a `policy drop`
 line follows `chain forward` in the template. `verify_bootstrap.yml`'s
-"Test 14.25" matches it against a live ruleset. Nothing asserts the chain is
-empty, and nothing sends a packet through it.
+`Verify FW-4: NFTables default forward policy is drop` matches it against a
+live ruleset. Nothing asserts the chain is empty, and nothing sends a
+packet through it.
 
 ### FW-5 — Output chain accepts
 
@@ -246,7 +248,8 @@ conditional rules below, which differ between the three SSH branches.
 `ct state established,related accept` is in the rendered output;
 `test_property_18_nftables_stateful_firewall_rules` asserts the same against
 the template and that its line number is lower than the last line carrying
-both `tcp dport` and `accept`. `verify_bootstrap.yml`'s "Test 14.26" matches
+both `tcp dport` and `accept`. `verify_bootstrap.yml`'s
+`Verify FW-6: NFTables allows established/related connections` matches
 `ct state.*established.*related.*accept` against a live ruleset.
 
 ### FW-7 — Loopback traffic accepted
@@ -264,8 +267,9 @@ address.
 **Verified:** `test_loopback_accepted` asserts `iif lo accept` is in the
 rendered output; `test_property_18_nftables_stateful_firewall_rules` asserts
 the same against the template and that it precedes the last
-`tcp dport`/`accept` line. `verify_bootstrap.yml`'s "Test 14.27" matches
-`iif.*lo.*accept` or `iifname.*lo.*accept` against a live ruleset.
+`tcp dport`/`accept` line. `verify_bootstrap.yml`'s
+`Verify FW-7: NFTables allows loopback traffic` matches `iif.*lo.*accept` or
+`iifname.*lo.*accept` against a live ruleset.
 
 ### FW-8 — ICMPv4 accepted
 
@@ -431,8 +435,8 @@ for a play that consumes this role without the `ssh_hardening` role, which
 **Verified:** `test_custom_ssh_port_in_rules` and
 `test_custom_ssh_port_with_tailscale` render with port 2222 on the open and
 tailnet branches and assert the rendered rule names it and that port 22 is
-gone. `verify_bootstrap.yml`'s "Test 14.28" searches a live ruleset for
-`tcp dport <ssh_port>`. The derivation itself is not effectively tested: the
+gone. `verify_bootstrap.yml`'s `Verify FW-14: SSH port is accessible through
+firewall` searches a live ruleset for `tcp dport <ssh_port>`. The derivation itself is not effectively tested: the
 property suite's assertion is
 `"{{ ssh_port" in defaults_content or "ssh_port" in defaults_content`, whose
 second alternative is satisfied by the string `firewall_ssh_port:` itself.
@@ -497,8 +501,8 @@ appears in the tasks file, the latter also walking the task list to confirm
 a systemd task that names `nftables` carries it — a walk whose idea of where
 one task ends is a fixed line offset, and which currently separates this
 task from `FW-18`'s by a single line; see `design.md`'s `## Failure modes`.
-`verify_bootstrap.yml`'s "Test 14.23" asserts the unit's `UnitFileState` is
-`enabled` on a live host.
+`verify_bootstrap.yml`'s `Verify FW-17: NFTables service is enabled`
+asserts the unit's `UnitFileState` is `enabled` on a live host.
 
 ### FW-18 — nftables service started
 
@@ -516,8 +520,8 @@ still every role that opens or reacts to network exposure.
 `test_property_21_nftables_service_persistence` assert `state: started`
 appears in the tasks file, the latter confirming it sits on a systemd task
 naming `nftables` — subject to the same one-line task-boundary margin noted
-under `FW-17`. `verify_bootstrap.yml`'s "Test 14.22" asserts the unit's
-`ActiveState` is `active`, and the integration suite's
+under `FW-17`. `verify_bootstrap.yml`'s `Verify FW-18: NFTables service is active` asserts
+the unit's `ActiveState` is `active`, and the integration suite's
 `test_bootstrap_configures_firewall` asserts `systemctl is-active nftables`
 succeeds after a real run. Both say less than they appear to: the unit is
 `Type=oneshot` with `RemainAfterExit=yes`, so `active` records that the last
