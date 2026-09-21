@@ -114,9 +114,14 @@ vm-ssh:
 	@test -n "$(VM)" || (echo "Usage: make vm-ssh VM=<name>" && exit 1)
 	uv run python -m incus ssh $(VM)
 
+# IMG-8: the Debian version reaches the publisher as a command-line option.
+# The literal 13 below is a second copy of DEFAULT_DEBIAN_VERSION, not a read
+# of it, so changing the constant would not change what this target builds.
 images:
 	@echo "Building bootstrapped VM images..."
 	uv run python -m incus publish --debian $(or $(DEBIAN),13)
 
+# IMG-9: clears the whole bootstrap/ namespace, the toolkit's internal
+# base-image cache included.
 images-clean:
 	uv run python -m incus images-clean

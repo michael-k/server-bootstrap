@@ -15,7 +15,7 @@ it has quietly fixed this repository's own names and defaults into code that
 was written to be reused by other repositories.
 
 The reuse claim is the reason the spec matters more than an internal helper
-would. `docs/multi-repo-strategy.md:219-231` tells purpose repositories to
+would. `docs/multi-repo-strategy.md:225-237` tells purpose repositories to
 install this package as a dev dependency, by local path or by git URL, and
 documents an API for them to build their own fixtures on. A package with that
 audience has an interface contract, and a default inside it that names
@@ -137,7 +137,7 @@ which prints the path so a developer can reach a preserved machine, never the
 key material. The headscale pre-authentication key is minted inside the test
 machine and returned in memory (`headscale.py`); nothing writes it to
 disk on the controller. The single credential this package does carry in the
-repository is the SHA-512 hash at `__main__.py:54-58`, with its plaintext in
+repository is the SHA-512 hash at `__main__.py`, with its plaintext in
 the comment above it — a deliberate test-only value that belongs to `IMG`'s
 `_PUBLISH_VARS`, mirrors `DEFAULT_TEST_VARS` in
 `tests/integration/helpers.py`, and is never used on a host outside
@@ -154,7 +154,7 @@ launches when its caller names none, and the port sequence it knocks — from
 its caller rather than fixing it in the package.
 
 **Why:** the package was separated from `tests/` for one reason, and
-`docs/multi-repo-strategy.md:219-231` states it: purpose repositories install
+`docs/multi-repo-strategy.md:225-237` states it: purpose repositories install
 it and write their own fixtures against its API. A default that names this
 project is inherited silently by every one of them, and two of the defaults
 are not passive. Because the name prefix lives in the package rather than in
@@ -181,24 +181,24 @@ other three — `VM_READY_TIMEOUT_SECONDS = 120`,
 `SSH_CONNECT_TIMEOUT_SECONDS = 10` and `SSH_POLL_INTERVAL_SECONDS = 2` — are
 generic and are not part of this finding. The
 four are read at every point that matters: `VM_NAME_PREFIX` names every
-generated machine (`vm.py:214`) and the base-image build machine
-(`vm.py:109`), and filters both `list` and `destroy --all`
-(`__main__.py:119`, `:149`); `BASE_IMAGE_PREFIX` names the cached image
-(`vm.py:68`); `IMAGE_PREFIX` and `DEFAULT_DEBIAN_VERSION` together form
-`IncusVM`'s default image (`vm.py:189`), the image `clean_vm` launches
-(`fixtures.py:66-67`), the image `create` launches (`__main__.py:91`,
-`:327`), and the upstream stream `ensure_base_image` reads (`vm.py:59`,
-`:69`, `:239-240`). No constructor parameter, environment variable or
+generated machine (`vm.py`) and the base-image build machine
+(`vm.py`), and filters both `list` and `destroy --all`
+(`__main__.py`); `BASE_IMAGE_PREFIX` names the cached image
+(`vm.py`); `IMAGE_PREFIX` and `DEFAULT_DEBIAN_VERSION` together form
+`IncusVM`'s default image (`vm.py`), the image `clean_vm` launches
+(`fixtures.py`), the image `create` launches (`__main__.py`), and the
+upstream stream `ensure_base_image` reads (`vm.py`). No constructor
+parameter, environment variable or
 configuration hook changes any of the four.
 
 Five further sites spell the prefix out again rather than reading the
 constant, so they would not follow even if the constant were made
-configurable: `ssh.py:41` (the keypair's temporary directory,
-`bootstrap-test-{name}-`), `ssh.py:50` (the key comment,
-`bootstrap-test-{name}`), `__main__.py:182` and `:183` (the two glob patterns
-`ssh` searches for a saved machine), and `headscale.py:27`
+configurable: `ssh.py` (the keypair's temporary directory,
+`bootstrap-test-{name}-`), `ssh.py` (the key comment,
+`bootstrap-test-{name}`), `__main__.py` (the two glob patterns
+`ssh` searches for a saved machine), and `headscale.py`
 (`/tmp/bootstrap-test-headscale-cache`). A sixth literal,
-`__main__.py:63`'s `"target_hostname": "bootstrap-test"`, is excluded because
+`__main__.py`'s `"target_hostname": "bootstrap-test"`, is excluded because
 it is inside `_PUBLISH_VARS`, which only the guarded publishing command reads
 and which `IMG` owns.
 
@@ -221,8 +221,8 @@ decide *whether* a Debian-specific command runs, not what it assumes, so the
 consequence is the same either way: a consumer who passes a non-Debian image
 gets a machine that launches and then fails in `wait_ready()`. The command
 line agrees: its
-flag is spelled `--debian` (`__main__.py:327`, `:356`), and `clean_vm` reads
-an option named `--debian-version` (`fixtures.py:66`).
+flag is spelled `--debian` (`__main__.py`), and `clean_vm` reads
+an option named `--debian-version` (`fixtures.py`).
 
 Finally, `vm.py` falls back to the literal `[7000, 8500, 9100]` when
 neither an explicit `ports` argument nor `knock_sequence` is given. That one
@@ -443,8 +443,8 @@ next to a `vm-info.json` naming the address it opens. The machine itself is
 the obvious thing to clean up, and it is the key that gets forgotten.
 **Verified:** `destroy()` calls `self._ssh_key.cleanup()` (`vm.py`) after
 deleting the machine, and `cleanup()` removes the whole temporary directory
-(`ssh.py:65-68`) — the private key, the public key, and the `vm-info.json`
-the command line writes beside them (`__main__.py:102-107`). The unit suite
+(`ssh.py`) — the private key, the public key, and the `vm-info.json`
+the command line writes beside them (`__main__.py`). The unit suite
 pins the removal itself: `test_cleanup_removes_private_key` and
 `test_cleanup_removes_temp_directory`, plus
 `TestIncusVMDestroy::test_destroy_calls_incus_delete_force`, which asserts
@@ -525,9 +525,9 @@ wrapper that does merge defaults and does rewrite `vm.ssh_port` lives outside
 the package, at `tests/integration/helpers.py`, which is the split this
 requirement exists to keep.
 
-`_get_ssh_public_key_file` (`ansible.py:86-88`) carries a leading underscore
-and is imported by two modules outside its own — `__main__.py:46` and
-`tests/integration/helpers.py:11` — so the line between the package's private
+`_get_ssh_public_key_file` (`ansible.py`) carries a leading underscore
+and is imported by two modules outside its own — `__main__.py` and
+`tests/integration/helpers.py` — so the line between the package's private
 and public surface is drawn in a name and contradicted in fact.
 
 ### INCUS-10 — Incus's absence is a skip, not an error
@@ -573,9 +573,9 @@ and fail somewhere inside Ansible rather than at the point where the mistake
 was made. Hiding it keeps the command line's surface equal to what the
 directory it was run in can actually support. `INCUS-16` is the other half:
 what the command line offers everywhere, regardless of this guard.
-**Verified:** `main()` (`__main__.py:318-364`) adds `publish` and
+**Verified:** `main()` (`__main__.py`) adds `publish` and
 `images-clean` — both the subparsers and the dispatch entries — inside `if
-Path("site.yml").exists():` (`:351-361`), and nowhere else. What those two
+Path("site.yml").exists():`, and nowhere else. What those two
 commands do belongs to `IMG`.
 
 **The guard's subject is the process's working directory, not the package and
@@ -593,8 +593,8 @@ a whole: no module under `tests/` imports `incus.__main__`, so neither the
 `site.yml` check nor the dispatch table it feeds is exercised by anything but
 a make target run by hand. The guard has left one mark that a static check
 does reach. `make python-typecheck` reports `error[call-non-callable]` at
-`__main__.py:364`, `commands[args.command](args)`: `commands` is annotated
-`dict[str, object]` at `:343` because the two guarded entries are added
+`__main__.py`, `commands[args.command](args)`: `commands` is annotated
+`dict[str, object]` where it is built, because the two guarded entries are added
 afterwards, so the dispatch is a call on a value the checker cannot see is
 callable. The diagnostic predates this spec, it is one of exactly two the
 project reports, and it is recorded rather than fixed because an annotation
@@ -696,16 +696,16 @@ machine left behind by an interrupted run has to be findable and removable
 from whatever directory the developer happens to be in, and a cleanup command
 that is itself conditional is a cleanup command that is missing on the day it
 is needed. `INCUS-11` is the other half: what is hidden, and where.
-**Verified:** `main()` (`__main__.py:318-364`) registers `create`, `list`,
-`destroy` and `ssh` — subparsers and dispatch entries alike — at
-`:325-348`, outside every conditional.
+**Verified:** `main()` (`__main__.py`) registers `create`, `list`,
+`destroy` and `ssh` — subparsers and dispatch entries alike — outside
+every conditional.
 
 **Nothing tests the command line.** No module under `tests/` imports
 `incus.__main__` or any `cmd_*` function, so these four commands and the
 dispatch table are exercised only by the `vm-create`, `vm-list`,
 `vm-destroy` and `vm-ssh` make targets, by hand. One consequence is already
 visible in the code: `cmd_list` and `cmd_destroy --all` filter on
-`VM_NAME_PREFIX` (`__main__.py:119`, `:149`) while `cmd_ssh` spells
-`bootstrap-test-` out in its two glob patterns (`:182-183`), so changing the
+`VM_NAME_PREFIX` (`__main__.py`) while `cmd_ssh` spells
+`bootstrap-test-` out in its two glob patterns, so changing the
 constant would break `ssh` and leave `list` and `destroy` working —
 `INCUS-1`'s hazard with a concrete shape.

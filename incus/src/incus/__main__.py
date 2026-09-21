@@ -21,6 +21,16 @@ package and not against a repository root, so the same installation offers
 different commands depending on where it was invoked.  What ``publish`` and
 ``images-clean`` themselves do belongs to IMG, not to INCUS.
 
+IMG-12 is violated and IMG-11 is unenforced, for one structural reason:
+nothing between the bootstrap run and ``incus publish`` removes anything from
+the machine.  A published image therefore carries the SSH host private keys
+and the ``/etc/machine-id`` of the machine it was built on, so every machine
+launched from one image offers the same host key -- that is IMG-12, and it is
+a violation.  IMG-11 asks for no shell history, and there is very likely none,
+because every build command arrives over a non-interactive transport; nothing
+in the build enforces it, so it holds by accident and would break silently.
+Recorded in specs/image-publishing, not fixed.
+
 Nothing tests this module.  No test in this repository imports it or any of
 its ``cmd_*`` functions, and ``make python-typecheck`` reports
 ``call-non-callable`` on the dispatch at the bottom of ``main()``, because
@@ -49,6 +59,20 @@ from incus.vm import IncusVM
 
 # --- Bootstrap-specific constants (only used by guarded commands) ---
 
+# IMG-13: the one fixed set of bootstrap variables every published image is
+# built from.  Nothing reaches it -- no parameter, no environment variable and
+# no configuration hook -- which is what lets a consumer read an image's
+# guarantees off this project's own requirements.  Two of the fourteen entries
+# are read by nothing under roles/, site.yml or inventory/: ``target_hostname``
+# (the hostname tasks read ``system_hostname``) and ``swap_enabled`` (the swap
+# role is gated on ``zram_enabled`` and ``disk_swap_size``).  Both are inert
+# and both are left as found.
+#
+# IMG-10 is violated by the hash below.  It is a credential that lives in the
+# repository, with its plaintext in the comment above it, and roles/users
+# writes it to /etc/shadow for an account it also grants unrestricted sudo --
+# so it is in every published image, on a path sshd never consults.  Recorded
+# in specs/image-publishing, not fixed.
 _PUBLISH_VARS: dict[str, str | int | bool | list[int]] = {
     "manual_user_name": "testuser",
     # SHA-512 hash of "TestPassword123!" — test-only, not used for real servers
@@ -70,8 +94,17 @@ _PUBLISH_VARS: dict[str, str | int | bool | list[int]] = {
     "pam_faillock_deny": 5,
 }
 
+# IMG-5: the single namespace every published image shares.  Nothing else
+# records that a published image exists, so this prefix is what makes them a
+# set -- what a consumer lists by and what ``images-clean`` deletes by.  Note
+# that ``BASE_IMAGE_PREFIX`` in constants.py starts with it too, which is why
+# IMG-9 records that ``images-clean`` also removes the toolkit's cache.
 IMAGE_ALIAS_PREFIX = "bootstrap/"
 
+# IMG-7: one image per variant, built on every run.  There is no argument for
+# selecting a subset and nothing is skipped when an image already exists,
+# because two images documented as differing in one variable must not be able
+# to drift apart across a playbook change.
 IMAGE_VARIANTS: dict[str, dict[str, str | int | bool | list[int]]] = {
     "knocking": {
         "tailscale_enabled": False,
@@ -232,13 +265,29 @@ def _stop_vm(name: str) -> None:
 
 
 def cmd_publish(args: argparse.Namespace) -> None:
-    """Build and publish bootstrapped VM images."""
+    """Build and publish bootstrapped VM images.
+
+    IMG-1: each variant's machine is published as an image on the local Incus
+    daemon once the bootstrap run against it has succeeded.
+    """
     version = args.debian
 
     for variant, variant_vars in IMAGE_VARIANTS.items():
+        # IMG-6: the alias carries the variant, so a consumer picks a
+        # knock-gated or a directly reachable image by name.
+        # IMG-14: it carries the Debian version too, so two releases can sit on
+        # one daemon without overwriting each other.
         alias = f"{IMAGE_ALIAS_PREFIX}{variant}-{version}"
         print(f"Building image '{alias}'...")
 
+        # IMG-2: this asks for upstream Debian, but INCUS-2's launch swaps
+        # the prefix for the cached bootstrap/internal-base-<version> image --
+        # upstream Debian plus openssh-server, curl and ``PermitRootLogin
+        # yes``.  That layer, and then wait_ready()'s _setup_ssh below, both
+        # configure the machine before the playbook does, so a published image
+        # is base layer + readiness wait + playbook, NOT upstream Debian plus
+        # the playbook.  Both PermitRootLogin edits are walked back by
+        # roles/ssh_hardening; the key _setup_ssh writes is not (IMG-12).
         image = f"{IMAGE_PREFIX}{version}"
         vm = IncusVM(image=image, name_hint=f"publish-{variant}", auto_launch=True)
         try:
@@ -251,6 +300,14 @@ def cmd_publish(args: argparse.Namespace) -> None:
             merged_vars["deploy_user_ssh_key_file"] = str(pub_key_path)
             merged_vars.update(variant_vars)
 
+            # IMG-2: the bootstrapped state is reached by applying the
+            # project's own playbook rather than any substitute for it.  A
+            # shortcut that reproduced the same files would be correct only
+            # for as long as somebody kept it in step with site.yml, and would
+            # fail silently when it stopped being.  What the base layer and
+            # wait_ready() put on the machine before this call is not a
+            # substitute for the playbook; it is recorded at the image line
+            # above and judged by IMG-10 and IMG-12.
             print("  Running bootstrap playbook...")
             result = run_playbook(
                 vm,
@@ -258,6 +315,11 @@ def cmd_publish(args: argparse.Namespace) -> None:
                 extra_vars=merged_vars,
                 cwd=Path.cwd(),
             )
+            # IMG-3: a partially applied playbook is exactly the state that
+            # looks bootstrapped and is not, so it publishes nothing.  Raising
+            # here also skips the alias deletion below, which is what leaves
+            # the previously published image in place, and aborts the loop, so
+            # the remaining variants are not built either.
             if result.returncode != 0:
                 raise RuntimeError(
                     f"Bootstrap failed for '{variant}'.\n"
@@ -282,13 +344,36 @@ def cmd_publish(args: argparse.Namespace) -> None:
             print(f"  Error building '{variant}', cleaning up VM...")
             raise
         finally:
+            # IMG-4: the build machine never outlives the build.  A ``finally``
+            # rather than a success-path call, so it also covers IMG-3's
+            # RuntimeError and any failure in the readiness wait, the playbook
+            # run, the stop, the alias deletion or the publish.  It does NOT
+            # cover the launch: auto_launch=True launches inside IncusVM's
+            # __post_init__, so that happens at the construction above, one
+            # line before this ``try`` opens, and a failure there leaves ``vm``
+            # unbound and destroy() uncalled.  Recorded in
+            # specs/image-publishing, not fixed -- moving the construction into
+            # the try is a behaviour change.  INCUS-13 force-deletes the
+            # machine; INCUS-8 is why this also removes the ephemeral private
+            # key from the controller.
             vm.destroy()
 
     print("All images published.")
 
 
 def cmd_images_clean(args: argparse.Namespace) -> None:
-    """Delete all bootstrap/* images from the local Incus store."""
+    """Delete all bootstrap/* images from the local Incus store.
+
+    IMG-9: one command clears the whole publishing namespace, which is the
+    only handle there is -- nothing tracks which images a run published.
+
+    It also deletes the toolkit's ``bootstrap/internal-base-<version>`` cache,
+    because ``BASE_IMAGE_PREFIX`` starts with ``IMAGE_ALIAS_PREFIX`` and the
+    test below is a ``startswith``.  The help string "Delete all bootstrap/*
+    images" is literally accurate, which is why that is easy to miss.  The
+    cost is a rebuild -- a VM launch and an ``apt-get install`` over the
+    network -- on the next launch from an upstream image.
+    """
     result = subprocess.run(
         ["incus", "image", "list", "--format=json"],
         capture_output=True,
@@ -352,6 +437,10 @@ def main() -> None:
         p_publish = subparsers.add_parser(
             "publish", help="Build and publish bootstrapped VM images",
         )
+        # IMG-8: the Debian version is the caller's choice, so a consumer
+        # preparing for the next release does not have to wait for this
+        # repository.  Makefile's `images` target always passes one, and the
+        # literal it passes is a second, independent copy of this default.
         p_publish.add_argument(
             "--debian", default=DEFAULT_DEBIAN_VERSION,
             help=f"Debian version (default: {DEFAULT_DEBIAN_VERSION})",

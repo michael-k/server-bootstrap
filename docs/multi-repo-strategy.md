@@ -209,6 +209,12 @@ Two Incus VM images are available locally, built with `make images` in server-bo
 
 These images are the bootstrapped machine state frozen into a reusable snapshot. Launching a VM from one of these images is equivalent to running the bootstrap playbook from scratch, but takes seconds instead of minutes.
 
+`IMG-2` is why the bootstrapped part of that state is trustworthy: an image is brought to it by applying `site.yml` rather than any substitute for it, so there is no second description of a bootstrapped host that could drift from the playbook. The equivalence is not exact, though, and `IMG-2` says where it is not: the build machine is launched from a cached base image carrying `openssh-server` and `curl`, and the test toolkit's readiness wait configures SSH and leaves its throwaway public key in root's `authorized_keys` before the playbook runs. A VM you launch from one of these images therefore has a little more on it than a from-scratch bootstrap would leave, and it shares its SSH host keys with every other VM launched from the same image (`IMG-12`).
+
+What each image guarantees is `IMG-13` — every build uses one fixed set of bootstrap variables, so the bootstrap's own requirements are what hold inside an image. That spec lists the ones the variables decide, marks the list a floor, and names what does not apply: Tailscale is disabled in both images, so no `TS` and no `EMRG` requirement describes anything that is there.
+
+`IMG-6` and `IMG-14` are the alias scheme: `bootstrap/<variant>-<version>`, the variant so you can pick one by name and the version so images for two Debian releases coexist on one daemon. `IMG-7` is why both variants are listed above rather than built individually — every run rebuilds both, so the two never differ by more than the variant that names them.
+
 Rebuild them after bootstrap playbook changes:
 
 ```bash

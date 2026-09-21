@@ -131,7 +131,7 @@ thing they are rather than by what value they hold.
 `incus = { path = "incus", editable = true }` and lists
 `incus[fixtures]` in its test group with no version bound; `uv.lock` records
 it as `source = { editable = "incus" }`. Nothing in the repository publishes
-it, and `docs/multi-repo-strategy.md:223-229` gives consumers a local
+it, and `docs/multi-repo-strategy.md:229-235` gives consumers a local
 editable path or a git URL with `#subdirectory=incus` — never a package name.
 That is the right shape for what the package is: it changes in lockstep with
 the roles it exists to test, a consumer pinned to a released version would be
@@ -199,7 +199,7 @@ dead code in this repository, and the option list it would use exists twice.
   measurement: no test module imports `incus.__main__`. The `site.yml` guard,
   the dispatch table, the prefix filters and `cmd_ssh`'s `os.execvp` fallback
   are covered by nothing, and the one static check that reaches them —
-  `make python-typecheck` — reports `call-non-callable` at `__main__.py:364`,
+  `make python-typecheck` — reports `call-non-callable` at `__main__.py`,
   which is a real consequence of building the dispatch dictionary in two
   stages. That diagnostic and one mock-typing artifact in
   `tests/unit/test_incus_vm.py` are the project's only two; both predate
@@ -305,13 +305,13 @@ dead code in this repository, and the option list it would use exists twice.
   boundary is `INCUS-11`: this spec owns the guard that decides whether those
   two commands exist and says nothing about what they do. Two facts cross it.
   `IMAGE_PREFIX` and `DEFAULT_DEBIAN_VERSION` are read by `cmd_publish`
-  (`__main__.py:242`) as well as by `IncusVM` and `clean_vm`, so `INCUS-1`'s
+  (`__main__.py`) as well as by `IncusVM` and `clean_vm`, so `INCUS-1`'s
   finding about those constants is a finding about a value `IMG` depends on —
   the same shared ownership `specs/testing/design.md` already records for
   `TEST-8`. And `ensure_base_image()` builds and caches a
   `bootstrap/internal-base-…` image under the same `bootstrap/` alias
   namespace that `cmd_images_clean` deletes wholesale
-  (`__main__.py:302-308`), so `make images-clean` removes the internal base
+  (`__main__.py`), so `make images-clean` removes the internal base
   image as well as the published ones and the next launch rebuilds it. That
   is a consequence of `IMG`'s prefix matching `INCUS`'s, and it belongs in
   `IMG`'s account of what `images-clean` deletes.
@@ -324,12 +324,12 @@ dead code in this repository, and the option list it would use exists twice.
   consumer. `PRJ-16` — "THE Project SHALL run every playbook, verification
   and test command inside the `uv`-managed environment" — still holds here,
   but by the callers rather than by the function. `run_playbook` has seven
-  call sites in this repository, and three of them actually run it:
-  `tests/integration/helpers.py:58` and `:97`,
-  reached through `make test-integration`, and `__main__.py:255` inside
-  `cmd_publish`, reached through `make images` (`Makefile:119`). The other
-  four are in `tests/unit/test_ansible_helpers.py` (`:75`, `:86`, `:97`,
-  `:106`) with `subprocess.run` patched out, so they spawn nothing and
+  call sites in this repository, and three of them actually run it: two in
+  `tests/integration/helpers.py`, reached through `make test-integration`,
+  and one in `__main__.py` inside `cmd_publish`, reached through
+  `make images` (`Makefile`). The other four are in
+  `tests/unit/test_ansible_helpers.py`, with `subprocess.run` patched out,
+  so they spawn nothing and
   `PRJ-16` does not reach them. Both entry
   points that do spawn go through `uv run` — pytest in the first case,
   `python -m incus` in
