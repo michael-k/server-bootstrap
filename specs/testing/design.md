@@ -352,9 +352,9 @@ that anything watches for the resulting breakage, because nothing does.
   itself. `TEST-3` and `TEST-4` are therefore both properties this spec
   states and that package implements, and a change to `incus_available()`'s
   definition of "available" changes what `TEST-4` guarantees without
-  touching a file this spec maps. `INCUS`'s spec is not yet written; when it
-  is, the four guarded fixtures and `incus_available()` are the surface the
-  two specs share.
+  touching a file this spec maps. The four guarded fixtures and
+  `incus_available()` are the surface the two specs share; `INCUS-10` states
+  the package's side of it.
 
 - `IMG` — `incus/src/incus/constants.py`'s `IMAGE_PREFIX` and
   `DEFAULT_DEBIAN_VERSION` are read both by this spec's integration fixtures

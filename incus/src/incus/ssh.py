@@ -1,4 +1,19 @@
-"""Ephemeral SSH keypair management for Incus VM testing."""
+"""Ephemeral SSH keypair management for Incus VM testing.
+
+INCUS-7: one fresh passphrase-less ed25519 keypair per VM, in a directory of
+its own, private key at mode 0600 -- unless the caller passes ``IncusVM`` an
+``ssh_key`` of its own, which nothing stops it from sharing between machines.
+
+INCUS-8: ``cleanup()`` is what removes the key from the controller's disk.
+Nothing here calls it -- ``IncusVM.destroy()`` does, and nothing guarantees
+that anybody calls ``destroy()``; in this repository the pytest fixtures are
+what make the removal reliable.
+
+INCUS-1 is violated twice below: the temp directory prefix and the key
+comment spell ``bootstrap-test`` out literally instead of reading
+``VM_NAME_PREFIX``, so a consuming repository inherits this project's name
+even if that constant is ever made configurable.  Recorded, not fixed.
+"""
 
 
 import shutil

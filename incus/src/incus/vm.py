@@ -1,4 +1,38 @@
-"""Incus VM lifecycle management for integration testing."""
+"""Incus VM lifecycle management for integration testing.
+
+``IncusVM`` is the single object a caller holds for one machine, and it owes
+that caller four separate things:
+
+INCUS-2: ``launch()`` puts the machine on the Incus daemon.
+INCUS-12: ``wait_ready()`` brings it to the point where it accepts SSH.
+INCUS-13: ``destroy()`` force-deletes it.
+INCUS-14: ``__post_init__`` generates the name and the access key when the
+caller supplies neither.
+
+INCUS-3: two command paths, deliberately asymmetric.  ``ssh()`` goes through
+the machine's own sshd as ``ssh_user`` on ``ssh_port``; ``exec()`` bypasses
+SSH entirely through the Incus agent as root, so it keeps working on a
+machine whose SSH the bootstrap has just shut.
+
+INCUS-4 and INCUS-15: ``put_file()`` pushes a file in and ``get_file()``
+pulls one out, both through Incus rather than scp, for the same reason.
+
+INCUS-5: ``knock()``, and the automatic re-knock in ``ssh()`` and in
+``wait_ready()``'s readiness poll.
+
+INCUS-6: ``background_service()`` stops what it started, including on an
+exception.
+
+INCUS-8: ``destroy()`` removes the ephemeral key along with the machine.
+This class is NOT a context manager -- no ``__enter__``, no ``__exit__``, no
+``__del__`` -- so a caller that raises before ``destroy()`` leaves the
+private key behind.  The fixtures are what close that today.
+
+INCUS-1 is violated at ``knock()``'s fallback sequence and at the three
+``apt-get``/``dpkg`` calls, which assume Debian -- one of them behind a guard
+on whether the command is needed, not on what it assumes.  Recorded in
+specs/incus-tooling, not fixed here.
+"""
 
 
 import contextlib

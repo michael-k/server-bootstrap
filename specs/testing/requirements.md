@@ -70,9 +70,8 @@ host; `**Verified:**` lines in this spec describe the suites themselves.
   pass are enough to select a tier. What `make test-unit` is named and how
   it invokes pytest is `PRJ`'s.
 - The `incus` package's own requirements — the VM lifecycle, the SSH
-  keypair, the image handling — owned by `INCUS`, whose spec is not yet
-  written. This spec names that package only where an integration fixture
-  depends on it.
+  keypair, the image handling — owned by `INCUS`. This spec names that
+  package only where an integration fixture depends on it.
 - Fixing a test that is weak, dead or misdescribed. This spec states what a
   tier must do; a test that does less than its name claims is a defect in
   the module this spec maps, recorded in `design.md`'s `## Failure modes`

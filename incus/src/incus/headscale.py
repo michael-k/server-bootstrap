@@ -1,4 +1,17 @@
-"""Headscale server lifecycle management for integration testing."""
+"""Headscale server lifecycle management for integration testing.
+
+TEST-8: the binary is fetched at the *latest* release tag rather than a
+pinned one, cached per tag under /tmp, so a new upstream release is picked up
+on the next run that finds no cached copy.  That also makes an authenticated
+``gh`` on the controller a real prerequisite of the Tailscale suite: a
+missing ``gh`` raises rather than skipping.
+
+Out of scope for INCUS: this module sits in the package directory but is not
+part of its interface -- ``__init__.py`` exports only ``IncusVM`` and
+``SSHKeyPair``, and the only consumer is this repository's Tailscale
+integration suite, which imports it directly.  See
+specs/incus-tooling/requirements.md, ``## Scope``.
+"""
 
 import json
 import shutil

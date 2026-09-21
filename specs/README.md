@@ -195,7 +195,8 @@ Named by requirement ID: what this spec assumes of others, and what others assum
 
 - `verification` — Post-bootstrap verification playbook.
 - `testing` — Unit, property and integration test suites.
-- `incus-tooling` — Incus container/VM tooling used for local testing.
+- `incus-tooling` — Incus virtual-machine tooling used for local testing.
+  Every machine it launches is a VM; the package never creates a container.
 - `image-publishing` — Base image build and publishing tool.
 
 ## 10. Traceability index

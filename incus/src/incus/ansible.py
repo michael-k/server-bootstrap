@@ -1,4 +1,31 @@
-"""Ansible playbook execution helpers for Incus VM testing."""
+"""Ansible playbook execution helpers for Incus VM testing.
+
+INCUS-9: ``run_playbook`` runs whatever playbook its caller names, against
+whatever machine it is given.  The playbook, the variables, the working
+directory and the roles path all come from the caller; ``extra_vars`` is
+written out verbatim, never merged into; and nothing on the ``IncusVM`` it
+receives is mutated.  The bootstrap-specific wrapper that does merge and does
+mutate lives outside the package, in tests/integration/helpers.py.
+
+``build_inventory`` below is not opinion-free.  Of the six host variables it
+writes, two are literals the caller cannot reach:
+``ansible_python_interpreter`` and four ``ansible_ssh_common_args`` options.
+(``user`` looks like a third but is a parameter, merely defaulted to
+``"root"``.)  The interpreter path is an INCUS-1 violation site; the SSH
+options are properties of reaching a throwaway machine with a throwaway key.
+
+It invokes ``ansible-playbook`` directly rather than ``uv run
+ansible-playbook``, so the binary comes from whatever environment the caller
+is already in.  In this repository both entry points supply the ``uv``
+environment PRJ-16 requires: ``make test-integration`` runs pytest through
+``uv run``, and ``make images`` runs ``python -m incus publish`` -- whose
+``cmd_publish`` is the second of those two entry points -- through ``uv run``
+too.
+
+Extra variables go to a JSON file inside a 0700 temp directory and are passed
+as ``-e @file``, so a credential in them never reaches an argument list
+(INV-5's last clause).
+"""
 
 
 import json

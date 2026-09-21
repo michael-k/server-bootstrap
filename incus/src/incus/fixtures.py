@@ -1,4 +1,19 @@
-"""Pytest fixtures for Incus VM integration testing."""
+"""Pytest fixtures for Incus VM integration testing.
+
+INCUS-10: ``incus_available()`` is defined once, here, and exported so that a
+consuming repository's own fixtures ask the same question this package's
+fixture asks.  ``clean_vm`` calls it and skips rather than fails.
+
+TEST-4: this is the function all four guarded fixtures in the suite call --
+``clean_vm`` below, ``bootstrap_vm`` and ``swap_vm`` in
+tests/integration/conftest.py, and ``tailscale_env`` in
+test_tailscale_integration.py.  The guarantee is routing, not enforcement.
+
+``clean_vm`` reads ``--debian-version`` through ``getoption(name, default)``,
+which falls back when the option was never declared, so the fixture also
+works in a consumer that does not register it.  This repository declares it
+in tests/integration/conftest.py.
+"""
 
 
 import os

@@ -10,6 +10,27 @@ Usage:
 Bootstrap-specific (only available when site.yml exists):
     uv run python -m incus publish [--debian VERSION]
     uv run python -m incus images-clean
+
+INCUS-16: ``create``, ``list``, ``destroy`` and ``ssh`` are registered
+wherever this module is run, outside every conditional.
+
+INCUS-11: ``publish`` and ``images-clean`` are registered only where the
+bootstrap playbook is present.  The guard's subject is the *process's working
+directory*: ``Path("site.yml")`` resolves against the CWD, not against this
+package and not against a repository root, so the same installation offers
+different commands depending on where it was invoked.  What ``publish`` and
+``images-clean`` themselves do belongs to IMG, not to INCUS.
+
+Nothing tests this module.  No test in this repository imports it or any of
+its ``cmd_*`` functions, and ``make python-typecheck`` reports
+``call-non-callable`` on the dispatch at the bottom of ``main()``, because
+the two guarded entries are added to ``commands`` after it is annotated
+``dict[str, object]``.  Recorded in specs/incus-tooling, not fixed.
+
+INCUS-1 is violated in ``cmd_ssh``, whose two glob patterns spell
+``bootstrap-test-`` out literally instead of reading ``VM_NAME_PREFIX`` --
+which ``cmd_list`` and ``cmd_destroy`` do read -- so changing that constant
+would break ``ssh`` alone.
 """
 
 

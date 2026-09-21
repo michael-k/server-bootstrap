@@ -4,6 +4,10 @@ Launch, configure, and test against Incus VMs from Python.  Built for
 the `server-bootstrap` project but usable by any downstream repo that
 needs VM-based integration tests.
 
+This package's requirements are `specs/incus-tooling/` in the
+`server-bootstrap` repository. Where this file and that spec disagree, the
+spec is authoritative and the disagreement is a bug.
+
 ## Installation
 
 ```bash
@@ -16,6 +20,30 @@ uv add --dev "incus[fixtures] @ git+https://github.com/michael-k/server-bootstra
 
 The `[fixtures]` extra includes pytest for projects that use the test
 fixtures.
+
+Both forms are explicit about where the package comes from, and that is not
+optional: this package is **not published to any index**, so there is no
+`uv add incus` that resolves to it. Worse, as of 2026-09-21 the name `incus`
+on PyPI belongs to an unrelated project, so that command succeeds and
+installs something else, failing later at import.
+
+### What you inherit (INCUS-1)
+
+The package is meant to be generic and currently is not. Installing it gives
+you this project's defaults, with no parameter, environment variable or
+configuration hook to change them:
+
+| Inherited | Value | Consequence |
+|---|---|---|
+| VM name prefix | `bootstrap-test-` | your VMs are named like `server-bootstrap`'s, so `destroy --all` in either repo deletes the other's |
+| Default image | `images:debian/13` | Debian only |
+| Base image alias | `bootstrap/internal-base-{version}` | cached under this project's alias namespace |
+| OS assumption | `apt-get`, `dpkg`, `sed` on `/etc/ssh/sshd_config`, `systemctl restart ssh`, `ansible_python_interpreter=/usr/bin/python3` | `wait_ready()` fails on a non-Debian image, and every generated inventory pins the interpreter path |
+| Knock fallback | `[7000, 8500, 9100]` | `knock()` with no sequence uses this project's default |
+
+This is recorded as a violation in `specs/incus-tooling/requirements.md`, not
+as a feature — and the list there, like this one, is a floor rather than a
+closed set.
 
 ## Quick start
 
@@ -32,6 +60,10 @@ vm.destroy()
 ```
 
 ## IncusVM
+
+One object per machine: it generates the name and the SSH keypair
+(INCUS-14), launches (INCUS-2), waits for SSH (INCUS-12), and force-deletes
+(INCUS-13).
 
 ### Construction
 
@@ -78,6 +110,11 @@ vm.wait_ready()   # Wait for boot + SSH ready (installs sshd, injects key)
 vm.destroy()      # Force-delete VM and clean up keypair
 ```
 
+`IncusVM` is **not** a context manager and has no finaliser, so `destroy()`
+is the only thing that removes the ephemeral private key from your disk
+(INCUS-8). Call it on the failure path too — every fixture in this project
+wraps setup in `try`/`except` and destroys before re-raising.
+
 ### Running commands
 
 ```python
@@ -90,6 +127,11 @@ result = vm.exec("cat /etc/hostname")
 # Both return subprocess.CompletedProcess
 ```
 
+Two paths on purpose (INCUS-3): `exec()` goes through the Incus agent rather
+than the network, so it still works on a machine whose SSH has just been
+narrowed, firewalled or knock-gated — which is what makes it the right way to
+inspect the result of the thing under test.
+
 ### Port knocking
 
 ```python
@@ -101,12 +143,21 @@ vm.knock_sequence = [7000, 8500, 9100]
 vm.ssh("whoami")                      # Auto-knocks if last knock was >20s ago
 ```
 
+INCUS-5: the 20-second threshold leaves margin inside the 30-second pass
+window `KNOCK-7` grants, and the inter-knock delay stays inside its 5-second
+stage window. The fallback sequence is a copy of `KNOCK-10`'s default, not a
+read of it.
+
 ### File transfer
 
 ```python
 vm.put_file("local/config.toml", "/etc/myapp/config.toml")
 vm.get_file("/var/log/myapp.log", "test-output/myapp.log")
 ```
+
+Push is INCUS-4, pull is INCUS-15. The remote path is concatenated onto the
+VM name in both directions, so it must be absolute: a relative destination
+addresses a different instance rather than failing.
 
 ### Properties
 
@@ -124,6 +175,18 @@ vm.public_key        # str — ephemeral SSH public key
 with vm.background_service("systemctl start myapp", "systemctl stop myapp"):
     result = vm.ssh("curl -s http://localhost:8080/health")
 ```
+
+INCUS-6: the stop command runs in a `finally`, so it runs even when the block
+raises. Its own exit status is discarded — a stop command that fails leaves
+the service running and reports nothing.
+
+### SSH keypair
+
+Each VM gets a fresh passphrase-less ed25519 keypair of its own, generated
+into a private temp directory with the key at mode `0600` (INCUS-7). Nothing
+is reused between VMs or between runs, and `destroy()` removes the directory.
+Passing your own `ssh_key=` overrides that — and if you pass the same one to
+two VMs, the first `destroy()` deletes the key the other is still using.
 
 ## run_playbook
 
@@ -145,6 +208,13 @@ result = run_playbook(
 )
 ```
 
+INCUS-9: your playbook, your variables, your working directory — they are
+passed through as given, and nothing on the `IncusVM` is mutated. The
+generated inventory is not opinion-free, though: it sets
+`ansible_python_interpreter` to `/usr/bin/python3` and forces four SSH
+options you cannot reach. `run_playbook` invokes `ansible-playbook` from your
+`PATH`, not through `uv`, so the environment is yours to arrange.
+
 ## Pytest fixtures
 
 Install with `incus[fixtures]` to get:
@@ -153,6 +223,11 @@ Install with `incus[fixtures]` to get:
   (no playbook applied).
 - **`incus_available()`** — returns `False` when Incus is not installed
   or the daemon is not running; use with `pytest.skip()`.
+
+INCUS-10: `incus_available()` is defined once so that your own fixtures ask
+the same question `clean_vm` asks. `clean_vm` reads a `--debian-version`
+option if your conftest declares one and falls back to the package default
+otherwise.
 
 ```python
 from incus.fixtures import incus_available
@@ -167,6 +242,29 @@ def my_vm(request):
     yield vm
     vm.destroy()
 ```
+
+## Command line
+
+```bash
+uv run python -m incus create [--debian VERSION]   # Create a bare Debian VM
+uv run python -m incus list                        # List VMs whose name carries the prefix
+uv run python -m incus destroy <name> | --all      # Destroy one, or every prefixed VM
+uv run python -m incus ssh <name>                  # SSH in, falling back to incus exec
+```
+
+INCUS-16: those four are available wherever you run the command line.
+INCUS-11: the `server-bootstrap`-specific
+commands (`publish`, `images-clean`) are registered only when the **current
+working directory** holds a `site.yml` — the guard reads the process's
+working directory, not this package's location and not a repository root, so
+running the same installation from a different directory offers a different
+set of commands.
+
+`list` and `destroy --all` select every Incus instance whose name starts with
+`bootstrap-test-`. Since that prefix comes from the package, every repo using
+this toolkit names its VMs the same way: a `destroy --all` here force-deletes
+`server-bootstrap`'s running test VMs too, and vice versa. That is the
+INCUS-1 finding above, with a concrete consequence.
 
 ## Internal base image
 
