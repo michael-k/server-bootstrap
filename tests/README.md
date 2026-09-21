@@ -1,17 +1,27 @@
 # Test Suite Documentation
 
 This project uses pytest markers to organize and run different types of tests efficiently.
+The requirements the suite has to meet are in `specs/testing/`; this file is the
+how-to. Where the two disagree, the spec wins.
 
 ## Available Test Markers
 
+`unit` and `integration` do not overlap, and together they are the whole
+suite (TEST-1). The tests `property` selects are *all* also `unit` — it marks
+a technique, not a third tier. `slow` currently selects exactly the same tests
+as `integration`.
+
 ### `@pytest.mark.unit`
-Fast tests with no external dependencies. These tests verify logic by reading configuration files and templates without requiring actual system resources.
+Tests that need no target host and no virtual machine (TEST-2). These tests verify logic by reading configuration files and templates without requiring actual system resources.
 
 **Characteristics:**
-- Fast execution (< 1 second per test)
+- Fast execution (typically < 1 second per test)
 - No network access required
-- No VM or container required
+- No VM, container or target host required
 - Tests configuration files, templates, and role structure
+- A few run a local external binary: the SSH-keypair tests call `ssh-keygen`,
+  and the emergency-script edge-case tests execute the rendered script against
+  temporary fixture files with a mocked `systemctl`. Neither reaches a host.
 
 **Example:**
 ```python
@@ -25,10 +35,20 @@ def test_ssh_config_properties():
 ### `@pytest.mark.property`
 Property-based tests using Hypothesis. These tests verify universal properties that should hold for all valid inputs.
 
+Always applied *together with* `unit`: a property test is a unit test that
+also generates its inputs. `-m "property and not unit"` selects nothing.
+
 **Characteristics:**
 - Generates many test cases automatically
 - Tests edge cases and boundary conditions
 - Verifies correctness properties across input space
+
+**Caveat, measured:** of the 187 tests in `tests/property/`, only 90 carry a
+`@given` decorator at all — the other 97 are ordinary file assertions wearing
+the marker. Of those 90, at least 61 never let an assertion depend on what
+Hypothesis drew for them, so they run one fixed assertion 50 or 100 times. A
+new property test should assert on what it draws (TEST-6); see
+`specs/testing/requirements.md` for the measurement and the named cases.
 
 **Example:**
 ```python
@@ -48,6 +68,8 @@ Tests that require actual system resources like VMs, containers, or real network
 - Requires test infrastructure
 - Tests actual system behavior
 - May modify system state
+- Runs against a Debian VM the suite launches itself (TEST-3), and skips
+  rather than fails when Incus is unavailable (TEST-4)
 
 **Example:**
 ```python
@@ -65,6 +87,12 @@ Tests that take significant time to execute, regardless of type.
 - Execution time > 5 seconds
 - Often combined with integration tests
 - Useful for CI/CD optimization
+
+**Caveat, measured:** that is the intent, not a description of the suite
+today. Both integration modules apply `slow` alongside `integration` in a
+module-level `pytestmark` and nothing else uses it, so `slow` and
+`integration` select the identical 47 tests. `-m "not slow"` drops the whole
+integration tier, not a handful of long tests.
 
 ## Running Tests
 
@@ -96,12 +124,13 @@ uv run pytest -m "property and unit"
 # All tests except integration
 uv run pytest -m "not integration"
 
-# Only slow tests
+# Only slow tests (currently the same 47 tests as -m integration)
 uv run pytest -m slow
-
-# Property tests that are NOT unit tests
-uv run pytest -m "property and not unit"
 ```
+
+Each `make test-*` target differs from the others by nothing but the marker
+expression it passes (TEST-5); `make test` passes none, so it is the only
+target that would run a test carrying no tier marker.
 
 ## Current Test Organization
 
@@ -189,7 +218,10 @@ def test_deployment_property(config):
 
 ## CI/CD Optimization
 
-The marker system enables efficient CI/CD pipelines:
+The marker system would enable efficient CI/CD pipelines. **This repository has
+no CI** — there is no `.github/` directory and no workflow file anywhere in it.
+The snippet below is an illustration of what the markers make possible, not a
+description of anything that runs:
 
 ```yaml
 # Example GitHub Actions workflow
@@ -218,14 +250,25 @@ jobs:
 
 ## Hypothesis Configuration
 
-Property-based tests use Hypothesis with the following configuration (in `pyproject.toml`):
+Hypothesis's example budget is set per test, by the `@settings()` decorator on
+the test itself (TEST-7):
 
-```toml
-[tool.hypothesis]
-max_examples = 100
+```python
+@settings(max_examples=100)
+@given(value=st.integers())
+def test_my_property(value: int): ...
 ```
 
-This means each property test will run 100 different generated test cases by default. You can override this per-test using `@settings(max_examples=N)`.
+All 90 Hypothesis-driven tests in `tests/property/` carry one — 71 at
+`max_examples=100` and 19 at `max_examples=50`. A test with no `@settings()`
+would get Hypothesis's own built-in default, which is also 100.
+
+`pyproject.toml` contains a `[tool.hypothesis] max_examples = 100` block. **It
+is inert.** Hypothesis 6.151.9 contains no code that reads `pyproject.toml`,
+and neither `conftest.py` in this repository registers or loads a settings
+profile. The block sets nothing; it is left in place, annotated, because its
+value coincides with the library default and removing it changes no behaviour
+either way. Edit the decorators, not that block.
 
 ## Requirements Traceability Matrix
 

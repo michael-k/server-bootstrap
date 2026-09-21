@@ -39,6 +39,12 @@ verify:
 	@echo "Running verification test suite..."
 	uv run ansible-playbook -i $(INVENTORY) tests/verify_bootstrap.yml $(if $(LIMIT),--limit $(LIMIT))
 
+# TEST-5: the three tier targets below differ from each other by nothing but
+# the marker expression they pass, which is what makes a tier selectable by
+# marker alone.  TEST-1: `test` passes no expression, so it is the only target
+# that runs a test carrying no tier marker — every other target would skip it
+# silently.  The markers themselves are declared in pyproject.toml, which is
+# outside tests/spec_check.py's SCAN_GLOBS and so cannot carry these citations.
 test:
 	@echo "Running all tests..."
 	uv run pytest $(ARGS)
@@ -47,6 +53,12 @@ test-unit:
 	@echo "Running unit tests..."
 	uv run pytest -m unit $(ARGS)
 
+# TEST-6: every test this target selects that draws from a Hypothesis strategy
+# should let an assertion depend on a drawn value; at least 61 of the 90 that
+# draw do not.
+# TEST-7: the example budget this target runs under comes from the per-test
+# @settings decorators in tests/property/, not from pyproject.toml's inert
+# [tool.hypothesis] block.
 test-property:
 	@echo "Running property-based tests..."
 	uv run pytest -m property $(ARGS)

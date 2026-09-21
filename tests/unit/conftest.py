@@ -3,6 +3,15 @@ Shared fixtures for unit tests.
 
 Provides Jinja2 environment factories and common variable sets
 used across all unit test modules.
+
+TEST-2: every fixture here either returns a dictionary of variable values or
+returns a callable that builds or renders from a role's templates directory.
+Nothing here opens a connection, starts a process or reaches outside this
+repository, which is what lets the unit tier run on a controller with no target
+host and no virtual machine.
+
+The default variable sets below are hand-maintained copies of each role's
+defaults/main.yml.  Nothing checks that they still agree with it.
 """
 
 from __future__ import annotations

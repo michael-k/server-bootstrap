@@ -26,6 +26,13 @@ test = [
 ]
 
 
+# INERT.  Hypothesis 6.151.9 contains no code that reads pyproject.toml and
+# exposes no settings loader for it; neither conftest.py in this repository
+# registers or loads a settings profile.  The example budget that actually
+# applies comes from the per-test @settings() decorators in tests/property/
+# (71 at max_examples=100, 19 at max_examples=50).  The 100 below coincides
+# with Hypothesis's own built-in default, which is why this block has read as
+# working configuration.  See the testing spec's TEST-7.
 [tool.hypothesis]
 max_examples = 100
 
@@ -36,6 +43,14 @@ pythonpath = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+# The testing spec's TEST-1 and TEST-5 are cited from the Makefile, where these
+# markers are actually passed to pytest: this file is outside
+# tests/spec_check.py's SCAN_GLOBS and cannot carry a citation.
+# Measured: `unit` and `integration` partition the 490 collected tests (443 and
+# 47, with no overlap); `property` is a strict subset of `unit` (187), not a
+# third tier; `slow` currently selects exactly the same 47 tests as
+# `integration`, despite the description below.  `--strict-markers` is not set,
+# so a misspelled marker warns rather than failing.
 markers = [
     "unit: marks tests as unit tests (fast, no external dependencies)",
     "property: marks tests as property-based tests using Hypothesis",

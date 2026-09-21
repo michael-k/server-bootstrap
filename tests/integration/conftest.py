@@ -1,4 +1,19 @@
-"""Pytest configuration and bootstrap-specific fixtures for integration tests."""
+"""Pytest configuration and bootstrap-specific fixtures for integration tests.
+
+TEST-3: every test in this tier reaches its target through one of the
+session-scoped fixtures here, or through `tailscale_env` in
+test_tailscale_integration.py, each of which launches a real Debian VM and
+bootstraps it before yielding.  No integration test asserts against rendered
+text or a mock.
+
+TEST-4: each of those fixtures guards on `incus_available()` and skips rather
+than fails when Incus is absent.  The guarantee is routing, not enforcement --
+a future test that built an IncusVM directly would error instead of skipping,
+and nothing here would notice.
+
+`clean_vm` is re-exported below for pytest to discover; no test in this
+repository currently uses it.
+"""
 
 
 import os

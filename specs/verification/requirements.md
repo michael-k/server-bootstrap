@@ -83,10 +83,13 @@ a second source of what the requirement says.
   cannot see. This spec states what a check must do; a check that does not
   is a defect in the file this spec maps, not a requirement this spec lacks.
 - Any unit, property or integration test of a feature role. This playbook is
-  the only suite that reads a live, bootstrapped host; the rest of the
-  testing spec reads templates and task files instead, which
+  the only suite that reads a live host supplied by an inventory; the testing
+  spec's unit and property tiers read templates and task files instead, which
   `specs/fail2ban/design.md` and others record as a real difference in what
-  is actually confirmed.
+  is actually confirmed. Its integration tier does read a live, bootstrapped
+  host — one it launched itself under Incus — and runs this playbook against
+  that host as one of its own tests; `specs/testing/design.md`'s
+  `## Interactions` records the crossing point.
 
 ## Security invariants
 
@@ -381,9 +384,14 @@ present, a failed `ansible.builtin.assert` follows Ansible's own default
 behaviour: the task fails, the host is marked failed, no later task runs
 against it, and `ansible-playbook` exits non-zero once the run ends. This
 requirement therefore rests entirely on the file continuing to add none of
-those overrides, not on any mechanism this file adds itself. No test in
-either suite runs `make verify` end to end and inspects the process's exit
-code — doing so needs a live or containerized target, which is outside
-what `make test-unit` and `make test-property` reach — so this requirement
-is confirmed by the absence of a defeating directive, not by an observed
-non-zero exit.
+those overrides, not on any mechanism this file adds itself. No unit or
+property test runs this playbook end to end and inspects the process's exit
+code — doing so needs a live or containerized target, which is outside what
+`make test-unit` and `make test-property` reach. The integration tier does:
+`TestBootstrapVerification::test_verify_playbook_passes` runs this playbook
+against a virtual machine it bootstrapped and asserts the process returned
+zero and its recap reported `failed=0`. That is an observation of the
+*passing* direction only — no test has ever seen this playbook exit non-zero
+on a failed check — so the failing direction, which is what this requirement
+is about, remains confirmed by the absence of a defeating directive rather
+than by an observed run.

@@ -37,8 +37,13 @@ false` on a second run are both claims about what Ansible *believes* it did,
 and this playbook is the one place any of that is checked against what the
 host actually has. The cost is that every check here needs a live target —
 `make verify` runs against an inventory, not against a fixture — so none of
-it runs in `make test-unit` or `make test-property`, and a broken check is
-caught only by whoever next runs it against a real host.
+it runs in `make test-unit` or `make test-property`. A broken check is
+caught either by whoever next runs `make verify` against a real host, or by
+`make test-integration`, whose
+`TestBootstrapVerification::test_verify_playbook_passes` runs this playbook
+against a machine that suite bootstrapped and fails if it does not exit
+zero. Neither happens on a controller without Incus unless somebody runs
+`make verify` by hand.
 
 ## Implementation map
 
@@ -266,6 +271,12 @@ never this one's to restate.
   runs `ansible-playbook` against this file, and states nothing about how
   `make` itself is organised.
 - The testing spec — that `tests/property/test_verification_properties.py`
-  is the only test of this playbook's own structure, and that it reads the
-  playbook's YAML and text rather than running it; no unit or integration
-  test in this project executes `tests/verify_bootstrap.yml`.
+  is the only test of this playbook's own *structure*, and that it reads the
+  playbook's YAML and text rather than running it. One integration test,
+  `TestBootstrapVerification::test_verify_playbook_passes`, does execute
+  `tests/verify_bootstrap.yml` — against a virtual machine that suite
+  bootstrapped, through `run_verify_playbook` rather than through `make
+  verify` — and asserts the run exits zero with `failed=0`. That is the
+  only place in the project this playbook is run by a test, it runs only
+  where Incus is available, and it exercises the passing direction alone.
+  No unit or property test executes this playbook.
