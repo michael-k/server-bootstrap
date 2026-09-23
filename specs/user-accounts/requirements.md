@@ -434,6 +434,13 @@ account's group membership only for the `wheel` group, which belongs to
 THE Bootstrap SHALL grant SSH access to any additional account only through
 membership of the SSH access group.
 
+**Traceability:** exempt — this requirement's subject is a repository built
+on this bootstrap, not this repository, so there is no code site here to
+cite. It has no tasks, and no test or check could observe a downstream
+repository obeying or breaking it. It is stated as a requirement so that
+directing purpose repositories elsewhere is a spec change rather than an
+edit to a document.
+
 **Why:** sshd's access list is a single directive, and the only way to add an
 account to it other than by joining the group is to rewrite that directive or
 to shadow it from a configuration drop-in. Both are edits a repository built
@@ -446,11 +453,10 @@ tries to log in, plausibly the operator holding the console credential this
 bootstrap deliberately made the only fallback. Group membership cannot fail
 that way: it is additive, so granting access to one account cannot remove it
 from another.
-**Verified:** the integration guidance for repositories built on this
-bootstrap names the SSH access group as the designated way to grant an
-account access, and lists it as surviving a bootstrap re-run. That document is
-where this requirement is realised, because its audience — the repository
-doing the granting — is outside this one. Nothing here can enforce it: no
-task, test or check detects a downstream repository that edits sshd's access
-configuration instead, and the mechanism it directs them to is `USR-13`'s
-group and `USR-14`'s membership.
+**Verified:** not verifiable here, which is what the exemption above records.
+`specs/project/bootstrap-contract.md` states this rule to the audience it
+binds — it names the SSH access group as the designated way to grant an
+account access, and as surviving a bootstrap re-run — but stating it is not
+enforcing it: no task, test or check detects a downstream repository that
+edits sshd's access configuration instead. The mechanism it directs them to
+is `USR-13`'s group and `USR-14`'s membership.

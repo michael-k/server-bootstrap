@@ -97,10 +97,28 @@ Nothing live covers `FW-1`, `FW-2`, `FW-5`, `FW-8`, `FW-9`, `FW-11`,
 `FW-12`, `FW-13`, `FW-15`, `FW-16`, `FW-19`, `FW-20` or `FW-21`, and
 `FW-10`'s live coverage does not isolate it from `SSH-18`.
 
-`docs/multi-repo-strategy.md` describes the same drop-in contract for
-purpose repositories, including the `add rule` requirement and a worked
-example. It carries no requirement IDs; it is user-facing how-to material,
-which `specs/README.md` places outside this tree deliberately.
+`specs/project/bootstrap-contract.md` states the same drop-in contract for
+purpose repositories, including the `add rule` constraint. It is a view over
+this tree rather than a spec of its own: it defines no requirement IDs of its
+own, and states each guarantee as a citation of the requirements that produce
+it — here `FW-20`, `FW-21`, `FW-15` and `KNOCK-8` — rather than restating
+them. `docs/multi-repo-strategy.md` carries the worked example — a drop-in
+file and the reload task that applies it — and points at the contract for the
+guarantee it relies on.
+
+Those are the two documents a purpose repository is pointed at, but they are
+not the only statements of this contract, and the list is a floor rather than a
+closed set. The one worth knowing about is not a document at all:
+`roles/firewall/templates/nftables.conf.j2` renders the same constraint, with
+its own worked example, as a comment block into the deployed
+`/etc/nftables.conf` — the copy an operator on the host actually reads, and the
+one `specs/emergency-access/design.md` measured a dependency on, because that
+example line satisfies `unrestrict_ssh`'s `grep` when `ssh_port` is 443. That
+spec records the quirk as unreachable today rather than live, and says why.
+`FW-21`'s `**Why:**`, `KNOCK-8`'s `**Verified:**`, this design's own consumer
+bullet under `## Interactions`, and `KNOCK`'s design and requirements all state
+it again for readers already inside the tree. Anything that changes the
+constraint has to visit every site, and these are the ones found so far.
 
 ## Key decisions
 
@@ -527,16 +545,16 @@ between them.
   `tcp dport <port> accept`. Not yet written; same prose-not-IDs caveat —
   when it is, `FW-10`, `FW-16` and `FW-19` are the IDs it should cite, and
   `FW-10` is the one whose rule text it must not be allowed to drift from.
-- Purpose repositories, and whichever spec eventually owns the extension
-  contract — a bootstrapped host has `/etc/nftables.d` (`FW-20`), included
+- Purpose repositories, addressed by `specs/project/bootstrap-contract.md` —
+  a bootstrapped host has `/etc/nftables.d` (`FW-20`), included
   at the end of the ruleset (`FW-21`). A file placed there is loaded on the
   next reload and on every boot, its rules are appended after everything
   this spec defines, and a bootstrap re-run neither deletes it nor needs to
   know about it. The constraint is `add rule` syntax: the drop-in is
   included inside the same transaction as `FW-15`'s flush and after the
   table exists, so a file that re-declares the table or flushes again breaks
-  the whole load. `docs/multi-repo-strategy.md` states the same contract for
-  that audience.
+  the whole load. `specs/project/bootstrap-contract.md` states the same
+  contract for that audience, as a citation of these requirements.
 - `VRFY` — what a completed bootstrap guarantees is a property of the
   **deployed file** plus one systemd start, and the distinction is what
   `VRFY` exists for. A completed run establishes that the template rendered,

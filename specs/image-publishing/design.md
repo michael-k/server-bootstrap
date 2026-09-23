@@ -150,7 +150,7 @@ wants only `bootstrap/open-13` pays for two full bootstrap runs, and that
 **The image never leaves the local daemon.** `incus publish` writes into the
 local image store, and nothing in the implementation copies, exports or
 pushes an image anywhere; the design that introduced these commands put
-remote registries out of scope, and `docs/multi-repo-strategy.md:203`
+remote registries out of scope, and `docs/multi-repo-strategy.md`
 describes the images as available locally. That is what makes the current
 build tolerable at all — an image containing a repository-known password
 (`IMG-10`), shared host keys (`IMG-12`) and an unscrubbed filesystem is an

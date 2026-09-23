@@ -131,7 +131,7 @@ thing they are rather than by what value they hold.
 `incus = { path = "incus", editable = true }` and lists
 `incus[fixtures]` in its test group with no version bound; `uv.lock` records
 it as `source = { editable = "incus" }`. Nothing in the repository publishes
-it, and `docs/multi-repo-strategy.md:229-235` gives consumers a local
+it, and `docs/multi-repo-strategy.md` gives consumers a local
 editable path or a git URL with `#subdirectory=incus` — never a package name.
 That is the right shape for what the package is: it changes in lockstep with
 the roles it exists to test, a consumer pinned to a released version would be

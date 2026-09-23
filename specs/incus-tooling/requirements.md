@@ -15,7 +15,7 @@ it has quietly fixed this repository's own names and defaults into code that
 was written to be reused by other repositories.
 
 The reuse claim is the reason the spec matters more than an internal helper
-would. `docs/multi-repo-strategy.md:225-237` tells purpose repositories to
+would. `docs/multi-repo-strategy.md` tells purpose repositories to
 install this package as a dev dependency, by local path or by git URL, and
 documents an API for them to build their own fixtures on. A package with that
 audience has an interface contract, and a default inside it that names
@@ -154,7 +154,7 @@ launches when its caller names none, and the port sequence it knocks — from
 its caller rather than fixing it in the package.
 
 **Why:** the package was separated from `tests/` for one reason, and
-`docs/multi-repo-strategy.md:225-237` states it: purpose repositories install
+`docs/multi-repo-strategy.md` states it: purpose repositories install
 it and write their own fixtures against its API. A default that names this
 project is inherited silently by every one of them, and two of the defaults
 are not passive. Because the name prefix lives in the package rather than in

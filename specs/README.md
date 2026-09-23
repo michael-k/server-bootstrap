@@ -164,6 +164,7 @@ Named by requirement ID: what this spec assumes of others, and what others assum
 
 - `project` — Ansible entry point, tooling and inventory conventions shared by all specs.
 - `project/security-invariants.md` — Cross-cutting security invariants (`INV`) and allowances (`ALW`) that other specs uphold or rely on.
+- `project/bootstrap-contract.md` — The machine state a purpose-specific repository may build on, stated entirely as citations of the requirements that produce it. It defines no requirement IDs of its own; it is a view over the rest of the tree, so a change to any requirement it cites is a change to the contract.
 
 **Host basics**
 

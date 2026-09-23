@@ -37,7 +37,6 @@ directs them to.
 | `roles/users/defaults/main.yml` | USR-1, USR-2, USR-3, USR-4, USR-5, USR-7, USR-8, USR-10, USR-11, USR-12 |
 | `tests/unit/test_users.py` | USR-1, USR-3, USR-4, USR-6, USR-9, USR-10, USR-12 |
 | `tests/property/test_user_properties.py` | USR-1, USR-2, USR-3, USR-4, USR-5, USR-6, USR-7, USR-9, USR-10, USR-11, USR-12 |
-| `docs/multi-repo-strategy.md` | USR-15 |
 
 `roles/users/tasks/main.yml` also carries `SUDO`'s, `LOGIN`'s and `PAM`'s
 tasks, and `tests/unit/test_users.py` and
@@ -45,11 +44,14 @@ tasks, and `tests/unit/test_users.py` and
 spec's citations name only the tasks and tests listed above; the remaining
 tasks in the file belong to those specs and are cited from them.
 
-`USR-15` is the one requirement with no task behind it: it is a rule about
-what a repository built on this bootstrap may do, and the place it is
-realised is the document that tells such a repository how to integrate —
-which is why `docs/multi-repo-strategy.md` appears in the map alongside the
-role and its tests.
+`USR-15` is the one requirement with no task behind it, and it is absent from
+the map for the same reason: it is a rule about what a repository built on
+this bootstrap may do, so its subject is outside this repository and there is
+no path here that realises it. It is annotated `**Traceability:** exempt` in
+`requirements.md`. `specs/project/bootstrap-contract.md` states it to the
+audience it binds, but a spec is not an implementation and does not belong in
+this map — `specs/README.md` §4 reserves the map for the paths that realise
+requirements.
 
 ## Key decisions
 

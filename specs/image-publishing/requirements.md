@@ -74,7 +74,7 @@ not in the same state.
 - Moving an image off the local daemon. Nothing in the implementation copies,
   exports or pushes an image anywhere — `grep -rn "image copy\|image
   export\|image push" incus/src/ Makefile` finds nothing — and
-  `docs/multi-repo-strategy.md:203` describes the images as available
+  `docs/multi-repo-strategy.md` describes the images as available
   locally. A registry, a signature and a retention policy are all absent, and
   none of them is specified here.
 - The `images` and `images-clean` make targets as targets, and the `uv`
@@ -312,8 +312,8 @@ thing anyone launching an image makes. Putting it in the alias makes it a
 fact about the name rather than a lookup in a document, and makes a test
 fixture that names the wrong one obvious on the line where it is written.
 **Verified:** `alias = f"{IMAGE_ALIAS_PREFIX}{variant}-{version}"`
-(`__main__.py:280`), where `variant` is the key from `IMAGE_VARIANTS`
-(`:108-117`). The aliases `docs/multi-repo-strategy.md:207-208` documents to
+(`__main__.py`), where `variant` is the key from `IMAGE_VARIANTS`. The
+aliases `docs/multi-repo-strategy.md` documents to
 consumers — `bootstrap/knocking-13` and `bootstrap/open-13` — carry the two
 variant names.
 
@@ -332,7 +332,7 @@ either could be dropped without the other.
 **Verified:** the same f-string (`__main__.py`) interpolates `version`,
 which is `args.debian` (`__main__.py`). The documented aliases
 `bootstrap/knocking-13` and `bootstrap/open-13`
-(`docs/multi-repo-strategy.md:207-208`) are that scheme with the default
+(`docs/multi-repo-strategy.md`) are that scheme with the default
 version.
 
 ### IMG-7 — One image per variant, on every run
