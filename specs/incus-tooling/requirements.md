@@ -679,10 +679,10 @@ exercised; this one is not.
 **Verified:** `get_file` (`vm.py`) runs `incus file pull
 <name><src> <dst>` with `check=True`, so a failed transfer raises
 `CalledProcessError` rather than returning a result. It has no unit test.
-**It is called by nothing in this repository**: searching every `.py` and
-`.md` file outside `docs/superpowers/` finds no call at all — only its
-definition, the module docstring naming it, and two documentation examples,
-in `incus/README.md` and `docs/multi-repo-strategy.md`. The pull direction is
+**It is called by nothing in this repository**: searching every tracked
+`.py` and `.md` file finds no call at all — only its definition, the module
+docstring naming it, and two documentation examples, in `incus/README.md`
+and `docs/multi-repo-strategy.md`. The pull direction is
 offered, documented and unexercised, and its remote path is concatenated
 without validation exactly as `INCUS-4` records for the push direction.
 

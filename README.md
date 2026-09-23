@@ -134,6 +134,23 @@ make ansible-lint       # Check Ansible files
 - **[docs/troubleshooting.md](docs/troubleshooting.md)** - Common issues and solutions
 - **[docs/advanced-usage.md](docs/advanced-usage.md)** - Multiple VPS, custom configurations
 
+## Specifications
+
+[specs/](specs/) is the authoritative source of truth for this project: a mismatch between a spec and the implementation is a bug, whichever side looks more correct. Start at [specs/README.md](specs/README.md). `docs/` tells you how to use this; `specs/` tells you what it promises and why. `make spec-check` enforces the mechanical half of that claim.
+
+This README is itself one of those implementations. Its sections carry the `PRJ` requirements they document or state:
+
+| Section | Requirement |
+|---|---|
+| Opening | `PRJ-21` (documented initial-setup scope) |
+| Prerequisites | `PRJ-4` (platform floor), `PRJ-16` (managed environment), `PRJ-18` (Python floor), `PRJ-20` (documented prerequisites) |
+| Quick Start | `PRJ-22` (documented run procedure) |
+| Configuration | `PRJ-26` (documented configuration surface), `PRJ-27` (documented required variables) |
+| Ansible Vault | `PRJ-15` (secrets from the vault), `PRJ-23` (documented secrets handling) |
+| Running the Playbook | `PRJ-19` (routine operations are make targets) |
+| Testing | `PRJ-24` (documented test procedure) |
+| Project Structure | `PRJ-17` (declared dependencies) |
+
 ## Project Structure
 
 ```
@@ -156,7 +173,9 @@ make ansible-lint       # Check Ansible files
 │   ├── emergency_access/
 │   ├── fail2ban/
 │   ├── logging/
-│   ├── time_sync/
+│   ├── filesystem_hardening/
+│   ├── networking/
+│   ├── system_config/
 │   ├── swap/
 │   └── system_updates/
 ├── tests/                   # Test suite
@@ -164,6 +183,8 @@ make ansible-lint       # Check Ansible files
 │   ├── property/
 │   ├── integration/
 │   └── verify_bootstrap.yml
+├── incus/                   # Local VM tooling used by the test suite
+├── specs/                   # Authoritative requirements and design docs
 └── docs/                    # Additional documentation
 ```
 
@@ -176,22 +197,6 @@ make ansible-lint       # Check Ansible files
 - Fail2ban monitors and blocks brute-force attempts
 - Optional SSH restriction to Tailscale VPN interface
 - All secrets encrypted with Ansible Vault
-
-## Specification
-
-[specs/](specs/) is the authoritative source of truth for this project: a mismatch between a spec and the implementation is a bug, whichever side looks more correct. `make spec-check` enforces the mechanical half of that claim — every requirement is cited by the code that realises it, and every citation names a requirement that exists.
-
-This README is itself one of those implementations. Its sections carry the project's documentation requirements:
-
-| Section | Requirement |
-|---|---|
-| Prerequisites | `PRJ-4` (platform floor), `PRJ-16` (managed environment), `PRJ-18` (Python floor), `PRJ-20` (documented prerequisites) |
-| Quick Start | `PRJ-22` (documented run procedure) |
-| Configuration | `PRJ-26` (documented configuration surface), `PRJ-27` (documented required variables) |
-| Ansible Vault | `PRJ-15` (secrets from the vault), `PRJ-23` (documented secrets handling) |
-| Running the Playbook | `PRJ-19` (routine operations are make targets), `PRJ-21` (documented initial-setup scope) |
-| Testing | `PRJ-24` (documented test procedure) |
-| Project Structure | `PRJ-17` (declared dependencies) |
 
 ## License
 

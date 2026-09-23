@@ -4,14 +4,24 @@ This document contains instructions for AI agents working on this project.
 
 ## Project Documentation
 
-All project specifications are located in `.kiro/specs/vps-bootstrap-playbook/`:
+All project specifications live under [specs/](specs/). Start at
+[specs/README.md](specs/README.md), the spec tree's entry point, and read
+[specs/project/security-invariants.md](specs/project/security-invariants.md)
+for the invariants every spec obeys.
 
-- **[prompt.md](.kiro/specs/vps-bootstrap-playbook/prompt.md)** - Original project prompt and goals
-- **[requirements.md](.kiro/specs/vps-bootstrap-playbook/requirements.md)** - Complete requirements with user stories and acceptance criteria
-- **[design.md](.kiro/specs/vps-bootstrap-playbook/design.md)** - Technical architecture, component design, and data models
-- **[tasks.md](.kiro/specs/vps-bootstrap-playbook/tasks.md)** - Implementation task breakdown with status tracking
+`specs/` is the authoritative source of truth for this project: a mismatch
+between a spec and the implementation is a bug in the implementation, not in
+the spec.
 
-Only read these files if you're looking for specific information.  They are very long and information heavy.
+The change process runs one way: edit the spec first, get it reviewed, then
+bring the implementation to match. Never change behaviour and its spec in
+opposite directions, and never adjust a spec to match code that has drifted
+without saying so.
+
+Do not explain a decision in a comment when a requirement already states
+it — cite the requirement ID instead.
+
+`make spec-check` is the gate — run it before committing.
 
 ## Command Execution Rules
 
