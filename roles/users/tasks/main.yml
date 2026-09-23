@@ -90,9 +90,9 @@
     - sudo
 
 # Ansible User Creation (uid 1999)
-# Requirements: 2.4
-# (2.4 is key-only SSH authentication, enforced by sshd and owned by the
-# ssh-hardening spec; not yet migrated.)
+# Key-only login for this account is the ssh-hardening spec's, enforced by
+# sshd rather than here. This task gives the account a password field no
+# password can satisfy (USR-6, below).
 
 # USR-4: uid 1999 is fixed. USR-5: the name is configurable.
 # USR-7: so is the login shell. USR-8: supplementary groups are appended.

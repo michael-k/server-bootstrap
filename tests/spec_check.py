@@ -22,6 +22,7 @@ SPECS_DIR = REPO_ROOT / "specs"
 _PREFIX_ROW = re.compile(
     r"^\|\s*`(?P<prefix>[A-Z][A-Z0-9]*)`\s*\|\s*`(?P<spec>[a-z0-9./-]+)`\s*\|"
 )
+_LEGACY_REF = re.compile(r"\bRequirements?:?\s+\d+\.\d+")
 _REQ_HEADING = re.compile(
     r"^### (?P<id>(?P<prefix>[A-Z][A-Z0-9]*)-(?P<number>\d+)) — (?P<title>.+?)\s*$"
 )
@@ -441,6 +442,32 @@ def check_implementation_map(
     return findings
 
 
+def check_legacy_references(repo_root: Path) -> list[Finding]:
+    """Flag surviving `Requirement N.M` citations from the superseded numbering.
+
+    This checker's own test module is excluded, for the same reason
+    `find_citations` excludes it: its requirement-ID-shaped literals are test
+    fixtures, not real citations.
+    """
+    findings: list[Finding] = []
+    for glob in SCAN_GLOBS:
+        for path in sorted(repo_root.glob(glob)):
+            if not path.is_file() or path.relative_to(repo_root) == _SELF_TEST:
+                continue
+            for number, line in enumerate(
+                path.read_text(errors="replace").splitlines(), start=1
+            ):
+                if _LEGACY_REF.search(line):
+                    findings.append(
+                        Finding(
+                            "legacy-reference",
+                            f"{path.relative_to(repo_root)}:{number} still cites the "
+                            f"superseded numbering: {line.strip()}",
+                        )
+                    )
+    return findings
+
+
 TRACEABILITY_PATH = SPECS_DIR / "_traceability.md"
 
 
@@ -503,6 +530,7 @@ def run_checks(
             full_claims,
             full_requirements,
         ),
+        *check_legacy_references(repo_root),
     ]
 
 

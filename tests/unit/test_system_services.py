@@ -231,7 +231,7 @@ class TestJournaldConfiguration:
 # ---------------------------------------------------------------------------
 
 class TestTimeSyncServiceSelection:
-    """Tests for time sync service selection (Requirements 12.1-12.5)."""
+    """Tests for the NTP server list rendered into each service's config (TIME-3)."""
 
     @pytest.fixture
     def ntp_servers(self) -> list[str]:

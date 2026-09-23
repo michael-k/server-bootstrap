@@ -5,12 +5,16 @@ from pathlib import Path
 import pytest
 
 from tests.spec_check import (
+    REPO_ROOT,
+    SPECS_DIR,
+    TRACEABILITY_PATH,
     Finding,
     Requirement,
     check_allowances,
     check_citations,
     check_ids,
     check_implementation_map,
+    check_legacy_references,
     check_spec_markdown,
     check_structure,
     citation_pattern,
@@ -605,3 +609,37 @@ def test_main_returns_one_and_prints_findings(tmp_path: Path, monkeypatch, capsy
     assert spec_check.main(["--check"]) == 1
     assert "orphan-requirement" in capsys.readouterr().out
     assert not (specs / "_traceability.md").exists()
+
+
+def test_check_legacy_references_flags_old_style_citations(tmp_path: Path) -> None:
+    (tmp_path / "site.yml").write_text("# Requirement 3.11 is stale\n")
+
+    findings = check_legacy_references(tmp_path)
+
+    assert [f.kind for f in findings] == ["legacy-reference"]
+    assert "site.yml" in findings[0].message
+
+
+def test_check_legacy_references_accepts_a_clean_tree(tmp_path: Path) -> None:
+    (tmp_path / "site.yml").write_text("# SSH-11\n")
+
+    assert check_legacy_references(tmp_path) == []
+
+
+def test_repo_spec_tree_has_no_findings() -> None:
+    prefixes = load_prefixes(SPECS_DIR / "README.md")
+
+    findings = run_checks(REPO_ROOT, SPECS_DIR, prefixes)
+    findings += check_legacy_references(REPO_ROOT)
+
+    assert findings == [], "\n".join(str(f) for f in findings)
+
+
+def test_traceability_index_is_current() -> None:
+    prefixes = load_prefixes(SPECS_DIR / "README.md")
+    expected = render_traceability(
+        load_all_requirements(SPECS_DIR, prefixes),
+        find_citations(REPO_ROOT, prefixes),
+    )
+
+    assert TRACEABILITY_PATH.read_text() == expected, "run `make spec-check`"
