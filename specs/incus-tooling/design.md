@@ -301,7 +301,7 @@ dead code in this repository, and the option list it would use exists twice.
 
 - `IMG` — `cmd_publish` and `cmd_images_clean`, `_PUBLISH_VARS`,
   `IMAGE_VARIANTS` and the `bootstrap/` alias scheme live in this package's
-  `__main__.py` but belong to `IMG`, whose spec is not yet written. The
+  `__main__.py` but belong to `IMG` (`specs/image-publishing/`). The
   boundary is `INCUS-11`: this spec owns the guard that decides whether those
   two commands exist and says nothing about what they do. Two facts cross it.
   `IMAGE_PREFIX` and `DEFAULT_DEBIAN_VERSION` are read by `cmd_publish`
@@ -313,8 +313,8 @@ dead code in this repository, and the option list it would use exists twice.
   namespace that `cmd_images_clean` deletes wholesale
   (`__main__.py`), so `make images-clean` removes the internal base
   image as well as the published ones and the next launch rebuilds it. That
-  is a consequence of `IMG`'s prefix matching `INCUS`'s, and it belongs in
-  `IMG`'s account of what `images-clean` deletes.
+  is a consequence of `IMG`'s prefix matching `INCUS`'s, and `IMG-9`'s
+  account of what `images-clean` deletes records it.
 
 - `PRJ` — the six make targets that invoke this package's command line are
   `PRJ-19`'s, and the `uv` environment they run in is `PRJ-16`'s. The one

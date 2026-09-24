@@ -79,8 +79,9 @@
     - tailscale
     - verification
 
-# TS-19: an empty fact renders as an empty ListenAddress downstream rather
-# than as an error, so it is refused here instead.
+# TS-19: an empty fact renders as an empty ListenAddress downstream, which
+# sshd's own validation rejects later with an error that does not name the
+# cause, so it is refused here instead.
 - name: Fail if Tailscale IPv4 is not assigned
   ansible.builtin.fail:
     msg: >

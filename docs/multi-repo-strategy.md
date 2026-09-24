@@ -352,6 +352,6 @@ uv run python -m incus destroy --all       # Clean up all test VMs
 ### Applying Bootstrap Updates
 
 1. Make changes in `server-bootstrap`
-2. Re-run bootstrap against affected hosts (idempotent)
-3. Purpose-specific config is unaffected
+2. Re-run bootstrap against affected hosts
+3. Check that no purpose repository writes a file listed under "Bootstrap-owned files" in `specs/project/bootstrap-contract.md`: an edit to one of those files is lost on the re-run
 

@@ -61,10 +61,10 @@ validation string against the task file.
 `tests/integration/test_bootstrap_integration.py`,
 `tests/integration/test_tailscale_integration.py` and
 `tests/verify_bootstrap.yml` all exercise this role's output on a live host
-and are named throughout `requirements.md`'s `**Verified:**` lines, but they
-carry no `SSH-N` citations: the first two belong to the testing spec and the
-third to `VRFY`, and neither has been migrated yet. When they are, these are
-the sites the citations belong on.
+and are named throughout `requirements.md`'s `**Verified:**` lines. The
+playbook belongs to `VRFY` and its task names cite `SSH` IDs; the
+integration modules belong to the testing spec and carry no `SSH-N`
+citations.
 
 `tests/verify_bootstrap.yml` asserts against a live `sshd -T` for twelve
 requirements — `SSH-1`, `SSH-2`, `SSH-5`, `SSH-6`, `SSH-7`, `SSH-8`,
@@ -78,12 +78,6 @@ separate tailnet peer over both address families (`SSH-18`). Its
 isolate it, since an account outside the group is also an account with no
 key. Nothing live covers `SSH-3`, `SSH-4`, `SSH-14`, `SSH-15`, `SSH-16`,
 `SSH-17` or `SSH-19`.
-
-`tests/README.md` still carries a legacy requirement-to-test matrix with a
-row per superseded `3.x` and `5.x` number. It is outside the checker's scan
-globs and was left untouched, matching what every earlier spec in this tree
-did with its own rows. One of its rows names a test class
-(`TestAllowUsersDirective`) that no longer exists; see `## Failure modes`.
 
 ## Key decisions
 
@@ -164,7 +158,7 @@ that satisfied each half and left some third state — a single-family
 binding, or none at all — unexcluded. The condition also guards on both
 Tailscale facts being *defined*, not merely on the flag, so a host where the
 flag is truthy but the role never ran falls to the open branch instead of
-rendering an empty address.
+failing the render on an undefined fact.
 
 **Replacing the file rather than editing lines.** The alternative — a series
 of `lineinfile` edits against Debian's shipped `sshd_config` — would be
@@ -386,14 +380,6 @@ break-glass interaction in `## Failure modes` a real one.
   into `/etc/ssh/`. That is deliberate and useful for recovery, but it means
   a readable record of the host's earlier, weaker configuration accumulates
   next to the live one, and nothing prunes it.
-- **A stale row in `tests/README.md` names a test class that no longer
-  exists.** The legacy matrix's row for the superseded access-restriction
-  requirement points at `test_ssh_hardening::TestAllowUsersDirective`. The
-  class is `TestAllowGroupsDirective` and has been since the implementation
-  moved to the group-based model. The file is outside the checker's scan and
-  was left as found; the row is noted here so that the whole matrix is
-  understood to be legacy-numbered and partly wrong, rather than a second
-  source of traceability.
 
 ## Interactions
 
@@ -402,11 +388,12 @@ break-glass interaction in `## Failure modes` a real one.
 - `TS-17` and `TS-18` — on a Tailscale-enabled host, `tailscale_ipv4` and
   `tailscale_ipv6` are defined and non-empty when this role's template is
   rendered. `SSH-18` binds to exactly those two values and to nothing else,
-  and its `is defined` guard is what keeps a half-published pair from
-  producing an empty `ListenAddress` rather than a fallback to the open
-  branch.
+  and its `is defined` guard is what turns a half-published pair into a
+  fallback to the open branch rather than a failed render.
 - `TS-19` and `TS-20` — neither address is the empty string. An empty fact
-  renders an empty directive, which sshd accepts.
+  renders an empty directive, which sshd rejects, so `SSH-19`'s validation
+  would fail the deployment task; these two checks stop the run earlier,
+  with a message that names the cause.
 - `TS-22` — every Tailscale verification check has completed before this
   role runs. This is the requirement that makes `SSH-18`'s narrowing safe,
   and it is the only thing that does: nothing in this role can tell a good
@@ -447,10 +434,9 @@ break-glass interaction in `## Failure modes` a real one.
   is the structure its break-glass script's `sed` edits depend on. It may
   also assume that restoring `0.0.0.0` and `::` produces a reachable host,
   since those are `SSH-18`'s own else-branch values. It must not assume its
-  edits survive a later bootstrap run; see `## Failure modes`. That spec is
-  not yet written, so this is stated in prose rather than against its
-  requirement IDs; when it is written, it should cite `SSH-13` for the port
-  anchor and `SSH-18` for the address pair.
+  edits survive a later bootstrap run; see `## Failure modes`.
+  `specs/emergency-access/design.md` cites `SSH-13` for the port anchor and
+  `SSH-18` for the address pair.
 - `F2B` — `SSH-14` caps authentication attempts within one connection,
   which is what forces a brute-force attempt to open new connections and
   therefore what makes a connection-counting jail able to see it at all.

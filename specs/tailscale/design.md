@@ -269,23 +269,21 @@ whether either is empty.
   `tailscale_ipv4` and `tailscale_ipv6` are defined, non-empty, and belong
   to an interface that exists and whose client reports `Running`. That spec
   binds sshd to exactly those two addresses and to nothing else, and on a
-  disabled host binds to all interfaces instead. It is not yet written, so
-  the guarantee is stated here in prose rather than against its requirement
-  IDs; when it is written, it should cite `TS-17` and `TS-18` for the facts
-  and `TS-22` for the ordering that makes binding to them safe. The `5.x`
-  citations still present in `roles/ssh_hardening/` belong to that spec, not
-  this one, and were left untouched.
-- The `firewall` spec — the same two facts, plus `tailscale_interface`
-  (`TS-14`), are what its tailnet rules are built from; its defaults already
-  indirect through `tailscale_ipv4` and `tailscale_enabled` with `default`
-  fallbacks for the disabled case. It also treats this spec's flag as the
-  switch that decides whether port knocking applies at all. Not yet written;
-  same prose-not-IDs caveat.
+  disabled host binds to all interfaces instead. `specs/ssh-hardening/design.md`
+  cites `TS-17` and `TS-18` for the facts and `TS-22` for the ordering that
+  makes binding to them safe.
+- The `firewall` spec — its ruleset reads `tailscale_interface` (`TS-14`),
+  which its tailnet SSH rule matches by name, and `tailscale_enabled`, which
+  selects the tailnet branch and decides whether port knocking applies at
+  all. No rule matches either published address.
+  `specs/firewall/design.md` cites `TS-14` for the interface and `TS-1` for
+  the flag's default.
 - The `emergency-access` spec — its break-glass script is rendered with both
   addresses baked in, and its own enable flag defaults to this spec's flag,
   so the script is deployed exactly on the hosts this spec narrowed. It is
-  what makes `INV-6` hold for the narrowing this spec's facts cause. Not yet
-  written; same prose-not-IDs caveat.
+  what makes `INV-6` hold for the narrowing this spec's facts cause.
+  `specs/emergency-access/design.md` cites `TS-17` and `TS-18` for the
+  baked-in addresses and `TS-1` for the flag's default.
 - `VRFY` — post-bootstrap verification may assume an enabled host has a
   `Running` client, an interface by the configured name, and an address of
   each family, since the bootstrap could not have completed otherwise.

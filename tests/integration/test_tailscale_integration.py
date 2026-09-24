@@ -6,10 +6,11 @@ bootstrap target. Verifies SSH is restricted to the tailnet, port
 knocking cannot bypass it, and the emergency script toggles access.
 
 This is the only suite in the project that runs an enabled Tailscale
-bootstrap against a real host. Each test cites the requirement it
-exercises; the tests covering SSH binding, firewall isolation and the
-emergency script belong to specs that are not yet written and carry no
-citation yet.
+bootstrap against a real host. test_ssh_closed_from_host,
+test_port_knocking_does_not_bypass_tailscale,
+test_ssh_closed_without_firewall, test_emergency_script_unrestricts_ssh and
+test_emergency_script_restore carry no citation; the specs they bear on
+describe them against their own requirements instead.
 """
 
 import dataclasses

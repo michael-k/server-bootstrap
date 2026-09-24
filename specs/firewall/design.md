@@ -71,12 +71,12 @@ the property suite, because the property suite's only assertion touching it
 is `"flush ruleset" in template_content or "table inet filter" in template_content`,
 which the second alternative always satisfies.
 
-Three files exercise this role's output on a live host and carry no `FW-N`
-citations: `tests/verify_bootstrap.yml`, which belongs to `VRFY`, and
+`tests/verify_bootstrap.yml`, which belongs to `VRFY`, and
 `tests/integration/test_bootstrap_integration.py` and
 `tests/integration/test_tailscale_integration.py`, which belong to the
-testing spec. None has been migrated yet; when they are, these are the sites
-the citations belong on. `verify_bootstrap.yml` asserts against a live
+testing spec, exercise this role's output on a live host. The playbook's
+task names cite `FW` IDs; the integration modules carry no `FW-N`
+citations. `verify_bootstrap.yml` asserts against a live
 `nft list ruleset` for `FW-3`, `FW-4`, `FW-6` and `FW-7`, checks the unit
 state for `FW-17` and `FW-18`, and searches for the SSH port for `FW-14`.
 The integration suite is the only place in the project where this ruleset is
@@ -309,12 +309,10 @@ between them.
   published fact, and is read by no task, no template and no rule. It is
   also set in two test fixtures — `tests/unit/conftest.py` and
   `tests/unit/test_firewall.py`'s `tailscale_vars` — which makes it look
-  load-bearing to a reader of the tests. `specs/tailscale/design.md` names
-  it as something the firewall consumes, which was true of the intent and
-  has never been true of the code. No requirement covers it, because there
-  is nothing to require; it is recorded here so the next reader does not
-  reconstruct a rule from its presence. Deleting it would change no rendered
-  output.
+  load-bearing to a reader of the tests. No requirement covers it, because
+  there is nothing to require; it is recorded here so the next reader does
+  not reconstruct a rule from its presence. Deleting it would change no
+  rendered output.
 - **Three of the property suite's defaults-file assertions cannot fail.**
   Each is written as a specific check `or` a weaker one that the specific
   check's own subject satisfies:
@@ -542,9 +540,9 @@ between them.
   the same hazard `specs/ssh-hardening/design.md` records about the script's
   `ListenAddress` edits. The `--restore` direction has the converse
   dependency, re-adding the qualifier to a line it matches as
-  `tcp dport <port> accept`. Not yet written; same prose-not-IDs caveat —
-  when it is, `FW-10`, `FW-16` and `FW-19` are the IDs it should cite, and
-  `FW-10` is the one whose rule text it must not be allowed to drift from.
+  `tcp dport <port> accept`. `specs/emergency-access/design.md` cites
+  `FW-10`, `FW-16` and `FW-19` for these dependencies, and `FW-10` is the
+  one whose rule text it must not be allowed to drift from.
 - Purpose repositories, addressed by `specs/project/bootstrap-contract.md` —
   a bootstrapped host has `/etc/nftables.d` (`FW-20`), included
   at the end of the ruleset (`FW-21`). A file placed there is loaded on the

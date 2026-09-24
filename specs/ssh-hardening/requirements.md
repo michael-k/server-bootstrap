@@ -614,8 +614,13 @@ would allow a future change to satisfy each half while leaving a host in
 neither state. The guard on both facts being *defined* is load-bearing in
 its own right — a half-published pair, or a truthy-looking
 `tailscale_enabled` on a host where the role never ran, must fall back to
-the open branch rather than render an empty `ListenAddress`, because an
-empty one is a configuration sshd will happily accept and nobody can reach.
+the open branch; without the guard, Ansible aborts the template render on
+the undefined fact (`'tailscale_ipv4' is undefined`). The guard does not
+cover a fact that is defined but empty: that renders an empty
+`ListenAddress`, which sshd rejects (measured on OpenSSH 10.4: `no argument
+after keyword "ListenAddress"`, exit 255), so `SSH-19`'s validation fails
+the deployment task and leaves the previous configuration in place.
+`TS-19` and `TS-20` stop the run before that point.
 **Verified:** the deployed configuration selects between the two address
 pairs on `tailscale_enabled` and both Tailscale facts being defined, and the
 defaults file supplies `0.0.0.0` and `::` for the second branch.

@@ -368,8 +368,8 @@ class TestUserManagementProperties:
 
         Validates: USR-3, USR-6
 
-        Validates: 2.4 — key-only authentication, which sshd enforces and the
-        ssh-hardening spec owns; not migrated yet. Nothing below asserts it:
+        Key-only authentication is enforced by sshd and belongs to the
+        ssh-hardening spec (specs/ssh-hardening/). Nothing below asserts it:
         this test reads the users role only.
 
         This property test verifies that:
@@ -558,8 +558,10 @@ class TestUserManagementProperties:
         """
         USR-9, USR-12: secure file permissions for the SSH key material.
 
-        The sudoers mode and validation asserted below belong to the
-        sudo-hardening spec, which does not exist yet.
+        The sudoers mode and validation asserted below concern files the
+        sudo-hardening spec (specs/sudo-hardening/) covers. They are
+        whole-file substring checks, not scoped to any one task, so they
+        cite none of that spec's requirements.
 
         Security best practices:
         - Home directories should be created

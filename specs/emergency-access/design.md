@@ -351,8 +351,7 @@ them.
   interface-qualified form, and that form's literal text is what the
   unrestrict direction matches. This is the tightest coupling in the spec
   tree and `EMRG-16` states it as a requirement. `specs/firewall/design.md`
-  states the same thing from the firewall's side and names `FW-10`,
-  `FW-16` and `FW-19` as the IDs this spec should cite; it does.
+  states the same thing from the firewall's side.
 - `FW-13` — this spec assumes nothing of it, and the distinction matters.
   The unrestrict direction produces the same rule text `FW-13` would have
   rendered, but `FW-13`'s stated condition is that
@@ -408,8 +407,7 @@ them.
   have. `INV-6` holds for a knock lockout because `/etc/nftables.conf` is
   editable at the console, not because this tool exists, and an operator
   who goes looking for a break-glass script on a knocking host will not
-  find one. `specs/port-knocking/design.md` says the same and asks that the
-  gap be recorded against an ID here; this bullet is that record.
+  find one. `specs/port-knocking/design.md` says the same.
 - `TS` — that the flag it owns is the whole of what decides whether this
   spec's artefact exists, and that this spec reads its two facts and
   changes neither. Nothing here touches the client, the daemon or the

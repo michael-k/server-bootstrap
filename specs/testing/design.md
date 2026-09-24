@@ -178,43 +178,27 @@ that anything watches for the resulting breakage, because nothing does.
   that does fail loudly is a typo in a `-m` expression: pytest exits 5 when
   nothing is collected, and `make` propagates it.
 
-- **`tests/README.md` is half a current document and half a legacy one, and
-  the legacy half is already wrong.** From its `## Requirements Traceability
-  Matrix` heading onward it maps a `Requirement 1`–`Requirement 16` scheme
-  that no longer exists onto tests, links to
-  `.kiro/specs/vps-bootstrap-playbook/requirements.md`, and carries all 45 of
-  the file's individual `Test 14.N` references into
-  `tests/verify_bootstrap.yml`, plus the claim that "Req 14"'s 44 acceptance
-  criteria are implemented as Tests 14.1–14.44 — a requirement that was
-  dissolved, its checks recited by feature-requirement ID instead. A second
-  reference to that same dead range sits outside the legacy half, in
-  `## Current Test Organization`'s `### Verification Playbook` entry, which
-  also says the playbook holds 44 post-bootstrap checks where it holds 55.
-  Both statements are left as found, because the dangling `Test 14.N`
-  citations are being retired as one piece of work regardless of which half
-  of the file they sit in. This pass corrects the file's tier, marker and
-  Hypothesis sections only, so the file should not be read as a description
-  of the suite's coverage.
+- **`tests/README.md` carried a legacy requirement-to-test matrix, which
+  has been removed.** It mapped a `Requirement 1`–`Requirement 16` scheme
+  that no longer exists onto tests, linked to a requirements document that
+  has been deleted, and cited checks in `tests/verify_bootstrap.yml` by a
+  `Test 14.N` numbering the playbook no longer uses. Its place is taken by a
+  pointer to `specs/_traceability.md`. The file's `### Verification Playbook`
+  entry, which gave the playbook a check count and a `Test 14.N` range, now
+  describes the checks in words instead.
 
-- **Both `tests/README.md` and `docs/integration-testing.md` list a module
-  that does not exist.** `tests/integration/test_single_role.py` is named in
-  the README's test organisation list and was named in the integration
-  document's directory tree; `tests/integration/` holds only
+- **`tests/integration/test_single_role.py` was documented but does not
+  exist.** It was named in the README's test organisation list and in the
+  integration document's directory tree; `tests/integration/` holds only
   `test_bootstrap_integration.py` (40 tests) and
-  `test_tailscale_integration.py` (7 tests). The consequence is not only
+  `test_tailscale_integration.py` (7 tests). Both documents have since been
+  corrected: the integration document's tree lists the two modules, and the
+  README's test organisation section describes each of the three test
+  directories instead of listing modules. The consequence is not only
   documentary: `clean_vm`, the unbootstrapped-machine fixture, is imported
   into `tests/integration/conftest.py` and re-exported for pytest to find,
-  and no test in this repository uses it. It is guarded by
-  `incus_available()` like the other three, so it satisfies `TEST-4`
-  vacuously. The integration document's tree is corrected in this pass. The
-  README's list is not part of the legacy half — `## Current Test
-  Organization` sits well before the matrix — and it is stale in all three
-  tiers: the unit list names 7 of the 11 modules in `tests/unit/`, omitting
-  `test_ansible_helpers.py`, `test_incus_vm.py`, `test_spec_check.py` and
-  `test_ssh_keypair.py`; the property list names 20 of 21, omitting
-  `test_networking_properties.py`; and the integration list names three
-  modules where two exist. It is left uncorrected here, like every other
-  finding in this section.
+  and no test in this repository uses it. It is guarded by `incus_available()` like
+  the other three, so it satisfies `TEST-4` vacuously.
 
 - **The `unit` marker's own description claims something some of its tests
   contradict.** `pyproject.toml` declares it as "fast, no external

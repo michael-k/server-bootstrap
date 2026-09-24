@@ -76,21 +76,20 @@ another length — deleting the task would leave every test in the project
 green. `KNOCK-11` is the converse case: three property tests read the play
 out of `site.yml`, and none of them runs it.
 
-Files that exercise this spec's output on a live host carry no `KNOCK-N`
-citations, and they divide by what they are evidence *for*.
-`tests/verify_bootstrap.yml` belongs to `VRFY` and reads a live ruleset for
+Files that exercise this spec's output on a live host divide by what they
+are evidence *for*. `tests/verify_bootstrap.yml` belongs to `VRFY`, its
+task names cite `KNOCK` IDs, and it reads a live ruleset for
 the *configuration* — that four of the six sets are present and that the
 three sequence ports appear — which is a statement about the file the kernel
 loaded. Those checks only run at all if the playbook reaches the host, which
 on a knock-gated host it cannot do unaided; see `## Failure modes`. The
 integration suite, `tests/integration/test_bootstrap_integration.py`
 and `tests/integration/test_tailscale_integration.py`, belongs to the
-testing spec and is the only place a packet is ever sent at a knock-gated
-host: SSH unreachable without a knock, reachable after one, only SSH
-reachable after one, and a knock failing to open SSH on a Tailscale host.
-Neither spec has been migrated; when they are, those are the sites the
-citations belong on, and the division rather than the tally is what decides
-which requirement a given test is evidence for.
+testing spec, carries no `KNOCK-N` citations, and is the only place a packet
+is ever sent at a knock-gated host: SSH unreachable without a knock,
+reachable after one, only SSH reachable after one, and a knock failing to
+open SSH on a Tailscale host. The division rather than the tally is what
+decides which requirement a given test is evidence for.
 
 ## Key decisions
 
@@ -449,8 +448,8 @@ it — and is not guaranteed to have `knockd` installed. It reports
   is deployed only on Tailscale-enabled hosts, where nothing here is
   rendered, and it edits `FW-10`'s rule, which a knock-gated host does not
   have. Recovery from a knock lockout is console editing of
-  `/etc/nftables.conf` by hand. Not yet written; when it is, the thing to
-  record against an ID is the gap rather than a dependency.
+  `/etc/nftables.conf` by hand. `specs/emergency-access/design.md` states
+  the same from its side: it provides `KNOCK` nothing.
 - Purpose repositories — that the three sequence ports are not available for
   a service of their own. A drop-in rule accepting one of them is appended
   after `KNOCK-8`'s drop and never reached, which was measured, so the

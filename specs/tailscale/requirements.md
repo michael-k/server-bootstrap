@@ -521,9 +521,10 @@ reason, if no tailnet IPv4 address is assigned.
 
 **Why:** `TS-17` publishes whatever the client returns, including nothing.
 An empty fact does not stop a downstream template from rendering — it
-renders an empty `ListenAddress` or an empty firewall rule, which is how a
-verification step that produced no address still ends in a host nobody can
-reach. Failing explicitly on the empty value is what keeps `INV-8`'s
+renders an empty `ListenAddress`, which sshd rejects (measured on OpenSSH
+10.4), so the run would still stop, but later, at `SSH-19`'s validation,
+with a parser error that names neither the tailnet nor the missing address.
+Failing explicitly on the empty value is what keeps `INV-8`'s
 guarantee from depending on every consumer independently checking for it.
 **Verified:** the task "Fail if Tailscale IPv4 is not assigned" fails when
 `tailscale_ipv4` is the empty string, with a message mentioning lockout
