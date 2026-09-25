@@ -1,25 +1,33 @@
 # Security Invariants
 
-These invariants bind every spec in the tree. A feature that cannot uphold
-one does not get to quietly narrow it: the feature's `requirements.md`
-states which invariant it bends in its `## Security invariants` section,
-claims a numbered allowance from the register below, and names a
-compensating control. `make spec-check` enforces the pairing in both
-directions — an allowance with no claimant, or a claim with no matching
-row, is a failure.
+These invariants bind every spec in the tree. `INV-1` and `INV-10` build
+an allowance into their own SHALL: an exposure is permitted when a row in
+one of the registers below covers it. A spec that opens an exposure
+upholds them by claiming that numbered allowance on its
+`**Allowances claimed:**` line, naming the compensating control in the
+row, and saying so in its `## Security invariants` section. For any other
+invariant, a spec that cannot uphold it does not get to quietly narrow it:
+it states which invariant it bends and claims an allowance with a
+compensating control in the same way. `make spec-check` enforces the
+pairing in both directions — an allowance with no claimant, or a claim
+with no matching row, is a failure.
 
 ## Invariants
 
 ### INV-1 — No exposure without an explicit allowance
 
-THE Bootstrap SHALL NOT leave a service reachable on a publicly reachable
-address unless a requirement explicitly allows it.
+THE Bootstrap SHALL NOT leave anything reachable from a publicly routable
+address unless an allowance in the public exposure register covers it.
 
-**Why:** The firewall's input chain defaults to drop and accepts only
-loopback traffic, established/related connections, ICMP, and SSH — and each
-SSH path (Tailscale-restricted, port-knock-gated, or open) is opened by a
-rule that names the requirement authorizing it. Anything beyond that reaches
-the host only through the purpose-specific drop-in directory a spec owns.
+**Why:** The firewall's input chain drops by default (`INV-4`), so a
+packet from the internet gets in only where a rule accepts it, and a rule
+can be listed. The public exposure register below is that list, and it is
+where to look for the host's public surface: each row names what is open,
+from where, under which condition, and what compensates for it. A
+requirement that states an exposure is not enough on its own, because it
+is read one requirement at a time, and a reviewer reading one requirement
+cannot see the whole surface. A row in the register can be seen, and the
+checker pairs every row with the requirement that claims it.
 
 ### INV-2 — Public-key-only remote authentication
 
@@ -99,11 +107,77 @@ so they converge to the same state on every run, and it adds to the group
 memberships it manages without removing from them. That is what keeps a
 re-run from relaxing a restriction an earlier run put in place.
 
-## Allowance register
+### INV-10 — No exposure to tailnet peers without an explicit allowance
 
-| Allowance | Invariants | Claimed by | Compensating control |
-|---|---|---|---|
-| ALW-1 | INV-1 | EMRG-3 | Requires an existing root session on the host; is never invoked by the bootstrap itself; is reversible with `--restore`, which returns the host to the configuration it started from; adds no network-reachable interface of its own; and leaves a timestamped copy of both files it edits |
+THE Bootstrap SHALL NOT leave anything reachable from a tailnet peer unless
+an allowance in the tailnet exposure register covers it.
+
+**Why:** Being on the tailnet is not a reason to trust a peer. A peer is
+another machine, which can be compromised, lent, or enrolled by someone
+other than this host's operator, and the policy that decides which peers
+may reach this host is configured on the tailnet's control server, outside
+this repository. Reaching a service only over the tailnet is narrower than
+reaching it from the internet, which is why these exposures have a register
+of their own rather than a row among the public ones, but narrower is not
+closed. The tailnet exposure register below lists each hole the same way
+the public one does.
+
+## Allowance registers
+
+Both registers share one row format. The first three columns are the ones
+`make spec-check` reads: the allowance, the invariants it is claimed
+under, and the requirements that claim it. The remaining columns say what is open, to
+whom, when, and what compensates for it.
+
+**Completeness, and its method.** For the base ruleset, the two registers
+are complete by this method: every `accept` rule in the input chain of
+`roles/firewall/templates/nftables.conf.j2`, plus the break-glass script's
+edits. The established-and-related accept (`FW-6`) and the loopback
+accept (`FW-7`) need no row, because neither admits a packet a remote
+source can start: the first admits replies to traffic this host began, and
+the second matches packets arriving on the loopback interface, which no
+remote packet does. The method does not reach rules a purpose repository
+adds through the drop-in directory, nor a program that loads rules into
+the kernel of its own accord outside `/etc/nftables.conf`. Those are not
+claimed to be listed here.
+
+### Public exposure register
+
+These are the holes that let traffic from a publicly routable address in.
+The knock ports need no row. A packet a remote source sends to one of them
+is recorded by the knock rules and then dropped (`KNOCK-8`), not accepted.
+
+A purpose repository opens its own holes, because its services need them,
+and this register does not list them. It documents each hole it opens in
+registers of its own, with the same columns and the same split between
+public and tailnet exposure (`PRJ-28`).
+
+| Allowance | Invariants | Claimed by | What is open | From where | Condition | Compensating control |
+|---|---|---|---|---|---|---|
+| ALW-1 | INV-1 | EMRG-3 | SSH on `firewall_ssh_port`, and sshd bound to `0.0.0.0` and `::` | Any address, on every interface. Tailnet peers reach nothing through it that `ALW-6` does not already admit | The break-glass script, deployed where `emergency_access_enabled` is true (`EMRG-2`), was run with no arguments, and neither `--restore` nor a bootstrap run that re-renders the ruleset (`FW-16`) has reversed it since | Requires an existing root session on the host; is never invoked by the bootstrap itself; is reversible with `--restore`, which returns the host to the configuration it started from; adds no network-reachable interface of its own; and leaves a timestamped copy of both files it edits |
+| ALW-2 | INV-1 | FW-12 | UDP on `firewall_wireguard_port` | Any address, on every interface | `firewall_tailscale_enabled` is true | WireGuard does not answer a packet it cannot authenticate, so the port offers nothing to a sender without a key |
+| ALW-3 | INV-1 | KNOCK-9 | SSH on `firewall_ssh_port` | Any address, on every interface, once that source has completed the knock sequence and while it is still within the passed-set timeout (`KNOCK-7`), and only over the address family it knocked with | `firewall_tailscale_enabled` is false and `firewall_port_knocking_enabled` is true | The knock sequence keeps the port closed to a source that has not sent it (`KNOCK-4` to `KNOCK-7`). The sequence is not authentication. Behind it, sshd accepts public keys only (`INV-2`) and gives root no remote login (`INV-3`) |
+| ALW-4 | INV-1 | FW-13 | SSH on `firewall_ssh_port` | Any address, on every interface | `firewall_tailscale_enabled` and `firewall_port_knocking_enabled` are both false | sshd accepts public keys only (`INV-2`) and gives root no remote login (`INV-3`) |
+| ALW-5 | INV-1 | FW-8, FW-9 | ICMPv4 and ICMPv6, every type | Any address, on every interface | Always | None in the ruleset: no rule narrows the types or limits the rate. The exposure is accepted because path MTU discovery, and IPv6 neighbour discovery and router advertisement, depend on it, as the **Why:** of `FW-8` and of `FW-9` state |
+
+### Tailnet exposure register
+
+These are the holes open to peers on the tailnet. On every row, which
+peers may send is decided by the tailnet's own policy, which lives on the
+control server (for example headscale's ACLs or grants). This repository
+does not manage that policy, so no row claims it as a control.
+
+The split between the two registers assumes that `firewall_tailscale_enabled`
+tracks whether the host is enrolled, which it does by default: it defaults
+to `tailscale_enabled`. An inventory that sets it false on an enrolled host
+makes the knock-gated SSH, open SSH and ICMP accepts match the tailnet
+interface too, and this register does not cover that configuration.
+
+| Allowance | Invariants | Claimed by | What is open | From where | Condition | Compensating control |
+|---|---|---|---|---|---|---|
+| ALW-6 | INV-10 | FW-10 | SSH on `firewall_ssh_port` | Packets arriving on `firewall_tailscale_interface`, from any peer the tailnet's policy permits | `firewall_tailscale_enabled` is true | sshd accepts public keys only (`INV-2`) and gives root no remote login (`INV-3`) |
+| ALW-7 | INV-10 | FW-8, FW-9 | ICMPv4 and ICMPv6, every type | Packets arriving on `firewall_tailscale_interface`, from any peer the tailnet's policy permits | `firewall_tailscale_enabled` is true | None in the ruleset. The exposure is accepted for the reasons `ALW-5` gives |
+| ALW-8 | INV-10 | FW-12 | UDP on `firewall_wireguard_port` | Packets arriving on `firewall_tailscale_interface`, from any peer the tailnet's policy permits. The rule does not name an interface, so the tailnet interface is among the ones it matches | `firewall_tailscale_enabled` is true | WireGuard does not answer a packet it cannot authenticate |
 
 Rows are added by the spec that needs one, not by this file. The checker
 fails if a row here names no claiming requirement, or if a requirement

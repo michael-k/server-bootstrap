@@ -31,6 +31,8 @@ its dependency declarations and its documentation.
 - The tooling contract: the managed environment, the dependency declaration and
   the operations exposed as make targets.
 - The documentation obligations this repository's README carries.
+- The obligation a purpose repository built on this bootstrap carries to
+  register every hole it opens in the host's firewall.
 
 ### Out of scope
 
@@ -407,3 +409,34 @@ assertion.
 **Verified:** the configuration the README points to separates the required user
 configuration from the optional sections, and marks each variable REQUIRED or
 OPTIONAL with its default.
+
+### PRJ-28 — Purpose repositories register the holes they open
+
+A purpose repository built on this bootstrap SHALL document every hole it
+opens in the host's firewall in exposure registers of its own, with the
+columns of `specs/project/security-invariants.md`'s registers and the same
+split between public and tailnet exposure.
+
+**Traceability:** exempt — this requirement's subject is a repository built
+on this bootstrap, not this repository, so there is no code site here to
+cite, and no test or check here could observe a downstream repository
+obeying or breaking it. It is stated as a requirement so that changing what
+purpose repositories owe is a spec change rather than an edit to a
+document.
+
+**Why:** a purpose repository is expected to open holes, because its
+services need them, and the supported way to open one is the drop-in
+directory (`FW-20`, `FW-21`). This project's job is to secure everything else, so
+that a purpose repository can concentrate on its services and every host
+built on the bootstrap gains from an improvement here without drifting from
+the others. The price of that division is that the bootstrap's registers
+cannot list a purpose repository's holes. Without this obligation the
+host's exposure would be listed in one place for the bootstrap's part and
+nowhere for the rest, which is the part a reviewer knows least about. With
+it, the host's exposure is the bootstrap's registers read together with the
+purpose repository's.
+**Verified:** not verifiable here, which is what the exemption above records.
+`specs/project/bootstrap-contract.md` states this rule to purpose
+repositories, at the `/etc/nftables.d` extension point.
+`docs/multi-repo-strategy.md` states it to purpose-repository authors; that
+citation is documentation, not realisation.

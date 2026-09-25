@@ -286,7 +286,20 @@ between them.
   so a host can run with its active bans silently discarded until something
   else does.
   `specs/fail2ban/design.md` sets out both cases. Nothing in either role
-  notices, and no test covers it. The narrower `flush table inet filter`
+  notices, and no test covers it. On a tailnet host the same flush also
+  discards tailscaled's own netfilter rules, which live in nftables tables
+  whether tailscaled writes them through iptables-nft or natively; the
+  tailscale role runs before this one, so this happens on the first run
+  as well as on each later load, including the break-glass script's
+  reload. Whether tailscaled recreates a table deleted outright, and which
+  of the two modes it picks on this project's Debian image, were not
+  measured. Losing them does not admit anything this ruleset refuses:
+  `FW-10` matches the interface, so tailscaled's anti-spoofing drop of
+  tailnet source addresses on other interfaces is not needed; `FW-4` blocks
+  forwarding anyway; and an
+  accept in another table cannot override `FW-3`'s policy, because a packet
+  on the input hook must pass each base chain there. The narrower
+  `flush table inet filter`
   would avoid it, at the cost of leaving behind tables an earlier revision of
   this file created.
 - **The break-glass script's firewall edit is reverted by the next bootstrap

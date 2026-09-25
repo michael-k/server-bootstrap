@@ -76,22 +76,28 @@ this spec makes is that the default is not that.
 
 ## Security invariants
 
-**Upholds:** INV-1
+**Upholds:** INV-1, INV-10
 **Relies on:** INV-2, INV-3, INV-4, INV-6
-**Allowances claimed:** none
+**Allowances claimed:** ALW-3
 
-`INV-1` is upheld in a weaker form than the tailnet branch upholds it, and
-the difference should be understood rather than glossed. `FW-10` makes SSH
+This branch keeps less off the public internet than the tailnet branch
+does, and the difference should be understood rather than glossed. `FW-10` makes SSH
 unreachable from the public internet outright: a packet that did not arrive
 on the tailnet interface cannot be made to match. This spec makes SSH
 unreachable from a source that has not sent three packets first — which any
 source can do, if it knows or learns which three. So what is kept off the
-public internet is the *port*, not the *service*. That still satisfies
-`INV-1` as written, because the exposure the requirements here permit is
-exposure a requirement states: `KNOCK-9` opens the SSH port to a passed
-source and says so. No allowance is claimed, because nothing here weakens a
-control this project otherwise applies — every control that would apply to
-an open SSH port still applies to a knock-gated one.
+public internet is the *port*, not the *service*. `INV-1` is satisfied
+because that exposure is registered: `KNOCK-9` opens the SSH port to a
+passed source and claims `ALW-3` for it, whose compensating controls are
+the knock sequence itself and, behind it, `INV-2` and `INV-3`. The knock
+ports need no row of their own: a packet a remote source sends to one of
+them is recorded by the progress rules and then dropped by `KNOCK-8`, not
+accepted.
+
+`INV-10` is upheld because nothing of this spec reaches a tailnet peer:
+`KNOCK-1` renders the branch only where `firewall_tailscale_enabled` is
+false, which is a host with no tailnet as long as that flag tracks
+enrollment, as the tailnet exposure register's preamble assumes.
 
 **Why this is worth doing anyway, and what it is not.** The realistic threat
 against a fresh VPS is not a targeted attacker; it is the continuous
@@ -167,7 +173,8 @@ upheld in the same shape `TS-15`, `TS-16`, `TS-21` and `TS-22` uphold it for
 the tailnet branch; or claim a numbered allowance against `INV-8` with
 `INV-6`'s console recovery named as the compensating control. **No allowance
 is claimed here**, because claiming one is a change to the allowance
-register and not this spec's to make unilaterally. Until it is resolved, the
+registers in `specs/project/security-invariants.md` and not this spec's to
+make unilaterally. Until it is resolved, the
 honest statement is the one in this paragraph: the knock branch narrows
 access without verifying the replacement path.
 
@@ -452,8 +459,10 @@ source that has not completed the sequence can send to the SSH port that
 this chain will accept. The qualifier is load-bearing — `FW-7` accepts
 loopback traffic above this rule, so a process on the host reaches sshd over
 `127.0.0.1` without knocking, and `FW-6` keeps an already-established
-session going; `INV-1` is about reachability from a publicly reachable
-address, which is exactly what remains closed. The rule is written once per
+session going; `INV-1` is about reachability from a publicly routable
+address, which is closed to a source that has not completed the sequence.
+What stays open to a source that has completed it is registered as
+`ALW-3`. The rule is written once per
 family rather than once, because
 the passed sets are per family and a set lookup cannot span both; the
 practical consequence for an operator is that a knock sent over IPv4 opens

@@ -20,10 +20,9 @@ That door is enough, because everything the narrowing consists of is a plain
 text file a root shell can edit. The script is not what makes recovery
 *possible*; it is what makes recovery a single command instead of an
 operator reconstructing two files from memory, at a console, under pressure,
-with no editor they like and no way to test the result. It is also the only
-thing in this project that deliberately makes a host *less* safe, which is
-why it is the spec that claims the project's first allowance rather than
-quietly doing it.
+with no editor they like and no way to test the result. It also
+deliberately makes a host *less* safe, which is why it claims an allowance
+(`ALW-1`) rather than quietly doing it.
 
 ## Scope
 
@@ -79,7 +78,7 @@ quietly doing it.
 
 ## Security invariants
 
-**Upholds:** INV-6
+**Upholds:** INV-1, INV-6, INV-10
 **Relies on:** INV-2, INV-3, INV-9
 **Allowances claimed:** ALW-1
 
@@ -102,10 +101,18 @@ third.
 **`ALW-1` is claimed by `EMRG-3`, and only by `EMRG-3`.** That requirement
 puts sshd back on `0.0.0.0` and `::` and strips the interface qualifier off
 the firewall's SSH rule, which is exposure on a publicly reachable address
-— exactly what `INV-1` forbids without an allowance. `EMRG-1`, which
+— exactly what `INV-1` forbids without an allowance. `ALW-1` is that
+allowance's row in the public exposure register, and claiming it is how
+this spec upholds `INV-1`. `EMRG-1`, which
 deploys the script, does not weaken anything on its own, and the register
 row names the requirement that performs the weakening rather than the one
 that makes the tool available.
+
+`INV-10` is upheld because `EMRG-3` gives a tailnet peer nothing it did not
+already have. The unqualified rule it writes admits SSH on the tailnet
+interface as well, but `FW-10`'s rule already admitted SSH there, under
+`ALW-6`, so on the tailnet side the edit widens nothing and claims no
+tailnet row.
 
 What makes that exposure defensible is the set of compensating controls
 the register row names, and every one of them is a requirement here rather
@@ -223,7 +230,7 @@ sshd to `0.0.0.0` and `::` and by removing the tailnet-interface qualifier
 from the SSH accept rule in the deployed nftables ruleset.
 
 **Why:** this is the requirement the spec exists for, and it is the one
-that weakens `INV-1`. Undoing only one of the two narrowings would leave a
+that opens a public exposure, which `ALW-1` covers. Undoing only one of the two narrowings would leave a
 host that is still unreachable and an operator who cannot tell which half
 failed, so the requirement names both: sshd has to be listening on the
 public address *and* the packets have to arrive. Doing it with no arguments

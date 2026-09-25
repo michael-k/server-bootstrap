@@ -99,15 +99,19 @@ the invariant intact on paper and broken in practice.
 
 `INV-1` is upheld conditionally rather than absolutely, and the distinction
 matters. `SSH-18`'s Tailscale branch removes sshd from every publicly
-reachable address, which is `INV-1` in its strongest form. Its else-branch
-deliberately binds `0.0.0.0` and `::`, which is exposure — but it is
-exposure that a requirement explicitly states, which is exactly the shape
-`INV-1` permits, and it is the branch that runs on a host with no VPN, where
-the alternative is no access at all. That branch is also why this spec
-relies on `INV-4`: on a Tailscale-disabled host, sshd's own binding narrows
-nothing, and the only thing between the daemon and the internet is the
-firewall's default-deny posture plus whichever SSH rule the firewall spec
-opened.
+reachable address, so on such a host sshd needs no row in the public
+exposure register at all. Its else-branch
+deliberately binds `0.0.0.0` and `::`, and it is the branch that runs on a
+host with no VPN, where the alternative is no access at all. Binding is not
+reachability: whether a public packet reaches that listener is decided by
+the firewall, and each SSH route it opens on such a host is a registered
+allowance claimed by the spec that opens it — `ALW-3` for the knock-gated
+route and `ALW-4` for the open one. This spec's `INV-2` and `INV-3` are
+what those rows name as their compensating controls. That branch is also
+why this spec relies on `INV-4`: on a Tailscale-disabled host, sshd's own
+binding narrows nothing, and what stands between the daemon and the
+internet is the firewall's default-deny posture plus whichever SSH rule the
+firewall spec opened.
 
 The reliance on `INV-8` is the serious one. Binding sshd to a tailnet
 address is irreversible from outside the host: if the address is wrong,
@@ -605,8 +609,9 @@ and the one that can strand an operator. Binding to the tailnet addresses
 removes sshd from every publicly reachable address on the host, so the
 service is not merely filtered but absent — a scan finds nothing, and an
 attacker who later finds a way through the firewall finds no listener behind
-it. That is `INV-1` in its strongest available form, and it is what makes
-the tailnet the single controlled way in. The two branches are one
+it. That is why SSH on an enrolled host needs no row in the public
+exposure register, and it is what makes the tailnet the single controlled
+way in. The two branches are one
 requirement rather than two because they are one decision with one failure
 mode between them: the else-branch is not an independent policy but the
 constitutive statement of what "not narrowed" means, and separating them

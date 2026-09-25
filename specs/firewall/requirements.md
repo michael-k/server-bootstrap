@@ -20,9 +20,11 @@ the UDP port the tailnet that route runs over needs for itself.
 Without this spec a bootstrapped host would carry Debian's empty ruleset,
 which filters nothing at all: every socket any package opened would be
 reachable from the internet, and `INV-1` would be a statement about sshd
-alone rather than about the host. With it, a service is reachable only
-because a requirement here says so, or because a purpose repo added a rule
-through the drop-in directory this spec provides for exactly that.
+alone rather than about the host. With it, each hole this spec opens in
+the input chain has a row in the exposure registers of
+`specs/project/security-invariants.md`, and a rule a purpose repo adds
+through the drop-in directory this spec provides is registered by that
+repository (`PRJ-28`).
 
 ## Scope
 
@@ -72,15 +74,16 @@ through the drop-in directory this spec provides for exactly that.
   and the script and its gating belong to that spec.
 - Any rule a purpose repository adds through the drop-in directory. This
   spec owns the mechanism and guarantees the rules are loaded; it says
-  nothing about what they open.
+  nothing about what they open. What a purpose repository owes for each
+  hole it opens is `PRJ-28`'s.
 - Confirming after the fact that the deployed ruleset is the one the kernel
   is enforcing — owned by `VRFY`.
 
 ## Security invariants
 
-**Upholds:** INV-1, INV-4, INV-9
+**Upholds:** INV-1, INV-4, INV-9, INV-10
 **Relies on:** INV-6, INV-8
-**Allowances claimed:** none
+**Allowances claimed:** ALW-2, ALW-4, ALW-5, ALW-6, ALW-7, ALW-8
 
 `INV-4` is this spec, almost word for word: `FW-2` is the single `inet`
 table that makes one policy govern both address families, and `FW-3` and
@@ -89,17 +92,21 @@ table that makes one policy govern both address families, and `FW-3` and
 construction rather than of any rule — there is no second table for one
 family to diverge in.
 
-`INV-1` is upheld in the specific shape the invariant permits: it forbids
-exposure that no requirement allows, not exposure as such. Two requirements
-here allow it explicitly. `FW-12` opens a UDP port on every interface,
-because Tailscale's WireGuard traffic arrives from the internet and the
-tunnel that `FW-10` narrows SSH to cannot exist without it — the one port a
-tailnet-enrolled host offers the open internet. `FW-13` accepts SSH on every
+`INV-1` and `INV-10` are upheld by registering each hole this spec opens,
+not by opening none. `INV-1` forbids a public exposure that no allowance
+in the public exposure register covers, and `INV-10` forbids a tailnet
+exposure that no allowance in the tailnet exposure register covers, so each
+requirement here that opens a hole claims its row. On the public side,
+`FW-12` claims `ALW-2` for the WireGuard port, because Tailscale's WireGuard
+traffic arrives from the internet and the tunnel that `FW-10` narrows SSH
+to cannot exist without it. `FW-13` claims `ALW-4` for SSH on every
 interface on a host with neither a tailnet nor a knock sequence, which is
-the configuration where the alternative is no access at all. Both are
-stated rather than left over, which is the distinction `INV-1` draws. No
-allowance is claimed, because an allowance is for a control this project
-weakens; these are the posture working as specified.
+the configuration where the alternative is no access at all. `FW-8` and
+`FW-9` claim `ALW-5` for ICMP. On the tailnet side, `FW-10` claims `ALW-6`
+for SSH on the tailnet interface, and `FW-8`, `FW-9` and `FW-12` claim
+`ALW-7` and `ALW-8`, because their rules name no interface and so match the
+tailnet interface too. Which tailnet peers may send at all is the tailnet's
+own policy, which this repository does not manage.
 
 `INV-9` is upheld by `FW-15` and `FW-16` together. `FW-16` deploys the
 ruleset from a template that converges to the same file on every run, and
@@ -282,7 +289,9 @@ first large packet — a failure that looks like anything but a firewall rule.
 Reachability testing is the lesser benefit. The exposure accepted in
 exchange is that the host answers `ping`, which reveals that it exists;
 against an address a provider assigned and an attacker can scan anyway, that
-is worth the failures dropping ICMP causes.
+is worth the failures dropping ICMP causes. The rule names no
+interface, so the exposure is registered twice: as `ALW-5` for public
+sources and, on a tailnet host, as `ALW-7` for tailnet peers.
 **Verified:** `test_icmp_rules_for_both_stacks` asserts
 `ip protocol icmp accept` is in the rendered output, and
 `test_property_17_nftables_dual_stack_configuration` asserts it against the
@@ -301,7 +310,8 @@ diagnostics, it breaks IPv6 on the host outright: no neighbour resolution
 and no address autoconfiguration, so a host that drops it cannot reach the
 addresses it advertises it has. The rule is broad — every ICMPv6 type,
 not just the load-bearing ones — which is the accepted cost of not
-enumerating them.
+enumerating them. As with `FW-8`, the exposure is registered as `ALW-5`
+and, on a tailnet host, as `ALW-7`.
 **Verified:** `test_icmp_rules_for_both_stacks` asserts
 `ip6 nexthdr icmpv6 accept` is in the rendered output, and
 `test_property_17_nftables_dual_stack_configuration` asserts it against the
@@ -315,10 +325,13 @@ than the one written here.
 THE Bootstrap SHALL, when `firewall_tailscale_enabled` is true, accept
 inbound SSH only on packets arriving on the Tailscale interface.
 
-**Why:** this is `INV-1` in its strong form for the service that matters
-most: on an enrolled host, SSH is reachable only from inside the tailnet,
+**Why:** for the service that matters most, this is what lets SSH need no
+row in the public exposure register at all: on an enrolled host, SSH is
+reachable only from inside the tailnet,
 and an attacker on the public internet has no packet they can send that the
-input chain will accept on the SSH port. Matching the *interface* rather
+input chain will accept on the SSH port. What it leaves open to tailnet
+peers is registered as `ALW-6`, because `INV-10` does not trust a peer for
+being on the tailnet. Matching the *interface* rather
 than a source address is what makes that true — a source address can be
 forged, an interface a packet arrived on cannot. It is also why
 `firewall_tailscale_ipv4`, which this role inherits, is read by no rule
@@ -375,14 +388,13 @@ interface, and SHALL NOT open that port when Tailscale is disabled.
 **Why:** `FW-10` narrows SSH to a tunnel, and the tunnel has to be reachable
 for that to be a route in rather than a lockout. Tailscale's WireGuard
 traffic arrives from the internet on a public interface, so this rule cannot
-be narrowed the way `FW-10` is — it is the one port an enrolled host offers
-the open internet, and `INV-1` is satisfied by this requirement stating it
-rather than by the port being closed. The exposure is small and the protocol
-is the reason: WireGuard is designed not to answer a packet it cannot
-authenticate, so the port offers nothing to a peer without a key. The second
-clause matters as much as the first:
-a host with no tailnet has no reason to accept the traffic, and opening it
-anyway would be exposure with no corresponding requirement.
+be narrowed the way `FW-10` is. It is registered as `ALW-2`, and because
+the rule names no interface it also matches the tailnet interface, which is
+`ALW-8`. The exposure is small and the protocol is the reason: WireGuard is
+designed not to answer a packet it cannot authenticate, so the port offers
+nothing to a peer without a key. The second clause matters as much as the
+first: a host with no tailnet has no reason to accept the traffic, and
+opening it anyway would be exposure with no allowance to cover it.
 **Verified:** `test_wireguard_allowed_when_tailscale_enabled`,
 `test_wireguard_not_present_when_tailscale_disabled` and
 `test_custom_wireguard_port` render both branches and assert the rule's
@@ -404,10 +416,10 @@ false.
 **Why:** the three SSH branches are mutually exclusive by construction, and
 this is the last of them — the branch taken by a host with no tailnet and no
 knock sequence, where the alternative to accepting SSH is a host nobody can
-administer. It is exposure, and `INV-1` permits exposure a requirement
-states. What keeps it defensible is everything the `SSH` spec does to the
-connections this rule admits: public keys only, no root, no passwords. The
-branch is written explicitly rather than as the absence of a rule so that
+administer. It is exposure, registered as `ALW-4`. What keeps it
+defensible is everything the `SSH` spec does to the connections this rule
+admits: public keys only, no root, no passwords. The branch is written
+explicitly rather than as the absence of a rule so that
 its condition is visible and so that a fourth state — no SSH rule at all —
 cannot arise from a flag combination nobody considered.
 **Verified:** `test_ssh_allowed_from_all_when_tailscale_disabled` renders
@@ -580,7 +592,9 @@ after it. The one exception is not this spec's: on a knock-gated host
 rule accepting one of those ports is never reached. The glob is deliberate: an `include` of a named file that does not
 exist is a parse error that would fail the whole ruleset, whereas a wildcard
 matching nothing is not, so a host with an empty or absent drop-in directory
-loads exactly the ruleset written here.
+loads exactly the ruleset written here. A hole a drop-in opens has no row
+in this project's exposure registers: the purpose repository that opens it
+documents it in registers of its own (`PRJ-28`).
 **Verified:** nothing in the test suite. The behaviour was measured instead:
 the rendered ruleset loads unchanged with the drop-in directory absent and
 with it present but empty; a drop-in containing

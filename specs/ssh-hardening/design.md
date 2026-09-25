@@ -144,8 +144,7 @@ it available, would survive that. The alternative available today —
 listening on all interfaces and relying on the firewall to admit only the
 tailnet interface — was not chosen: it leaves a listener on the public
 address, so a firewall misconfiguration or a rule-ordering mistake exposes a
-live sshd rather than nothing, and `INV-1` is explicit that the strong form
-is preferred. The two controls are complementary and both are applied; this
+live sshd rather than nothing. The two controls are complementary and both are applied; this
 is the one that makes the service absent rather than merely filtered.
 
 **One conditional, two branches, one requirement.** `SSH-18` covers the

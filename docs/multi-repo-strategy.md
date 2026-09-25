@@ -54,6 +54,8 @@ After deploying a drop-in file, reload nftables to apply it:
 
 The contract's **Extension points** entry for `/etc/nftables.d/*.nft` says why the file survives a bootstrap re-run, and names the one case where an appended rule is never reached.
 
+Record each hole the drop-in opens in your repository's own exposure registers, one for holes public traffic can reach and one for holes open to tailnet peers, with the same columns as the registers in `specs/project/security-invariants.md` (PRJ-28).
+
 ## Integration Testing
 
 Bootstrap provides two things for purpose-repo integration tests: pre-built VM images and a shared test toolkit.

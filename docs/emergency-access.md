@@ -2,7 +2,7 @@
 
 When Tailscale is enabled, SSH access is restricted to the Tailscale interface only. If you lose Tailscale connectivity, you can use the emergency access script to temporarily allow SSH from all interfaces.
 
-This is the break-glass path, and it is the one thing in this bootstrap that deliberately makes a host less safe — it is registered as allowance `ALW-1` against the "no exposure without an explicit allowance" invariant. See `specs/emergency-access/` for the requirements behind everything below.
+This is the break-glass path, and it deliberately makes a host less safe — it is registered as allowance `ALW-1` in the public exposure register of `specs/project/security-invariants.md`, against the "no exposure without an explicit allowance" invariant. See `specs/emergency-access/` for the requirements behind everything below.
 
 ## When to Use
 

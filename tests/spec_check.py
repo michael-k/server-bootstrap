@@ -275,7 +275,7 @@ def check_structure(specs_dir: Path, prefixes: dict[str, str]) -> list[Finding]:
 
 
 def parse_allowance_register(path: Path) -> dict[str, set[str]]:
-    """Read the allowance register, mapping each ALW id to its claiming requirements."""
+    """Read both allowance registers, mapping each ALW id to its claiming requirements."""
     register: dict[str, set[str]] = {}
     if not path.is_file():
         return register
@@ -319,7 +319,7 @@ def check_spec_markdown(specs_dir: Path, prefixes: dict[str, str]) -> list[Findi
 
     An unclosed code fence in `requirements.md` causes every line after it to
     be treated as fenced, so a real `**Allowances claimed:**` line below it is
-    silently dropped rather than counted — defeating the allowance register
+    silently dropped rather than counted — defeating the allowance registers
     with no finding anywhere. This makes that drop impossible to miss.
     """
     findings: list[Finding] = []
@@ -506,7 +506,7 @@ def run_checks(
     """Run every check and return the combined findings.
 
     `prefixes` may be narrowed to a single spec (see `--spec`), and every check
-    is evaluated against that narrower scope except the allowance register:
+    is evaluated against that narrower scope except the allowance registers:
     whether an allowance is claimed by the right requirement is a whole-tree
     property, since the claimant can live in a spec outside the current scope.
     Scoping that check would make a `--spec` run flag allowances it has no

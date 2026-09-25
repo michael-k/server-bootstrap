@@ -76,7 +76,7 @@ table inet filter {
         # FW-12: Tailscale's WireGuard traffic arrives from the internet on a
         # public interface, so this rule is deliberately not narrowed - the
         # tunnel that the rule above restricts SSH to cannot come up without
-        # it. It is the one port this host offers the open internet.
+        # it. Registered as ALW-2 (public) and ALW-8 (tailnet).
         udp dport {{ firewall_wireguard_port }} accept
 {% elif firewall_port_knocking_enabled | bool %}
         # KNOCK-1: the branch a host with no tailnet takes unless knocking
@@ -115,8 +115,7 @@ table inet filter {
 {% else %}
         # FW-13, FW-14: Tailscale and port knocking are both off, so there is
         # no narrower path to this host and SSH is admitted on every
-        # interface. That is exposure, and it is exposure a requirement
-        # states outright rather than exposure left over by omission.
+        # interface. That is exposure, registered as ALW-4.
         tcp dport {{ firewall_ssh_port }} accept
 {% endif %}
 
