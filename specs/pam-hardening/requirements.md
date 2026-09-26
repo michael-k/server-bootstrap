@@ -87,7 +87,15 @@ requirement IDs.
 It also relies on `INV-3` and `INV-6`. `PAM-5` locks root out under the
 same policy as every other account, which is acceptable only because root
 has no remote login path (`INV-3`) and a lockout stays recoverable (`INV-6`);
-`design.md` sets out both, and records how the recovery works.
+`design.md` sets out both, and records how the recovery works. The
+recovery `INV-6` counts here is waiting. With `even_deny_root`, a locked
+root is refused at the console login and at `su`, even with the right
+password, until `root_unlock_time` passes, and a locked manual account is
+refused at `sudo` and at the console login until `unlock_time` passes.
+Waiting out that timer at the console is the console-only recovery, and by
+the reading `INV-6`'s **Why:** records it satisfies `INV-6`. The timer
+exists only while `pam_faillock_unlock_time` is non-zero: `faillock.conf(5)`
+reads 0 as never unlocking, and nothing in the role refuses that value.
 
 This spec claims no allowance: it does not bend `INV-7`, it hardens the one
 path (`sudo`'s password prompt) that gives `INV-7`'s named principals

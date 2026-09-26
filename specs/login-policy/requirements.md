@@ -80,7 +80,8 @@ present a tty `pam_securetty` will accept for direct root login,
 independent of which PAM service asked. Both mechanisms are
 console-recoverable in the sense `INV-6` requires: an operator with actual
 physical or provider-console access retains root login exactly where they
-had it, while the same path stays refused to anything arriving as a pty.
+had it, subject to the faillock lockout (`PAM-2` to `PAM-5`), while the
+same path stays refused to anything arriving as a pty.
 This spec claims no allowance: it does not bend INV-3, it is one of the
 two mechanisms — alongside `SSH`'s own refusal of root at the daemon level
 — that make it true.

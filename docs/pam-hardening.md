@@ -10,7 +10,7 @@ Locks accounts after repeated failed authentication attempts. Protects against b
 
 - Locks after 5 failed attempts within a 15-minute window
 - Unlocks automatically after 10 minutes
-- Root accounts are locked too (timed, never permanent)
+- Root accounts are locked too (timed, never permanent while `pam_faillock_unlock_time` is non-zero)
 - Lockout state clears on reboot
 
 Deployed to: `/etc/security/faillock.conf`

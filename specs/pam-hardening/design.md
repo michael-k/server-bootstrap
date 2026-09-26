@@ -123,13 +123,14 @@ brute-force surface `PAM-5` closes, one layer downstream, for the account
 that matters the most once reached — so this bootstrap accepts the
 opposite trade-off: root is locked out under the identical policy, timed
 identically (`root_unlock_time` reuses `pam_faillock_unlock_time` rather
-than a separate variable), never permanently.
+than a separate variable), and never permanently while
+`pam_faillock_unlock_time` is non-zero.
 
 ## Failure modes
 
 - **`even_deny_root` combined with `LOGIN-4`'s console restriction can
   leave an operator without a fast recovery path, though not a permanent
-  one.** `LOGIN-4` restricts *root's* console login to a fixed TTY list;
+  one while `pam_faillock_unlock_time` is non-zero.** `LOGIN-4` restricts *root's* console login to a fixed TTY list;
   the manual account is not restricted by `pam_securetty`/`securetty` and
   may log in on any console tty. But the manual account's own escalation
   path is `sudo` (`SUDO-2`), which requires a password and is exactly what
@@ -138,20 +139,22 @@ than a separate variable), never permanently.
   times, not necessarily an attack — `pam_faillock` locks *that account
   out of sudo* for `pam_faillock_unlock_time` (600 seconds by default),
   under the same policy `PAM-5` applies to root. During that window the
-  operator retains SSH and console login as the manual account (neither is
-  gated by `pam_faillock`'s account-lockout state the way `sudo`'s
-  password prompt is), but cannot reach root through `sudo` or `su` until
-  either the timeout elapses or something runs `faillock --user
-  <manual_user_name> --reset`. The automation account offers a second path
-  that does not require waiting: it authenticates over SSH by key only, is
+  operator cannot log in as the manual account at the console either,
+  since the console login authenticates through the same `common-auth`,
+  and cannot reach root through `sudo`. `su` asks for root's password,
+  not the manual account's, so it is refused only if root is locked too.
+  The lock lasts until either the timeout elapses or something runs
+  `faillock --user <manual_user_name> --reset`. The automation account
+  offers a second path that does not require waiting: it authenticates over SSH by key only, is
   never subject to a `sudo` password prompt (`SUDO-3`), and can run
   `faillock --reset` non-interactively as root the moment its own Ansible
   connection reaches the host — so recovery does not strictly depend on
   the manual account's own timeout, provided the automation account's key
   and connectivity are intact. `INV-6` requires every narrowing mechanism
-  to be recoverable with console access alone; this one is recoverable
-  with console access alone only by waiting out the timer, and faster with
-  SSH access via the automation account. No requirement in this spec and
+  to be recoverable with console access alone. This one is recoverable
+  with console access alone by waiting out the timer, which by the reading
+  `INV-6`'s **Why:** records satisfies it, and faster with SSH access via
+  the automation account. No requirement in this spec and
   no test in either suite exercises this scenario end to end.
 - **`PAM-6`, `PAM-7`, and `PAM-17` have no citation inside their own
   templates, by design (see `## Approach`), which means a reviewer reading
@@ -232,9 +235,10 @@ than a separate variable), never permanently.
   the manual account, since a passwordless prompt would give
   `pam_faillock` nothing to count.
 - `INV-3`, `INV-6` — root has no remote login path, and every
-  access-narrowing mechanism is recoverable using console access alone (or,
-  as this spec's `## Failure modes` records, using the automation
-  account's own SSH access); `PAM-5`'s choice to lock root out under the
+  access-narrowing mechanism is recoverable using console access alone
+  (for this spec's lockout, by waiting out the unlock timer; `## Failure
+  modes` also records the faster path through the automation account's own
+  SSH access); `PAM-5`'s choice to lock root out under the
   same policy as every other account is only acceptable because both hold.
 
 **What others may assume of this spec:**

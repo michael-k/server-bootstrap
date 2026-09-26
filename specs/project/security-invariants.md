@@ -76,7 +76,14 @@ using console access alone.
 root console session can edit directly, and the emergency access script
 that flips SSH between Tailscale-only and public reachability edits those
 same files and restarts the affected services locally, making no network
-call of its own.
+call of its own. A lockout that lifts on a timer counts as recoverable from
+the console alone, because waiting it out at the console is the recovery.
+The faillock lockout (`PAM-2` to `PAM-5`), which does not exempt root, is
+such a lockout while `pam_faillock_unlock_time` is non-zero, since
+`faillock.conf(5)` reads 0 as never unlocking and nothing in the `users`
+role refuses that value: while an account is locked, `pam_faillock` refuses
+it at every service that authenticates it through `common-auth`, the console
+login, `su` and `sudo` among them, until the unlock time passes.
 
 ### INV-7 — Named, audited privilege escalation
 
