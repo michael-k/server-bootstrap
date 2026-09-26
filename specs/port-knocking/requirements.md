@@ -483,8 +483,10 @@ integration suite's `test_ssh_blocked_without_knock` and
 `test_ssh_accessible_after_knock` on a real bootstrapped VM, and
 `test_only_ssh_reachable_after_knock`, which requires ten other common ports
 to stay unreachable after a knock. `test_port_knocking_does_not_bypass_tailscale`
-covers the other side of `KNOCK-1`: a completed knock against a
-Tailscale-enabled host does not open SSH, because no rule here was rendered.
+sends a completed knock at a Tailscale-enabled host and requires SSH to stay
+closed. It does not inspect the rendered ruleset, and sshd's tailnet-only
+binding refuses that connection whether or not a knock rule was rendered, so
+it does not show that this rule is absent there.
 
 ### KNOCK-10 — Knock behaviour is configured from inventory
 

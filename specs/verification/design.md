@@ -190,8 +190,8 @@ style choice.
   suite is the only place in this project the script is actually executed
   against a narrowed host and its effect measured by opening a connection;
   that evidence, in `tests/integration/test_tailscale_integration.py`,
-  carries no citation of its own and is outside this task's file list to
-  add one to.
+  cites `EMRG-3` and `EMRG-4` in `test_emergency_script_unrestricts_ssh`'s
+  and `test_emergency_script_restore`'s docstrings.
 
 - **The resource-limits check does not verify everything its own success
   message claims.** `Verify PAM-10, PAM-14: resource limits` asserts that

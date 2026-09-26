@@ -94,8 +94,8 @@ that branch rather than at the policy. The division is what matters here,
 not the tally: a test added to either side does not change which requirement
 it is evidence for.
 Nothing live covers `FW-1`, `FW-2`, `FW-5`, `FW-8`, `FW-9`, `FW-11`,
-`FW-12`, `FW-13`, `FW-15`, `FW-16`, `FW-19`, `FW-20` or `FW-21`, and
-`FW-10`'s live coverage does not isolate it from `SSH-18`.
+`FW-12`, `FW-13`, `FW-15`, `FW-16`, `FW-19`, `FW-20` or `FW-21`, and no
+live test isolates `FW-10` from `SSH-18`.
 
 `specs/project/bootstrap-contract.md` states the same drop-in contract for
 purpose repositories, including the `add rule` constraint. It is a view over

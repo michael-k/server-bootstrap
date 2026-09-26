@@ -67,8 +67,10 @@ validation string against the task file.
 and are named throughout `requirements.md`'s `**Verified:**` lines. The
 playbook belongs to `VRFY` and its task names cite `SSH` IDs, except the
 two blocks that check `SSH-20`, which cite it in a comment; the
-integration modules belong to the testing spec and carry no `SSH-N`
-citations.
+integration modules belong to the testing spec.
+`test_tailscale_integration.py`'s `test_ssh_closed_without_firewall` cites
+`SSH-18` in its docstring;
+`test_bootstrap_integration.py` carries no `SSH-N` citation.
 
 `tests/verify_bootstrap.yml` asserts against a live `sshd -T` for twelve
 requirements — `SSH-1`, `SSH-2`, `SSH-5`, `SSH-6`, `SSH-7`, `SSH-8`,

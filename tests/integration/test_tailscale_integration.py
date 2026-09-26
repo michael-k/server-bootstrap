@@ -6,11 +6,7 @@ bootstrap target. Verifies SSH is restricted to the tailnet, port
 knocking cannot bypass it, and the emergency script toggles access.
 
 This is the only suite in the project that runs an enabled Tailscale
-bootstrap against a real host. test_ssh_closed_from_host,
-test_port_knocking_does_not_bypass_tailscale,
-test_ssh_closed_without_firewall, test_emergency_script_unrestricts_ssh and
-test_emergency_script_restore carry no citation; the specs they bear on
-describe them against their own requirements instead.
+bootstrap against a real host.
 """
 
 import dataclasses
@@ -313,7 +309,16 @@ class TestTailscaleIntegration:
     """
 
     def test_ssh_closed_from_host(self, tailscale_env: TailscaleEnv) -> None:
-        """SSH from host to target's bridge IP must fail (firewall blocks it)."""
+        """SSH from host to target's bridge IP must fail.
+
+        Exercises the firewall spec's interface-qualified SSH rule against
+        a live, running firewall, but sshd's own tailnet-only binding,
+        which the ssh-hardening spec requires, refuses the same
+        connection. This test cannot tell the two controls apart, so it
+        cites a requirement of neither spec.
+        test_ssh_closed_without_firewall removes the firewall to test the
+        binding alone.
+        """
         env = tailscale_env
         result = _ssh_from_host(
             ip=env.target.ip_address,
@@ -331,7 +336,15 @@ class TestTailscaleIntegration:
     def test_port_knocking_does_not_bypass_tailscale(
         self, tailscale_env: TailscaleEnv,
     ) -> None:
-        """Port knocking must NOT open SSH when Tailscale restricts it."""
+        """Port knocking must NOT open SSH when Tailscale restricts it.
+
+        SSH stays closed after a correct knock on a Tailscale-enabled host,
+        where the port-knocking spec requires that no knock rule is
+        rendered. This test does not inspect the rendered ruleset, and
+        sshd's tailnet-only binding would refuse this connection whether
+        or not a knock rule was rendered, so it cites no port-knocking
+        requirement.
+        """
         env = tailscale_env
         env.target.knock(ports=[7000, 8500, 9100])
 
@@ -357,6 +370,13 @@ class TestTailscaleIntegration:
         nftables must not expose SSH on the bridge interface. This
         is defense-in-depth: both sshd binding and firewall restrict
         access independently.
+
+        SSH-18: confirms its listen-address binding against a live daemon
+        rather than a rendered template, by removing the firewall first
+        to isolate it. tests/verify_bootstrap.yml's SSH-18 checks also
+        read the live daemon's resolved and bound addresses; this is the
+        only place that additionally proves the bridge-IP connection
+        itself is refused.
         """
         env = tailscale_env
 
@@ -417,7 +437,13 @@ class TestTailscaleIntegration:
     def test_emergency_script_unrestricts_ssh(
         self, tailscale_env: TailscaleEnv,
     ) -> None:
-        """Emergency script opens SSH to all interfaces without breaking tailnet."""
+        """Emergency script opens SSH to all interfaces without breaking tailnet.
+
+        EMRG-3: runs the deployed script on a bootstrapped, narrowed host
+        and opens a real connection to the host's public address — the
+        only evidence anywhere that the pair of edits produces a
+        reachable host rather than two plausible-looking files.
+        """
         env = tailscale_env
 
         result = env.target.exec("/root/emergency-ssh-access.sh")
@@ -463,7 +489,12 @@ class TestTailscaleIntegration:
     def test_emergency_script_restore(
         self, tailscale_env: TailscaleEnv,
     ) -> None:
-        """Emergency --restore re-restricts SSH; tailnet access still works."""
+        """Emergency --restore re-restricts SSH; tailnet access still works.
+
+        EMRG-4: runs --restore on the host the previous test reopened and
+        confirms the public address is refused again while tailnet
+        access over both families still works.
+        """
         env = tailscale_env
 
         result = env.target.exec("/root/emergency-ssh-access.sh --restore")

@@ -85,11 +85,15 @@ loaded. Those checks only run at all if the playbook reaches the host, which
 on a knock-gated host it cannot do unaided; see `## Failure modes`. The
 integration suite, `tests/integration/test_bootstrap_integration.py`
 and `tests/integration/test_tailscale_integration.py`, belongs to the
-testing spec, carries no `KNOCK-N` citations, and is the only place a packet
-is ever sent at a knock-gated host: SSH unreachable without a knock,
+testing spec and is the only place a packet is ever sent at a knock-gated
+host: SSH unreachable without a knock,
 reachable after one, only SSH reachable after one, and a knock failing to
-open SSH on a Tailscale host. The division rather than the tally is what
-decides which requirement a given test is evidence for.
+open SSH on a Tailscale host. Neither integration module carries a
+`KNOCK-N` citation. The last of those tests,
+`test_tailscale_integration.py`'s `test_port_knocking_does_not_bypass_tailscale`,
+cannot tell a missing knock rule from sshd's tailnet-only binding, so it
+cites none. The division rather than the tally is what decides which
+requirement a given test is evidence for.
 
 ## Key decisions
 
