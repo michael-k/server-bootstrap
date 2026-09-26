@@ -746,11 +746,10 @@ installs the package with `apt-get`, in `incus/src/incus/vm.py`).
 restart into a
 configuration under which sshd can bind no address leaves the daemon
 stopped and fails the run; `design.md`'s `## Failure modes` records that case.
-**Verified:** the verification play's `Verify sshd service is running` and
-`Verify sshd service is enabled` blocks assert, on a live host, that the
-unit's `ActiveState` is `active` and its `UnitFileState` is `enabled`. They
-cite this requirement in a comment above each block; their task names do
-not name it, which `VRFY-4` records. A grep of `roles/` and `site.yml` for
+**Verified:** the verification play's `Verify SSH-20: sshd service is
+running` and `Verify SSH-20: sshd service is enabled` blocks assert, on a
+live host, that the unit's `ActiveState` is `active` and its
+`UnitFileState` is `enabled`. A grep of `roles/` and `site.yml` for
 `ansible.builtin.systemd`, `ansible.builtin.service` and `systemctl` finds
 two sites that act on sshd: `SSH-17`'s handler, which restarts it, and the
 break-glass script (`EMRG`), which restarts it when an operator runs it.

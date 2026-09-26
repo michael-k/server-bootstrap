@@ -241,8 +241,8 @@ never this one's to restate.
   `dangling-citation` finding is what would catch an ID renumbered or
   retired out from under a citation here.
 - `SSH` — two checks, sshd's `ActiveState` and `UnitFileState`, verify
-  `SSH-20`. They cite it in a comment, not in their task names, so they
-  fall short of `VRFY-4`, as that requirement's `**Verified:**` records.
+  `SSH-20`, named `Verify SSH-20: sshd service is running` and
+  `Verify SSH-20: sshd service is enabled`.
 - `KNOCK` and `TS` — that this playbook can reach the host at all. It
   cannot, unaided, on a knock-gated host, and depends on being run from
   inside the tailnet on a Tailscale-narrowed one; `## Failure modes` records

@@ -65,9 +65,10 @@ validation string against the task file.
 `tests/integration/test_tailscale_integration.py` and
 `tests/verify_bootstrap.yml` all exercise this role's output on a live host
 and are named throughout `requirements.md`'s `**Verified:**` lines. The
-playbook belongs to `VRFY` and its task names cite `SSH` IDs, except the
-two blocks that check `SSH-20`, which cite it in a comment; the
-integration modules belong to the testing spec.
+playbook belongs to `VRFY` and its task names cite `SSH` IDs, including the
+two blocks that check `SSH-20`, named `Verify SSH-20: sshd service is
+running` and `Verify SSH-20: sshd service is enabled`; the integration
+modules belong to the testing spec.
 `test_tailscale_integration.py`'s `test_ssh_closed_without_firewall` cites
 `SSH-18` in its docstring;
 `test_bootstrap_integration.py` carries no `SSH-N` citation.

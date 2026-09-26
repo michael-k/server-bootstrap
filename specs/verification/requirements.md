@@ -277,19 +277,18 @@ requirement's ID directly is what makes a CI failure or an operator's
 terminal output self-describing — `Verify SSH-1: SSHD password
 authentication is disabled` names both what broke and where to read why it
 matters, where `Test 14.5` named neither.
-**Verified:** 52 of the file's 55 verification blocks name at least one
+**Verified:** 54 of the file's 55 verification blocks name at least one
 requirement ID — several name more than one, where a single assert checks
 conditions that belong to different requirements of the same feature (for
 example `Verify SUDO-11, SUDO-12, SUDO-13: wheel group and su restriction`).
-Three blocks name none. The closing "Display verification summary" block
-is this spec's own reporting, not a check of a feature requirement, so it
-has none to cite. The other two are the checks of sshd's own service state
-(`ActiveState`, `UnitFileState`), and for them this requirement is not met:
-they check `SSH-20` and cite it in a comment above each block, but their
-task names do not name it. Renaming them changes the playbook's output, and
-is left to a change of its own. Every ID cited was
-checked against the `### ` headings of its spec's `requirements.md` to
-confirm it exists.
+One block names none: the closing "Display verification summary" block is
+this spec's own reporting, not a check of a feature requirement, so it has
+none to cite. The checks of sshd's own service state (`ActiveState`,
+`UnitFileState`) are named `Verify SSH-20: sshd service is running` and
+`Verify SSH-20: sshd service is enabled`, citing `SSH-20` directly rather
+than in a comment above each block, which this requirement does not count.
+Every ID cited was checked against the `### ` headings of its spec's
+`requirements.md` to confirm it exists.
 `test_verification_playbook_covers_all_requirements` asserts, over the
 renamed file, that at least 40 blocks cite at least one requirement ID and
 that at least 40 distinct IDs are cited in total — replacing its previous
@@ -297,8 +296,8 @@ form, which counted blocks titled `Test 14.N` and asserted the numbering
 ran from 1 to at least 40. That check is retired along with the numbering
 it measured: a per-component ID scheme has no single sequence to start at 1
 or reach 40, so the same assertion would be false of a healthy file under
-the new convention. No test confirms which three blocks are the ones naming
-none; that is asserted only in this document.
+the new convention. No test confirms which block is the one naming none;
+that is asserted only in this document.
 
 ### VRFY-5 — A disabled feature's checks are skipped, not failed
 

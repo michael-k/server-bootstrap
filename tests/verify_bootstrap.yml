@@ -334,8 +334,7 @@
             fail_msg: "SSHD tunneling is not disabled"
             success_msg: "✓ SSHD tunneling is disabled"
 
-    # SSH-20
-    - name: "Verify sshd service is running"
+    - name: "Verify SSH-20: sshd service is running"
       block:
         - name: Check SSHD service status
           ansible.builtin.systemd:
@@ -350,8 +349,7 @@
             fail_msg: "SSHD service is not running"
             success_msg: "✓ SSHD service is running"
 
-    # SSH-20
-    - name: "Verify sshd service is enabled"
+    - name: "Verify SSH-20: sshd service is enabled"
       block:
         - name: Check SSHD service enablement
           ansible.builtin.systemd:
