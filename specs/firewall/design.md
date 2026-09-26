@@ -215,9 +215,9 @@ runs against the new ones.
 `enabled: true` and `state: started` in a single task. They are separate
 because they answer separate requirements with separate consequences —
 `FW-17` is about the next boot and `FW-18` about this minute — and because
-the property suite's task walk reads them independently, though only by a
-one-line margin; see `## Failure modes`. Nothing depends on the ordering
-between them.
+the property suite's task walk reads them independently; see
+`## Failure modes` for how that walk finds each task's own boundary.
+Nothing depends on the ordering between them.
 
 ## Failure modes
 
@@ -356,24 +356,15 @@ between them.
   `test_knock_rules_conditional_on_tailscale_and_knocking` does branch on
   its two generated flags — so the criticism is of the four named tests, not
   of the suite as a whole.
-- **`FW-17`'s and `FW-18`'s task walk separates the two tasks by one line,
-  and separated them by none before this spec was written.**
+- **`FW-17`'s and `FW-18`'s task walk reads one task at a time.**
   `test_property_21_nftables_service_persistence` looks for a systemd task
-  naming `nftables` by taking a fixed ten-line window from each
-  `ansible.builtin.systemd:` line and asking whether `enabled: true` and
-  `state: started` appear in it. Whether that reads one task or two is a
-  function of how many comment lines sit between them, which nothing
-  guarantees. Measured on this role's task file: before this spec's
-  citations were added, the enable task's window ran to line 51 and
-  `state: started` sat on line 50, so `found_start_task` was already
-  satisfied from the *enable* task's window and that half of the assertion
-  was inert — deleting the start task entirely would not have failed it.
-  The citation comments added here pushed the two apart, so each key is now
-  found only in its own task's window, but the margin is exactly one line:
-  removing a single comment line restores the old, inert behaviour with no
-  test failure to announce it. The fix is to slice to the next line
-  beginning a task rather than to a fixed offset. No test was changed here,
-  per this plan's rules; this bullet is the record.
+  naming `nftables` and asks whether `enabled: true` and `state: started`
+  appear in its block. It slices each `ansible.builtin.systemd:` line's
+  block to the next line beginning a task (the next top-level `- name:`
+  item), so the window cannot run into a neighbouring task however many
+  comment lines separate them. It drops comment-only lines from that block
+  before checking, so a comment mentioning `state: started` or
+  `enabled: true` in prose cannot stand in for a real directive.
 - **`test_property_19`'s "Tailscale block" is not the Tailscale block.** The
   test extracts the conditional branch by scanning from
   `{% if firewall_tailscale_enabled | bool %}` until a line containing

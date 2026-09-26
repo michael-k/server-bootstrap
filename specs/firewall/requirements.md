@@ -511,8 +511,8 @@ worst possible one: a reboot is exactly when an operator is not watching.
 `test_property_21_nftables_service_persistence` assert `enabled: true`
 appears in the tasks file, the latter also walking the task list to confirm
 a systemd task that names `nftables` carries it — a walk whose idea of where
-one task ends is a fixed line offset, and which currently separates this
-task from `FW-18`'s by a single line; see `design.md`'s `## Failure modes`.
+one task ends is the next task boundary, not a fixed line offset; see
+`design.md`'s `## Failure modes`.
 `verify_bootstrap.yml`'s `Verify FW-17: NFTables service is enabled`
 asserts the unit's `UnitFileState` is `enabled` on a live host.
 
@@ -531,8 +531,8 @@ still every role that opens or reacts to network exposure.
 **Verified:** `test_property_18_nftables_stateful_firewall_rules` and
 `test_property_21_nftables_service_persistence` assert `state: started`
 appears in the tasks file, the latter confirming it sits on a systemd task
-naming `nftables` — subject to the same one-line task-boundary margin noted
-under `FW-17`. `verify_bootstrap.yml`'s `Verify FW-18: NFTables service is active` asserts
+naming `nftables` — bounded the same way noted under `FW-17`.
+`verify_bootstrap.yml`'s `Verify FW-18: NFTables service is active` asserts
 the unit's `ActiveState` is `active`, and the integration suite's
 `test_bootstrap_configures_firewall` asserts `systemctl is-active nftables`
 succeeds after a real run. Both say less than they appear to: the unit is

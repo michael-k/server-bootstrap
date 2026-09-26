@@ -684,8 +684,26 @@ class TestNFTablesServicePersistenceProperties:
             if 'ansible.builtin.systemd:' in line or 'systemd:' in line or (
                 'ansible.builtin.service:' in line or 'service:' in line
             ):
-                # Look ahead to see if this task references nftables
-                task_block = '\n'.join(lines[i:min(i+10, len(lines))])
+                # Look ahead only to the next top-level task boundary (the
+                # next "- name:" list item), not a fixed-line window: a
+                # fixed window's idea of where a task ends depends on how
+                # many comment lines separate it from the next task, so it
+                # can run past the task it is reading.
+                end = len(lines)
+                for j in range(i + 1, len(lines)):
+                    if lines[j].startswith('- name:'):
+                        end = j
+                        break
+                # Drop comment-only lines before checking: a comment line
+                # that happens to contain "state: started" or
+                # "enabled: true" (for example, in prose describing the
+                # next task) would otherwise satisfy the check without a
+                # real directive present.
+                task_lines = [
+                    task_line for task_line in lines[i:end]
+                    if not task_line.strip().startswith('#')
+                ]
+                task_block = '\n'.join(task_lines)
                 if 'name: nftables' in task_block:
                     if 'enabled: true' in task_block or 'enabled: yes' in task_block:
                         found_enable_task = True
