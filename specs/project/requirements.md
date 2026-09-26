@@ -215,8 +215,16 @@ configuration names those accounts and binds its listen addresses to VPN
 addresses that exist only once enrollment has succeeded — this is what makes
 INV-8 hold. The firewall comes after the services it admits. Reordering does not
 fail loudly: it produces a plausible configuration that locks the operator out.
-**Verified:** the order is declared in one place, and the idempotency property
-test asserts every capability appears in that declaration.
+**Verified:** the order is declared in one place, the `roles:` list in
+`site.yml`. The idempotency property test asserts that the roles in its own
+list appear there, but that list leaves out `networking` and
+`filesystem_hardening`, and the test does not check their order.
+Individual pairs are checked elsewhere: `test_networking_role_runs_before_tailscale`
+checks networking before tailscale, and `test_service_dependencies_are_ordered`
+checks users before ssh_hardening, tailscale before firewall and firewall
+before fail2ban, by the first occurrence of each role's name after `roles:`.
+No test checks the order as a whole, and none checks that
+`filesystem_hardening` is listed at all.
 
 ### PRJ-13 — A re-run completes without error
 
