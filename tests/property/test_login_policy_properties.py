@@ -22,9 +22,9 @@ class TestLoginPolicyDefaults:
     @pytest.mark.unit
     def test_defaults_define_tmout(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define TMOUT
+        Defaults Define TMOUT
 
-        The users role defaults SHALL define login_policy_tmout.
+        Checks that the users role defaults define `login_policy_tmout`.
 
         Validates: LOGIN-5
         """
@@ -41,9 +41,9 @@ class TestLoginPolicyDefaults:
     @pytest.mark.unit
     def test_defaults_define_umask(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define UMASK
+        Defaults Define UMASK
 
-        The users role defaults SHALL define login_policy_umask.
+        Checks that the users role defaults define `login_policy_umask`.
 
         Validates: LOGIN-7
         """
@@ -58,9 +58,9 @@ class TestLoginPolicyDefaults:
     @pytest.mark.unit
     def test_defaults_define_retries(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Login Retries
+        Defaults Define Login Retries
 
-        The users role defaults SHALL define login_policy_retries.
+        Checks that the users role defaults define `login_policy_retries`.
 
         Validates: LOGIN-8
         """
@@ -75,9 +75,9 @@ class TestLoginPolicyDefaults:
     @pytest.mark.unit
     def test_defaults_define_timeout(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Login Timeout
+        Defaults Define Login Timeout
 
-        The users role defaults SHALL define login_policy_timeout.
+        Checks that the users role defaults define `login_policy_timeout`.
 
         Validates: LOGIN-9
         """
@@ -96,10 +96,10 @@ class TestShellTimeoutProperties:
     @pytest.mark.unit
     def test_shell_timeout_sets_tmout_variable(self):
         """
-        Feature: vps-bootstrap-playbook, Shell Timeout Sets TMOUT
+        Shell Timeout Sets TMOUT
 
-        The shell timeout template SHALL set the TMOUT variable
-        using the login_policy_tmout variable.
+        Checks that the shell timeout template sets `TMOUT=` and references
+        `login_policy_tmout`.
 
         Validates: LOGIN-5
         """
@@ -117,13 +117,13 @@ class TestShellTimeoutProperties:
     @pytest.mark.unit
     def test_shell_timeout_is_readonly(self):
         """
-        Feature: vps-bootstrap-playbook, Shell Timeout Is Readonly
+        Shell Timeout Is Readonly
 
-        The shell timeout template SHALL mark TMOUT as readonly, which
-        stops the shell that sourced it from reassigning or unsetting it
-        later in the same session — advisory, not a guarantee that no
-        shell ever runs without the timeout (see the login-policy design's
-        Key decisions for what readonly does not cover).
+        Checks that the shell timeout template contains `readonly TMOUT`. That
+        stops the shell that sourced it from reassigning or unsetting it later in
+        the same session — advisory, not a guarantee that no shell ever runs
+        without the timeout (see the login-policy design's Key decisions for what
+        readonly does not cover).
 
         Validates: LOGIN-6
         """
@@ -138,10 +138,9 @@ class TestShellTimeoutProperties:
     @pytest.mark.unit
     def test_shell_timeout_is_exported(self):
         """
-        Feature: vps-bootstrap-playbook, Shell Timeout Is Exported
+        Shell Timeout Is Exported
 
-        The shell timeout template SHALL export TMOUT so it applies
-        to child shells.
+        Checks that the shell timeout template contains `export TMOUT`.
 
         Validates: LOGIN-5
         """
@@ -179,10 +178,10 @@ class TestSecurettyProperties:
         tty: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Securetty Virtual Console TTYs
+        Securetty Virtual Console TTYs
 
-        The securetty template SHALL list tty1 through tty6
-        for KVM/physical console access.
+        Checks that the securetty template lists the drawn TTY, one of tty1 to
+        tty6, on a line of its own.
 
         Validates: LOGIN-4
         """
@@ -208,10 +207,10 @@ class TestSecurettyProperties:
         tty: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Securetty Serial Console TTYs
+        Securetty Serial Console TTYs
 
-        The securetty template SHALL list ttyS0 and ttyS1
-        for serial console access.
+        Checks that the securetty template lists the drawn serial TTY, ttyS0 or
+        ttyS1, on a line of its own.
 
         Validates: LOGIN-4
         """
@@ -227,10 +226,9 @@ class TestSecurettyProperties:
     @pytest.mark.unit
     def test_securetty_does_not_list_pseudo_terminals(self):
         """
-        Feature: vps-bootstrap-playbook, Securetty No Pseudo-Terminals
+        Securetty No Pseudo-Terminals
 
-        The securetty template SHALL NOT contain pts/ entries.
-        Root should not be able to log in via pseudo-terminals.
+        Checks that the securetty template contains no `pts/` entry.
 
         Validates: LOGIN-4
         """
@@ -270,10 +268,10 @@ class TestLoginDefsProperties:
         setting: tuple,
     ):
         """
-        Feature: vps-bootstrap-playbook, login.defs Hardened Settings
+        login.defs Hardened Settings
 
-        The login.defs template SHALL contain all hardened settings
-        using their corresponding configurable variables.
+        Checks that the login.defs template contains the drawn setting (`UMASK`,
+        `LOGIN_RETRIES` or `LOGIN_TIMEOUT`) and the variable it is rendered from.
 
         Validates: LOGIN-7, LOGIN-8, LOGIN-9
         """
@@ -294,10 +292,10 @@ class TestLoginDefsProperties:
     @pytest.mark.unit
     def test_login_defs_enables_ok_login_logging(self):
         """
-        Feature: vps-bootstrap-playbook, login.defs Successful Login Logging
+        login.defs Successful Login Logging
 
-        The login.defs template SHALL set LOG_OK_LOGINS to yes
-        to log successful console logins.
+        Checks that the login.defs template has an uncommented `LOG_OK_LOGINS`
+        line set to yes.
 
         Validates: LOGIN-2
         """
@@ -318,10 +316,10 @@ class TestLoginDefsProperties:
     @pytest.mark.unit
     def test_login_defs_preserves_uid_ranges(self):
         """
-        Feature: vps-bootstrap-playbook, login.defs Preserves UID Ranges
+        login.defs Preserves UID Ranges
 
-        The login.defs template SHALL preserve Debian's default UID
-        ranges (UID_MIN 1000, UID_MAX 60000) to avoid breaking user creation.
+        Checks that the login.defs template mentions `UID_MIN`, `UID_MAX`, `1000`
+        and `60000`, Debian's default UID range.
 
         Validates: LOGIN-1
         """
@@ -337,10 +335,10 @@ class TestLoginDefsProperties:
     @pytest.mark.unit
     def test_login_defs_preserves_encrypt_method(self):
         """
-        Feature: vps-bootstrap-playbook, login.defs Preserves Encryption
+        login.defs Preserves Encryption
 
-        The login.defs template SHALL preserve ENCRYPT_METHOD YESCRYPT
-        to maintain password hashing compatibility.
+        Checks that the login.defs template mentions `ENCRYPT_METHOD` and
+        `YESCRYPT`, Debian's default.
 
         Validates: LOGIN-1
         """
@@ -358,10 +356,9 @@ class TestLoginDefsProperties:
     @pytest.mark.unit
     def test_login_defs_preserves_home_mode(self):
         """
-        Feature: vps-bootstrap-playbook, login.defs Preserves HOME_MODE
+        login.defs Preserves HOME_MODE
 
-        The login.defs template SHALL preserve HOME_MODE 0700
-        for secure home directory permissions.
+        Checks that the login.defs template mentions `HOME_MODE` and `0700`.
 
         Validates: LOGIN-1
         """
@@ -379,9 +376,10 @@ class TestLoginPolicyTasksProperties:
     @pytest.mark.unit
     def test_tasks_deploy_login_defs(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy login.defs
+        Tasks Deploy login.defs
 
-        The users role tasks SHALL deploy the login.defs template.
+        Checks that the users role tasks deploy `login.defs.j2` to
+        `/etc/login.defs`.
 
         Validates: LOGIN-1
         """
@@ -401,9 +399,9 @@ class TestLoginPolicyTasksProperties:
     @pytest.mark.unit
     def test_tasks_deploy_securetty(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy securetty
+        Tasks Deploy securetty
 
-        The users role tasks SHALL deploy the securetty template.
+        Checks that the users role tasks deploy `securetty.j2` to `/etc/securetty`.
 
         Validates: LOGIN-4
         """
@@ -421,10 +419,10 @@ class TestLoginPolicyTasksProperties:
     @pytest.mark.unit
     def test_tasks_deploy_shell_timeout(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy Shell Timeout
+        Tasks Deploy Shell Timeout
 
-        The users role tasks SHALL deploy the shell timeout template
-        to /etc/profile.d/.
+        Checks that the users role tasks deploy `shell-timeout.sh.j2` to
+        `/etc/profile.d/shell-timeout.sh`.
 
         Validates: LOGIN-5
         """
@@ -442,10 +440,10 @@ class TestLoginPolicyTasksProperties:
     @pytest.mark.unit
     def test_tasks_ensure_pam_securetty(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Ensure pam_securetty
+        Tasks Ensure pam_securetty
 
-        The users role tasks SHALL ensure pam_securetty.so is enabled
-        in /etc/pam.d/login.
+        Checks that the users role tasks edit `/etc/pam.d/login` with lineinfile
+        and mention `pam_securetty`.
 
         Validates: LOGIN-3
         """

@@ -52,27 +52,26 @@ class TestSSHInterfaceRestrictionProperties:
         enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 12: SSH Interface Restriction with Safety Check
+        SSH Interface Restriction with Safety Check
 
-        For any execution of the bootstrap playbook WHERE Tailscale is enabled,
-        the playbook SHALL verify Tailscale connectivity before configuring SSHD
-        to listen only on the Tailscale interface.
+        Checks, as separate substrings, that the sshd template has a
+        `tailscale_enabled` conditional, a `ListenAddress {{ tailscale_ipv4 }}` line
+        and a `tailscale_ipv4 is defined` test; that the Tailscale verification
+        tasks wait for the interface, read `BackendState`, run `tailscale ip` and
+        set `tailscale_ipv4`, ping over the interface, and contain a fail task; that
+        the defaults mention `0.0.0.0`; and that the deployment task validates with
+        `sshd -t`. How these pieces nest, and which check the fail task belongs to,
+        is not checked.
 
-        Validates: SSH-18, and TS-22 for the ordering it depends on
+        Validates: SSH-18, SSH-19, TS-15, TS-16, TS-17, TS-21
         """
-        # This property test verifies the SSH hardening role's interface restriction by checking:
-        # 1. TS-22: Tailscale connectivity is verified before SSH is narrowed
-        # 2. SSH-18: sshd binds the tailnet addresses only when Tailscale is on
-        # 3. Verification prevents lockout scenarios
-
         # Read the SSH hardening role template
         template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
         assert template_path.exists(), "SSH hardening template must exist"
 
         template_content = template_path.read_text()
 
-        # SSH-18: sshd binds the tailnet addresses only when Tailscale is enabled
-        # The template should have conditional logic for ListenAddress
+        # SSH-18: the template has a Tailscale conditional and a tailnet ListenAddress
         assert "{% if tailscale_enabled" in template_content, (
             "Template must have conditional logic for Tailscale-based interface restriction"
         )
@@ -93,14 +92,14 @@ class TestSSHInterfaceRestrictionProperties:
             "Template should document Tailscale interface restriction"
         )
 
-        # Read the Tailscale verification tasks; the ordering guarantee is TS-22's
+        # Read the Tailscale verification tasks
         verify_tasks_path = Path("roles/tailscale/tasks/verify.yml")
         assert verify_tasks_path.exists(), "Tailscale verification tasks must exist"
 
         verify_tasks_content = verify_tasks_path.read_text()
 
-        # TS-22: the verification tasks run before the ssh_hardening role, which is
-        # what makes SSH-18's narrowing safe. This test reads the task file only.
+        # This test reads the task file only; it does not check the order in which
+        # the roles run.
 
         # Verify interface existence check
         assert "ansible.builtin.wait_for:" in verify_tasks_content, (
@@ -150,7 +149,7 @@ class TestSSHInterfaceRestrictionProperties:
             or "register:" in verify_tasks_content
         ), "Must register verification results for conditional failure"
 
-        # Verify error messages mention lockout prevention
+        # Verify the tasks mention lockout, prevention, connectivity or failure
         lockout_keywords = ["lockout", "prevent", "connectivity", "failed"]
         has_lockout_warning = any(
             keyword in verify_tasks_content.lower() for keyword in lockout_keywords
@@ -173,7 +172,7 @@ class TestSSHInterfaceRestrictionProperties:
             "Must default to listening on all interfaces when Tailscale is not enabled"
         )
 
-        # Read the main tasks to verify execution order
+        # Read the main tasks
         tasks_path = Path("roles/ssh_hardening/tasks/main.yml")
         assert tasks_path.exists(), "SSH hardening tasks must exist"
 
@@ -199,17 +198,6 @@ class TestSSHInterfaceRestrictionProperties:
             "Must use sshd -t for configuration validation"
         )
 
-        # Property verified: The SSH hardening role ensures that:
-        # - Tailscale connectivity is verified before SSH is narrowed (TS-22)
-        # - Interface existence is checked (TS-15)
-        # - Connection state is verified (TS-16)
-        # - IP address is retrieved and published (TS-17)
-        # - Connectivity through the tailnet interface is tested (TS-21)
-        # - Failure messages name lockout prevention (TS-15)
-        # - sshd binds the tailnet addresses only when Tailscale is on (SSH-18)
-        # - Configuration is validated before deployment
-        # - This applies consistently across all valid IP addresses and interface names
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=100)
@@ -221,19 +209,17 @@ class TestSSHInterfaceRestrictionProperties:
         enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 13: SSH Interface Configuration
-        Based on VPN Status
+        SSH Interface Configuration Based on VPN Status
 
-        For any execution of the bootstrap playbook WHERE Tailscale is disabled,
-        the SSHD SHALL be configured to listen on all interfaces.
+        Checks that a `ListenAddress` line naming `0.0.0.0` or
+        `ssh_listen_address_ipv4` sits between the sshd template's `{% else %}` and
+        `{% endif %}`, that the template has an IPv6 `ListenAddress` line somewhere,
+        that the defaults set `ssh_listen_address_ipv6` to `::` and mention
+        `0.0.0.0`, and, if the Tailscale defaults file exists, that it sets
+        `tailscale_enabled: false`.
 
-        Validates: SSH-18, else branch
+        Validates: SSH-18 (all-interfaces branch), TS-1
         """
-        # This property test verifies the SSH hardening role's interface configuration by checking:
-        # 1. SSH-18: sshd binds all interfaces when Tailscale is disabled
-        # 2. Configuration adapts based on tailscale_enabled variable
-        # 3. Default behavior is to listen on all interfaces
-
         # Read the SSH hardening role template
         template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
         assert template_path.exists(), "SSH hardening template must exist"
@@ -320,13 +306,6 @@ class TestSSHInterfaceRestrictionProperties:
                 "by default"
             )
 
-        # Property verified: The SSH hardening role ensures that:
-        # - sshd binds all interfaces (0.0.0.0, ::) when Tailscale is disabled (SSH-18)
-        # - Configuration adapts based on tailscale_enabled variable
-        # - Default behavior is to listen on all interfaces (Tailscale disabled by default)
-        # - Both IPv4 and IPv6 are configured for all interfaces
-        # - This applies consistently regardless of enabled value
-
 
 class TestSSHInterfaceRestrictionIntegrationProperties:
     """Property-based tests for SSH interface restriction integration with other roles."""
@@ -346,16 +325,12 @@ class TestSSHInterfaceRestrictionIntegrationProperties:
         enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, SSH Interface Restriction Consistency
+        SSH Interface Restriction Consistency with the Firewall
 
-        For any execution of the bootstrap playbook, the SSH interface restriction
-        configuration SHALL be consistent with the firewall configuration, ensuring
-        that SSH access rules match the interface restriction.
-
-        This property verifies that:
-        - SSH interface restriction in sshd_config matches firewall rules
-        - Both use the same tailscale_enabled conditional logic
-        - Configuration is consistent across roles
+        Checks that the sshd template mentions `tailscale_enabled` and, if the
+        nftables template exists, that it mentions `tailscale_enabled`, has a
+        Tailscale conditional and mentions an SSH port variable. It does not check
+        what either branch renders, so it cites no requirement.
         """
         # Read the SSH hardening template
         ssh_template_path = Path("roles/ssh_hardening/templates/sshd_config.j2")
@@ -394,11 +369,6 @@ class TestSSHInterfaceRestrictionIntegrationProperties:
                 "Tailscale status"
             )
 
-        # Property verified: SSH interface restriction is consistent with firewall configuration
-        # - Both use tailscale_enabled conditional
-        # - Both adapt based on VPN status
-        # - Configuration is coordinated across roles
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=50)
@@ -410,16 +380,14 @@ class TestSSHInterfaceRestrictionIntegrationProperties:
         interface_name: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, SSH Interface Restriction Variable Propagation
+        SSH Interface Restriction Variable Propagation
 
-        For any execution of the bootstrap playbook WHERE Tailscale is enabled,
-        the tailscale_ipv4 variable SHALL be properly propagated from the Tailscale
-        verification tasks to the SSH hardening role.
+        Checks that the Tailscale verification tasks set a `tailscale_ipv4` fact
+        from `tailscale_ip.stdout` and use `| trim`, and that the sshd template
+        renders `{{ tailscale_ipv4 }}` and contains a `tailscale_ipv4 is defined`
+        test. Whether the guard encloses the use is not checked.
 
-        This property verifies that:
-        - Tailscale verification sets tailscale_ipv4 fact
-        - SSH hardening template uses tailscale_ipv4 variable
-        - Variable propagation is properly configured
+        Validates: TS-17, SSH-18
         """
         # Read the Tailscale verification tasks
         verify_tasks_path = Path("roles/tailscale/tasks/verify.yml")
@@ -460,9 +428,3 @@ class TestSSHInterfaceRestrictionIntegrationProperties:
         assert "tailscale_ipv4 is defined" in ssh_template_content, (
             "SSH template must check if tailscale_ipv4 is defined before using it"
         )
-
-        # Property verified: Variable propagation is properly configured
-        # - Tailscale verification sets tailscale_ipv4 fact
-        # - SSH hardening template uses tailscale_ipv4 with is-defined guard
-        # - Tailscale role runs before ssh_hardening in site.yml
-        # - This ensures interface restriction works correctly

@@ -61,21 +61,17 @@ class TestEmergencyScriptDeploymentProperties:
         ipv4_address: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 22: Emergency Script Deployment
+        Emergency Script Deployment
 
-        For any execution of the bootstrap playbook WHERE Tailscale is enabled,
-        an emergency access script SHALL be deployed to /root/ that can toggle
-        SSH restrictions.
+        Checks that the role deploys the script from its template to
+        `/root/emergency-ssh-access.sh` (or `emergency_access_script_path`), owned
+        by root with mode `0700`, behind `emergency_access_enabled`, whose default
+        refers to `tailscale_enabled`; and that the template has a bash shebang,
+        strict error handling, usage text naming `--restore`, and renders the port,
+        interface and tailnet IPv4 address from the role's variables.
 
         Validates: EMRG-1, EMRG-2
         """
-        # This property test verifies the emergency_access role's deployment by checking:
-        # 1. Emergency script is deployed only when Tailscale is enabled (EMRG-2)
-        # 2. Script is deployed to /root/ directory (EMRG-1)
-        # 3. Script is executable
-        # 4. Script contains proper configuration variables
-        # 5. Script deployment is conditional on tailscale_enabled variable (EMRG-2)
-
         # Read the emergency_access role main tasks
         main_tasks_path = Path("roles/emergency_access/tasks/main.yml")
         assert main_tasks_path.exists(), "Emergency access main tasks file must exist"
@@ -183,15 +179,6 @@ class TestEmergencyScriptDeploymentProperties:
                 "Tasks should have emergency_access tag if tags are used"
             )
 
-        # Property verified: The emergency_access role ensures that:
-        # - Emergency script is deployed only when Tailscale is enabled (EMRG-1, EMRG-2)
-        # - Script is deployed to /root/ directory (EMRG-1)
-        # - Script is executable with proper permissions (0700)
-        # - Script is owned by root
-        # - Script contains proper configuration variables
-        # - Script has error handling and usage documentation
-        # - This applies consistently across all valid configuration values
-
 
 class TestEmergencyScriptOperationsProperties:
     """Property-based tests for emergency script operations."""
@@ -211,21 +198,17 @@ class TestEmergencyScriptOperationsProperties:
         ipv4_address: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 23: Emergency Script Unrestrict Operation
+        Emergency Script Unrestrict Operation
 
-        For any invocation of the emergency script without arguments, the script
-        SHALL reconfigure SSHD to listen on all interfaces and update NFTables
-        to allow SSH from all interfaces, then restart SSHD and reload NFTables.
+        Checks, as whole-file substrings of the script template, that it defines
+        and calls `unrestrict_ssh`, handles the no-argument case, and contains
+        `ListenAddress 0.0.0.0`, `ListenAddress ::`, `tcp dport`,
+        `systemctl restart sshd`, `systemctl reload nftables`, `grep -q`, a message
+        that nothing needs changing, the word backup and a `cp` command. None of
+        these is tied to the `unrestrict_ssh` function.
 
-        Validates: EMRG-3, EMRG-6, EMRG-7, EMRG-9
+        Validates: EMRG-3, EMRG-6, EMRG-7, EMRG-9, EMRG-10
         """
-        # This property test verifies the emergency script's unrestrict operation by checking:
-        # 1. Script modifies SSHD configuration to listen on all interfaces (EMRG-3)
-        # 2. Script modifies NFTables configuration to allow SSH from all (EMRG-3)
-        # 3. Script restarts SSHD after configuration changes (EMRG-6)
-        # 4. Script reloads NFTables after configuration changes (EMRG-7)
-        # 5. Script is idempotent (EMRG-9)
-
         # Read the emergency script template
         template_path = Path("roles/emergency_access/templates/emergency-ssh-access.sh.j2")
         assert template_path.exists(), "Emergency script template must exist"
@@ -311,16 +294,6 @@ class TestEmergencyScriptOperationsProperties:
             "Script must call unrestrict_ssh function"
         )
 
-        # Property verified: The emergency script unrestrict operation ensures that:
-        # - SSHD is reconfigured to listen on all interfaces (0.0.0.0, ::) (EMRG-3)
-        # - NFTables is reconfigured to allow SSH from all interfaces (EMRG-3)
-        # - SSHD service is restarted after configuration changes (EMRG-6)
-        # - NFTables rules are reloaded after configuration changes (EMRG-7)
-        # - Operation is idempotent (checks current state) (EMRG-9)
-        # - Configuration files are backed up before modification
-        # - Proper error handling and user feedback
-        # - This applies consistently across all valid configuration values
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=100)
@@ -336,22 +309,16 @@ class TestEmergencyScriptOperationsProperties:
         ipv4_address: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 24: Emergency Script Restore Operation
+        Emergency Script Restore Operation
 
-        For any invocation of the emergency script with a restore argument, the
-        script SHALL reconfigure SSHD to listen only on the Tailscale interface
-        and update NFTables to restrict SSH to the Tailscale interface, then
-        restart SSHD and reload NFTables.
+        Checks that the script template, on `--restore`, calls `restore_ssh`, which
+        deletes the `ListenAddress` lines, writes the tailnet IPv4 address, puts
+        the `iifname` qualifier back with the tailnet interface, restarts sshd and
+        reloads nftables, and checks the current state with `grep -q` and reports
+        when nothing needs changing.
 
         Validates: EMRG-4, EMRG-6, EMRG-7, EMRG-9
         """
-        # This property test verifies the emergency script's restore operation by checking:
-        # 1. Script modifies SSHD to listen only on Tailscale interface (EMRG-4)
-        # 2. Script modifies NFTables to restrict SSH to Tailscale interface (EMRG-4)
-        # 3. Script restarts SSHD after configuration changes (EMRG-6)
-        # 4. Script reloads NFTables after configuration changes (EMRG-7)
-        # 5. Script is idempotent (EMRG-9)
-
         # Read the emergency script template
         template_path = Path("roles/emergency_access/templates/emergency-ssh-access.sh.j2")
         assert template_path.exists(), "Emergency script template must exist"
@@ -420,16 +387,6 @@ class TestEmergencyScriptOperationsProperties:
                 "Restore function must check current state for idempotency"
             )
 
-        # Property verified: The emergency script restore operation ensures that:
-        # - SSHD is reconfigured to listen only on Tailscale interface (EMRG-4)
-        # - NFTables is reconfigured to restrict SSH to Tailscale interface (EMRG-4)
-        # - SSHD service is restarted after configuration changes (EMRG-6)
-        # - NFTables rules are reloaded after configuration changes (EMRG-7)
-        # - Operation is idempotent (checks current state) (EMRG-9)
-        # - Configuration files are backed up before modification
-        # - Proper error handling and user feedback
-        # - This applies consistently across all valid configuration values
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=50)
@@ -445,20 +402,17 @@ class TestEmergencyScriptOperationsProperties:
         ipv4_address: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 25: Emergency Script Round-Trip Restoration
+        Emergency Script Round-Trip Restoration, structural
 
-        For any system state with Tailscale-restricted SSH, running the emergency
-        script without arguments and then with the restore argument SHALL return
-        the system to the original restricted state.
+        Checks that `unrestrict_ssh` and `restore_ssh` edit the same two
+        configuration files in opposite directions (all-interfaces addresses and
+        the unqualified `tcp dport` rule one way, the tailnet address and the
+        `iifname` qualifier the other), and that sshd is restarted and nftables
+        reloaded in both. It reads the template only and does not compare file
+        contents before and after a round trip.
 
-        Validates: EMRG-5
+        Validates: EMRG-5, EMRG-6, EMRG-7
         """
-        # This property test verifies the emergency script's round-trip behavior by checking:
-        # 1. Unrestrict operation can be reversed by restore operation (EMRG-5)
-        # 2. Both operations modify the same configuration files
-        # 3. Both operations use reversible transformations
-        # 4. Final state matches initial restricted state
-
         # Read the emergency script template
         template_path = Path("roles/emergency_access/templates/emergency-ssh-access.sh.j2")
         assert template_path.exists(), "Emergency script template must exist"
@@ -473,8 +427,7 @@ class TestEmergencyScriptOperationsProperties:
             "Script must have restore_ssh function"
         )
 
-        # Verify both functions modify the same configuration files
-        # This ensures round-trip is possible
+        # Verify the template names each configuration file at least twice
         assert template_content.count("$SSHD_CONFIG") >= 2 or (
             template_content.count("/etc/ssh/sshd_config") >= 2
         ), "Both functions must modify SSHD configuration"
@@ -523,8 +476,7 @@ class TestEmergencyScriptOperationsProperties:
                 "Restore must add interface restriction back"
             )
 
-        # Verify both operations restart/reload services
-        # This ensures changes take effect for round-trip
+        # Verify the restart and the reload each appear at least twice
         assert template_content.count("systemctl restart sshd") >= 2, (
             "Both operations must restart SSHD for changes to take effect"
         )
@@ -532,8 +484,7 @@ class TestEmergencyScriptOperationsProperties:
             "Both operations must reload NFTables for changes to take effect"
         )
 
-        # Verify backup functionality exists
-        # This allows manual recovery if round-trip fails
+        # Verify the template mentions a backup
         assert "backup" in template_content.lower(), (
             "Script should backup configurations for recovery"
         )
@@ -545,17 +496,6 @@ class TestEmergencyScriptOperationsProperties:
         assert '"--restore"' in template_content or "'--restore'" in template_content, (
             "Script must handle --restore argument (restore)"
         )
-
-        # Property verified: The emergency script round-trip restoration ensures that:
-        # - Unrestrict operation rewrites SSHD's ListenAddress pair to 0.0.0.0/::
-        # - Unrestrict operation changes NFTables from restricted to unrestricted
-        # - Restore operation rewrites the same pair back to the tailnet addresses
-        # - Restore operation reverses NFTables changes back to restricted
-        # - Both operations modify the same configuration files
-        # - Both operations restart/reload services for changes to take effect
-        # - Round-trip returns system to original restricted state (EMRG-5)
-        # - Backup functionality provides recovery mechanism
-        # - This applies consistently across all valid configuration values
 
 
 class TestEmergencyScriptIdempotencyProperties:
@@ -578,20 +518,15 @@ class TestEmergencyScriptIdempotencyProperties:
         mode: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 26: Emergency Script Idempotency
+        Emergency Script Idempotency
 
-        For any invocation mode (unrestrict or restore), running the emergency
-        script multiple times in the same mode SHALL produce consistent results
-        without errors.
+        Checks that `unrestrict_ssh` and `restore_ssh` each test the current state
+        with at least two `grep -q` checks, return early, and report that nothing
+        needs changing, and that the template contains `return 0` where it has a
+        `backup_configs` function.
 
         Validates: EMRG-9
         """
-        # This property test verifies the emergency script's idempotency by checking:
-        # 1. Script checks current state before making changes (EMRG-9)
-        # 2. Script skips changes if already in target state (EMRG-9)
-        # 3. Script provides appropriate feedback for idempotent runs
-        # 4. Script does not fail when run multiple times in same mode
-
         # Read the emergency script template
         template_path = Path("roles/emergency_access/templates/emergency-ssh-access.sh.j2")
         assert template_path.exists(), "Emergency script template must exist"
@@ -638,10 +573,9 @@ class TestEmergencyScriptIdempotencyProperties:
                 "no changes" in restore_section.lower()
             ), "Restore function must inform user when no changes needed (EMRG-9)"
 
-        # Verify both functions check multiple conditions for state verification
-        # This ensures accurate detection of current state
+        # Count the state checks in the text after each function's start
 
-        # For unrestrict: should check both SSHD and NFTables state
+        # For unrestrict
         if unrestrict_start != -1:
             unrestrict_section = template_content[unrestrict_start:unrestrict_start + 2500]
             # Count grep commands in unrestrict section
@@ -651,7 +585,7 @@ class TestEmergencyScriptIdempotencyProperties:
                 "(SSHD and NFTables) for accurate state detection"
             )
 
-        # For restore: should check both SSHD and NFTables state
+        # For restore
         if restore_start != -1:
             restore_section = template_content[restore_start:restore_start + 2500]
             # Count grep commands in restore section
@@ -666,14 +600,13 @@ class TestEmergencyScriptIdempotencyProperties:
             "Script should use logical operators for compound state checks"
         )
 
-        # Verify script does not fail on idempotent runs
-        # Check that grep commands use appropriate flags
+        # Verify the template uses quiet grep
         assert "grep -q" in template_content, (
             "Script should use quiet grep (-q) for state checks"
         )
 
-        # Verify backup is only created when changes are needed
-        # This prevents unnecessary backup files on idempotent runs
+        # Where a backup_configs function exists, require a `return 0` somewhere
+        # in the template. Whether the return precedes the backup is not checked.
         backup_start = template_content.find("backup_configs()")
         if backup_start != -1:
             # Verify backup function exists
@@ -681,19 +614,6 @@ class TestEmergencyScriptIdempotencyProperties:
                 "Script should have backup_configs function"
             )
 
-            # Verify backup is called after state check, not before
-            # This is implied by the structure: check state -> return if no
-            # changes -> backup -> make changes
             assert "return 0" in template_content, (
                 "Script should return before backup if no changes needed"
             )
-
-        # Property verified: The emergency script idempotency ensures that:
-        # - Both unrestrict and restore functions check current state (EMRG-9)
-        # - Both functions skip changes if already in target state (EMRG-9)
-        # - Both functions check multiple configuration aspects (SSHD + NFTables)
-        # - Both functions provide appropriate feedback for idempotent runs
-        # - Script does not create unnecessary backups on idempotent runs
-        # - Script uses logical operators for compound state checks
-        # - Script does not fail when run multiple times in same mode
-        # - This applies consistently across all valid configuration values and modes

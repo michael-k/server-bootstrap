@@ -36,7 +36,7 @@ directs them to.
 | `roles/users/tasks/main.yml` | USR-1 … USR-14 |
 | `roles/users/defaults/main.yml` | USR-1, USR-2, USR-3, USR-4, USR-5, USR-7, USR-8, USR-10, USR-11, USR-12 |
 | `tests/unit/test_users.py` | USR-1, USR-3, USR-4, USR-6, USR-9, USR-10, USR-12 |
-| `tests/property/test_user_properties.py` | USR-1, USR-2, USR-3, USR-4, USR-5, USR-6, USR-7, USR-9, USR-10, USR-11, USR-12 |
+| `tests/property/test_user_properties.py` | USR-1, USR-2, USR-3, USR-4, USR-5, USR-6, USR-7, USR-9, USR-10, USR-12 |
 
 `roles/users/tasks/main.yml` also carries `SUDO`'s, `LOGIN`'s and `PAM`'s
 tasks, and `tests/unit/test_users.py` and

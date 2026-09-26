@@ -72,19 +72,17 @@ class TestHostnameConfigurationProperties:
     )
     def test_property_14_hostname_configuration_persistence(self, hostname: str):
         """
-        Feature: vps-bootstrap-playbook, Property 14: Hostname Configuration Persistence
+        Hostname Configuration Persistence
 
-        For any execution of the bootstrap playbook WHERE a hostname is configured,
-        the system hostname SHALL be set to the specified value and persisted across
-        reboots.
+        Checks that the role's tasks import the hostname tasks and contain the
+        `system_hostname is defined and system_hostname | length > 0` guard (as
+        separate substrings), that `system_hostname` defaults to empty, and that
+        the hostname tasks set the running hostname, write `/etc/hostname` owned by
+        root with mode `0644`, map the name to `127.0.1.1` in `/etc/hosts`, and
+        notify a handler that reads the hostname back.
 
-        Validates: HOST-1, HOST-2, HOST-3
+        Validates: HOST-1, HOST-2, HOST-3, HOST-4
         """
-        # This property test verifies the system_config role's hostname behavior by checking:
-        # 1. System hostname is set when variable is defined (HOST-1)
-        # 2. Hostname persists across reboots (HOST-2)
-        # 3. Hostname is added to /etc/hosts for local resolution (HOST-3)
-
         # Read the system_config role tasks
         tasks_path = Path("roles/system_config/tasks/main.yml")
         assert tasks_path.exists(), "System_config tasks file must exist"
@@ -185,29 +183,18 @@ class TestHostnameConfigurationProperties:
             "Verification handler should not report changes"
         )
 
-        # Property verified: The system_config role ensures that:
-        # - System hostname is set when system_hostname variable is defined (HOST-1)
-        # - Hostname persists across reboots via /etc/hostname (HOST-2)
-        # - Hostname is added to /etc/hosts for local resolution (HOST-3)
-        # - Hostname file has correct permissions and ownership
-        # - Hostname setting is verified after configuration
-        # - This applies consistently across all valid hostname values
-
     @pytest.mark.property
     @pytest.mark.unit
     def test_property_15_hostname_configuration_skip(self):
         """
-        Feature: vps-bootstrap-playbook, Property 15: Hostname Configuration Skip
+        Hostname Configuration Skip
 
-        For any execution of the bootstrap playbook WHERE no hostname is configured,
-        the playbook SHALL skip hostname configuration and leave the existing hostname
-        unchanged.
+        Checks that the role's tasks import the hostname tasks and contain the
+        `system_hostname is defined and system_hostname | length > 0` guard (as
+        separate substrings), and that `system_hostname` defaults to empty.
 
         Validates: HOST-4
         """
-        # This property test verifies the system_config role's skip behavior by checking:
-        # 1. Hostname configuration is skipped when variable is empty or undefined (HOST-4)
-
         # Read the system_config role tasks
         tasks_path = Path("roles/system_config/tasks/main.yml")
         assert tasks_path.exists(), "System_config tasks file must exist"
@@ -245,12 +232,6 @@ class TestHostnameConfigurationProperties:
             'system_hostname: ""' in defaults_content or "system_hostname: ''" in defaults_content
         ), "system_hostname default should be empty string to skip configuration by default"
 
-        # Property verified: The system_config role ensures that:
-        # - Hostname configuration is skipped when system_hostname is empty or undefined (HOST-4)
-        # - Default value is empty string to skip configuration by default
-        # - Existing hostname remains unchanged when configuration is skipped
-        # - This applies consistently regardless of the reason for skipping
-
 
 class TestTimeSynchronizationProperties:
     """Property-based tests for time synchronization configuration."""
@@ -268,21 +249,17 @@ class TestTimeSynchronizationProperties:
         ntp_server_count: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 29: Time Synchronization Service Configuration
+        Time Synchronization Service Configuration
 
-        For any execution of the bootstrap playbook, a time synchronization service
-        SHALL be installed, configured with reliable NTP servers, enabled to start on
-        boot, started, and verified to be actively synchronizing.
+        Checks the time-sync tasks for both services: installation, the tasks that
+        stop the unselected service, the configuration templates and the restart
+        handlers they notify, enabling and starting the service, and the status
+        query whose output is printed; the `time_sync_service` and `ntp_servers`
+        defaults; and that both templates render every entry of `ntp_servers`. It
+        does not check that the status output is acted on.
 
         Validates: TIME-1, TIME-2, TIME-3, TIME-4, TIME-5
         """
-        # This property test verifies the system_config role's time sync behavior by checking:
-        # 1. Time sync service is installed (TIME-1)
-        # 2. NTP servers are configured (TIME-3)
-        # 3. Service is enabled to start on boot (TIME-4)
-        # 4. Service is started (TIME-5)
-        # 5. Synchronization status is queried and registered, not asserted
-
         # Read the system_config role tasks
         tasks_path = Path("roles/system_config/tasks/main.yml")
         assert tasks_path.exists(), "System_config tasks file must exist"
@@ -421,7 +398,7 @@ class TestTimeSynchronizationProperties:
             "ntp_servers must be defined in defaults (TIME-3)"
         )
 
-        # Verify default NTP servers are reliable
+        # Verify the default NTP servers come from the ntp.org pool
         assert "debian.pool.ntp.org" in defaults_content or "pool.ntp.org" in defaults_content, (
             "Default NTP servers should include reliable pool servers"
         )
@@ -521,17 +498,6 @@ class TestTimeSynchronizationProperties:
             "Systemd-timesyncd restart handler must be conditional"
         )
 
-        # Property verified: The system_config role ensures that:
-        # - Time sync service is installed (TIME-1)
-        # - NTP servers are configured (TIME-3)
-        # - Service is enabled to start on boot (TIME-4)
-        # - Service is started (TIME-5)
-        # - Synchronization status is queried (not asserted)
-        # - Conflicting services are stopped (TIME-2)
-        # - Configuration changes trigger service restart
-        # - Multiple NTP servers are configured for redundancy
-        # - This applies consistently across all valid configuration values
-
 
 class TestTimeSyncServiceSelectionProperties:
     """Property-based tests for time sync service selection."""
@@ -544,18 +510,14 @@ class TestTimeSyncServiceSelectionProperties:
     )
     def test_time_sync_service_mutual_exclusion(self, time_sync_service: str):
         """
-        Feature: vps-bootstrap-playbook, Time Sync Service Mutual Exclusion
+        Time Sync Service Mutual Exclusion
 
-        For any execution of the bootstrap playbook with a selected time sync service,
-        the playbook SHALL ensure that only the selected service is running and enabled,
-        and conflicting services are stopped and disabled.
+        Checks that the time-sync tasks have a task that stops and disables
+        systemd-timesyncd when chrony is selected and one that stops and disables
+        chrony when systemd-timesyncd is selected, tolerating failure, and that
+        `time_sync_service` defaults to chrony.
 
         Validates: TIME-2
-
-        This property verifies that:
-        - Only one time sync service is active at a time
-        - Conflicting services are stopped and disabled
-        - Service selection is configurable
         """
         # Read the time synchronization tasks
         time_sync_tasks_path = Path("roles/system_config/tasks/time_sync.yml")
@@ -607,12 +569,6 @@ class TestTimeSyncServiceSelectionProperties:
             or "time_sync_service: chrony" in defaults_content
         ), "Default time_sync_service should be chrony"
 
-        # Property verified: The system_config role ensures:
-        # - Only one time sync service is active at a time
-        # - Conflicting services are stopped and disabled
-        # - Service selection is configurable via time_sync_service variable
-        # - Graceful handling of missing services
-
 
 class TestNTPServerConfigurationProperties:
     """Property-based tests for NTP server configuration."""
@@ -625,18 +581,13 @@ class TestNTPServerConfigurationProperties:
     )
     def test_ntp_server_list_configuration(self, ntp_server_count: int):
         """
-        Feature: vps-bootstrap-playbook, NTP Server List Configuration
+        NTP Server List Configuration
 
-        For any execution of the bootstrap playbook with configured NTP servers,
-        the playbook SHALL configure all specified NTP servers in the time sync
-        service configuration for redundancy and reliability.
+        Checks that the chrony template emits a `pool … iburst` line for each entry
+        of `ntp_servers`, that the timesyncd template joins them into its `NTP=`
+        line, and that the defaults list at least two servers.
 
         Validates: TIME-3
-
-        This property verifies that:
-        - Multiple NTP servers can be configured
-        - All servers are included in configuration
-        - Configuration uses pool directive for load balancing
         """
         # Read the chrony configuration template
         chrony_template_path = Path("roles/system_config/templates/chrony.conf.j2")
@@ -692,10 +643,3 @@ class TestNTPServerConfigurationProperties:
         assert len(ntp_server_lines) >= 2, (
             "At least 2 NTP servers should be configured by default for redundancy"
         )
-
-        # Property verified: The system_config role ensures:
-        # - Multiple NTP servers can be configured
-        # - All servers are included in configuration
-        # - Chrony uses pool directive for load balancing
-        # - Systemd-timesyncd joins servers with spaces
-        # - At least 2 servers are configured by default for redundancy

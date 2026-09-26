@@ -86,28 +86,23 @@ class TestZramSwapProperties:
         zram_priority: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 30: Zram Swap Configuration
+        Zram Swap Configuration
 
-        For any execution of the bootstrap playbook WHERE zram is enabled with a
-        specified size, a zram device SHALL be created with the specified size,
-        configured to use lz4 compression, enabled as swap, configured to
-        initialize on boot, and assigned a higher priority than disk swap.
+        Checks that the swap tasks include the zram tasks and contain a
+        `zram_enabled | bool` guard (as separate substrings), with `zram_enabled`
+        defaulting to false; that the zram tasks install zram-tools, deploy the
+        zramswap configuration and notify its restart handler, enable and start
+        zramswap, wait for `/dev/zram0`, and check that it is active as swap and
+        uses lz4; that the template renders the size in percentage, gigabyte and
+        megabyte forms, `ALGO=lz4` and the priority; and that the default zram
+        priority is above the default disk swap priority.
 
-        SWAP-6 (the device is formatted as swap) is deliberately absent: the
-        zramswap service does the formatting and nothing below asserts it.
+        The test does not check that the device is formatted as swap: the zramswap
+        service does the formatting and nothing below asserts it.
 
         Validates: SWAP-1, SWAP-2, SWAP-3, SWAP-4, SWAP-5, SWAP-7, SWAP-8,
         SWAP-9, SWAP-16
         """
-        # This property test verifies the swap role's zram behavior by checking:
-        # 1. zram-tools is installed (SWAP-3)
-        # 2. zram device is created with specified size (SWAP-4)
-        # 3. lz4 compression is configured (SWAP-5)
-        # 4. zram device is enabled as swap (SWAP-7)
-        # 5. zram device initializes on boot (SWAP-8)
-        # 6. zram priority is configurable (SWAP-9) and higher than disk
-        #    swap (SWAP-16)
-
         # Read the swap role tasks
         tasks_path = Path("roles/swap/tasks/main.yml")
         assert tasks_path.exists(), "Swap tasks file must exist"
@@ -338,19 +333,6 @@ class TestZramSwapProperties:
             "Restart handler must restart the service"
         )
 
-        # Property verified: The swap role configuration ensures that:
-        # - zram_enabled is configurable (SWAP-1)
-        # - zram_size is configurable with percentage and absolute formats (SWAP-2)
-        # - zram-tools is installed (SWAP-3)
-        # - zram device is created with specified size (SWAP-4)
-        # - lz4 compression is configured and verified (SWAP-5)
-        # - zram device is enabled as swap (SWAP-7)
-        # - zramswap service is enabled to start on boot (SWAP-8)
-        # - zram priority is configurable (SWAP-9)
-        # - default zram priority is higher than disk swap priority (SWAP-16)
-        # - Configuration changes trigger service restart
-        # - This applies consistently across all valid configuration values
-
 
 class TestDiskSwapProperties:
     """Property-based tests for disk swap configuration."""
@@ -368,24 +350,18 @@ class TestDiskSwapProperties:
         disk_priority: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 31: Disk Swap Configuration
+        Disk Swap Configuration
 
-        For any execution of the bootstrap playbook WHERE disk swap size is configured,
-        a swap file SHALL be created at /swapfile with the specified size and mode 0600,
-        formatted as swap, enabled as swap, added to /etc/fstab for persistence, and
-        assigned a lower priority than zram swap if zram is also enabled.
+        Checks that the swap tasks include the disk swap tasks and contain a
+        `disk_swap_size | length > 0` guard (as separate substrings), with
+        `disk_swap_size` defaulting to empty; that the disk swap tasks create
+        `/swapfile` with `fallocate` at that size, set it to root with mode `0600`,
+        format it with `mkswap`, activate it with `swapon --priority`, and add it
+        to `/etc/fstab` with that priority; and that the default disk swap
+        priority is below the default zram priority.
 
         Validates: SWAP-10, SWAP-11, SWAP-12, SWAP-13, SWAP-14, SWAP-15, SWAP-16
         """
-        # This property test verifies the swap role's disk swap behavior by checking:
-        # 1. disk_swap_size is configurable (SWAP-10)
-        # 2. swap file is created at /swapfile with specified size (SWAP-11)
-        # 3. swap file has mode 0600 (SWAP-12)
-        # 4. swap file is formatted as swap (SWAP-13)
-        # 5. swap file is enabled as swap (SWAP-14)
-        # 6. swap file is added to /etc/fstab (SWAP-15)
-        # 7. disk swap priority is lower than zram (SWAP-16)
-
         # Read the swap role tasks
         tasks_path = Path("roles/swap/tasks/main.yml")
         assert tasks_path.exists(), "Swap tasks file must exist"
@@ -516,17 +492,6 @@ class TestDiskSwapProperties:
                 f"({zram_priority_value}) (SWAP-16)"
             )
 
-        # Property verified: The swap role configuration ensures that:
-        # - disk_swap_size is configurable (SWAP-10)
-        # - swap file is created at /swapfile with specified size (SWAP-11)
-        # - swap file has mode 0600 for security (SWAP-12)
-        # - swap file is formatted as swap (SWAP-13)
-        # - swap file is enabled as swap with priority (SWAP-14)
-        # - swap file is added to /etc/fstab for persistence (SWAP-15)
-        # - disk swap priority is lower than zram priority (SWAP-16)
-        # - Swap file creation is idempotent
-        # - This applies consistently across all valid configuration values
-
 
 class TestSwapConfigurationSkipProperties:
     """Property-based tests for swap configuration skip behavior."""
@@ -535,17 +500,15 @@ class TestSwapConfigurationSkipProperties:
     @pytest.mark.unit
     def test_property_32_swap_configuration_skip(self):
         """
-        Feature: vps-bootstrap-playbook, Property 32: Swap Configuration Skip
+        Swap Configuration Skip
 
-        For any execution of the bootstrap playbook WHERE neither zram nor disk swap
-        is configured, the playbook SHALL skip all swap configuration steps.
+        Checks that the swap tasks include the zram and disk swap tasks and contain
+        the `zram_enabled | bool` and `disk_swap_size | length > 0` guards (as
+        separate substrings), and that `zram_enabled` defaults to false and
+        `disk_swap_size` to empty.
 
-        Validates: SWAP-17
+        Validates: SWAP-1, SWAP-10, SWAP-17
         """
-        # This property test verifies the swap role's skip behavior by checking:
-        # 1. Swap configuration is skipped when both zram and disk swap are
-        #    disabled (SWAP-17)
-
         # Read the swap role tasks
         tasks_path = Path("roles/swap/tasks/main.yml")
         assert tasks_path.exists(), "Swap tasks file must exist"
@@ -589,13 +552,6 @@ class TestSwapConfigurationSkipProperties:
             or "disk_swap_size: ''" in defaults_content
         ), "Default disk_swap_size should be empty string to skip configuration by default"
 
-        # Property verified: The swap role ensures that:
-        # - Zram configuration is skipped when zram_enabled is false (SWAP-17)
-        # - Disk swap configuration is skipped when disk_swap_size is empty (SWAP-17)
-        # - Default values disable both swap types by default
-        # - No swap configuration occurs when both are disabled
-        # - This applies consistently regardless of the reason for skipping
-
 
 class TestSwapPriorityProperties:
     """Property-based tests for swap priority configuration."""
@@ -613,17 +569,11 @@ class TestSwapPriorityProperties:
         disk_priority: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Swap Priority Configuration Consistency
+        Swap Priority Configuration Consistency
 
-        For any execution of the bootstrap playbook with both zram and disk swap enabled,
-        the playbook SHALL ensure that zram has higher priority than disk swap, ensuring
-        that the faster compressed RAM swap is used before slower disk swap.
-
-        This property verifies that:
-        - Zram priority is configurable
-        - Disk swap priority is configurable
-        - Default zram priority is higher than default disk swap priority
-        - Priority values are used in configuration
+        Checks that the defaults define both priorities, that the zram default is
+        above the disk swap default and both are between 0 and 32767, and that the
+        zram template and the disk swap `swapon` and fstab lines render them.
 
         Validates: SWAP-9, SWAP-16
         """
@@ -694,13 +644,6 @@ class TestSwapPriorityProperties:
             "Disk swap tasks must use disk_swap_priority variable in fstab entry"
         )
 
-        # Property verified: The swap role ensures:
-        # - Zram priority is configurable via zram_swap_priority
-        # - Disk swap priority is configurable via disk_swap_priority
-        # - Default zram priority is higher than disk swap priority
-        # - Priority values are within valid range (0-32767)
-        # - Priorities are used in configuration templates and tasks
-
 
 class TestZramSizeFormatProperties:
     """Property-based tests for zram size format handling."""
@@ -713,18 +656,11 @@ class TestZramSizeFormatProperties:
     )
     def test_zram_size_format_handling(self, zram_size: str):
         """
-        Feature: vps-bootstrap-playbook, Zram Size Format Handling
+        Zram Size Format Handling
 
-        For any execution of the bootstrap playbook with configured zram size,
-        the playbook SHALL correctly handle both percentage format (e.g., "50%")
-        and absolute size format (e.g., "2G", "1024M"), converting them appropriately
-        for the zram configuration.
-
-        This property verifies that:
-        - Percentage format is supported (e.g., "50%")
-        - Absolute GB format is supported and converted to MB (e.g., "2G")
-        - Absolute MB format is supported (e.g., "1024M")
-        - Template handles all format variations correctly
+        Checks that the zram template renders a percentage `zram_size` as
+        `PERCENTAGE`, a gigabyte size as `SIZE` in megabytes, a megabyte size as
+        `SIZE`, and falls back to `PERCENTAGE=50` otherwise.
 
         Validates: SWAP-2
         """
@@ -775,14 +711,6 @@ class TestZramSizeFormatProperties:
             "Template must use rstrip to remove unit suffixes"
         )
 
-        # Property verified: The zram configuration template ensures:
-        # - Percentage format is correctly handled
-        # - GB format is converted to MB (multiply by 1024)
-        # - MB format is used directly
-        # - Both uppercase and lowercase units are supported
-        # - Fallback to 50% for unclear formats
-        # - This applies consistently across all valid size format variations
-
 
 class TestSwapIdempotencyProperties:
     """Property-based tests for swap configuration idempotency."""
@@ -795,22 +723,16 @@ class TestSwapIdempotencyProperties:
     )
     def test_disk_swap_idempotency(self, disk_swap_size: str):
         """
-        Feature: vps-bootstrap-playbook, Disk Swap Idempotency
+        Disk Swap Idempotency
 
-        For any execution of the bootstrap playbook with disk swap configured,
-        the playbook SHALL be idempotent, meaning repeated executions do not
-        recreate the swap file or duplicate fstab entries.
-
-        This property verifies that:
-        - Swap file creation uses 'creates' parameter for idempotency
-        - Swap formatting is conditional on file creation
-        - Swap enablement is conditional on formatting
-        - Fstab entry is checked before adding to prevent duplicates
+        Checks that `/swapfile` is created with `creates:`, formatted only when it
+        was created, activated only when it was formatted, and added to
+        `/etc/fstab` only when a check-mode lookup finds no entry.
 
         Validates: SWAP-11, SWAP-13, SWAP-14, SWAP-15
 
-        Note that the same conditions that make the chain idempotent are why
-        SWAP-14 does not re-activate an existing but inactive /swapfile.
+        The same conditions that make the chain idempotent are why an existing but
+        inactive /swapfile is not re-activated.
         """
         # Read the disk swap tasks
         disk_swap_tasks_path = Path("roles/swap/tasks/disk_swap.yml")
@@ -854,11 +776,3 @@ class TestSwapIdempotencyProperties:
         assert "when: fstab_check.found == 0" in disk_swap_tasks_content, (
             "Fstab entry addition must be conditional on entry not existing"
         )
-
-        # Property verified: The disk swap configuration ensures:
-        # - Swap file creation is idempotent (creates parameter)
-        # - Formatting only happens when file is created
-        # - Enablement only happens when formatting occurs
-        # - Fstab entry is checked before adding to prevent duplicates
-        # - Repeated playbook executions do not cause unnecessary changes
-        # - This applies consistently across all valid disk swap sizes

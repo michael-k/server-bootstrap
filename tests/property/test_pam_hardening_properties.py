@@ -19,9 +19,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_faillock_deny(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Faillock Deny
+        Defaults Define Faillock Deny
 
-        The users role defaults SHALL define pam_faillock_deny.
+        Checks that the users role defaults define `pam_faillock_deny`.
 
         Validates: PAM-2
         """
@@ -38,9 +38,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_faillock_unlock_time(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Faillock Unlock Time
+        Defaults Define Faillock Unlock Time
 
-        The users role defaults SHALL define pam_faillock_unlock_time.
+        Checks that the users role defaults define `pam_faillock_unlock_time`.
 
         Validates: PAM-3
         """
@@ -55,9 +55,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_faillock_fail_interval(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Faillock Fail Interval
+        Defaults Define Faillock Fail Interval
 
-        The users role defaults SHALL define pam_faillock_fail_interval.
+        Checks that the users role defaults define `pam_faillock_fail_interval`.
 
         Validates: PAM-4
         """
@@ -72,9 +72,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_limits_nproc(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Limits Nproc
+        Defaults Define nproc Limit
 
-        The users role defaults SHALL define pam_limits_nproc.
+        Checks that the users role defaults define `pam_limits_nproc`.
 
         Validates: PAM-10
         """
@@ -89,9 +89,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_limits_nproc_root(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Limits Nproc Root
+        Defaults Define Root nproc Limit
 
-        The users role defaults SHALL define pam_limits_nproc_root.
+        Checks that the users role defaults define `pam_limits_nproc_root`.
 
         Validates: PAM-11
         """
@@ -106,9 +106,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_limits_nofile(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Limits Nofile
+        Defaults Define nofile Limit
 
-        The users role defaults SHALL define pam_limits_nofile.
+        Checks that the users role defaults define `pam_limits_nofile`.
 
         Validates: PAM-12
         """
@@ -123,9 +123,9 @@ class TestPamHardeningDefaults:
     @pytest.mark.unit
     def test_defaults_define_limits_nofile_root(self):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Limits Nofile Root
+        Defaults Define Root nofile Limit
 
-        The users role defaults SHALL define pam_limits_nofile_root.
+        Checks that the users role defaults define `pam_limits_nofile_root`.
 
         Validates: PAM-13
         """
@@ -165,10 +165,11 @@ class TestFaillockConfProperties:
         setting: tuple,
     ):
         """
-        Feature: vps-bootstrap-playbook, faillock.conf Configurable Settings
+        faillock.conf Configurable Settings
 
-        The faillock.conf template SHALL contain deny, unlock_time, and
-        fail_interval using their corresponding configurable variables.
+        Checks that the faillock.conf template contains the drawn setting
+        (`deny`, `unlock_time` or `fail_interval`) and the variable it is rendered
+        from.
 
         Validates: PAM-2, PAM-3, PAM-4
         """
@@ -189,10 +190,10 @@ class TestFaillockConfProperties:
     @pytest.mark.unit
     def test_faillock_conf_hardcodes_even_deny_root(self):
         """
-        Feature: vps-bootstrap-playbook, faillock.conf Even Deny Root
+        faillock.conf Hardcodes even_deny_root
 
-        The faillock.conf template SHALL hardcode even_deny_root = true.
-        Root lockout is security policy, not configurable.
+        Checks that the faillock.conf template has an uncommented `even_deny_root`
+        line set to true. Root lockout is security policy, not configurable.
 
         Validates: PAM-5
         """
@@ -212,10 +213,10 @@ class TestFaillockConfProperties:
     @pytest.mark.unit
     def test_faillock_conf_has_root_unlock_time(self):
         """
-        Feature: vps-bootstrap-playbook, faillock.conf Root Unlock Time
+        faillock.conf Root Unlock Time
 
-        The faillock.conf template SHALL set root_unlock_time using the
-        pam_faillock_unlock_time variable (same as regular users).
+        Checks that the faillock.conf template contains `root_unlock_time` and
+        references `pam_faillock_unlock_time`.
 
         Validates: PAM-5
         """
@@ -242,10 +243,10 @@ class TestFaillockPamProfileProperties:
     @pytest.mark.unit
     def test_preauth_profile_has_higher_priority_than_unix(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock Preauth Priority
+        Preauth Profile Priority
 
-        The preauth profile SHALL have priority > 256 (pam_unix) so it
-        runs before password authentication.
+        Checks that the preauth profile template sets `Priority: 512`, above
+        pam_unix's 256, so it runs before password authentication.
 
         Validates: PAM-6
         """
@@ -262,10 +263,10 @@ class TestFaillockPamProfileProperties:
     @pytest.mark.unit
     def test_authfail_profile_has_lower_priority_than_unix(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock Authfail Priority
+        Authfail Profile Priority
 
-        The authfail profile SHALL have priority < 256 (pam_unix) so it
-        runs after password authentication.
+        Checks that the authfail profile template sets `Priority: 128`, below
+        pam_unix's 256, so it runs after password authentication.
 
         Validates: PAM-7
         """
@@ -282,10 +283,10 @@ class TestFaillockPamProfileProperties:
     @pytest.mark.unit
     def test_preauth_profile_contains_preauth_directive(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock Preauth Auth Section
+        Preauth Profile Directive
 
-        The preauth profile SHALL contain the pam_faillock.so preauth
-        directive in both Auth and Auth-Initial sections.
+        Checks that the preauth profile template has `Auth-Type: Primary`, an
+        `Auth-Initial:` section and a `preauth` directive.
 
         Validates: PAM-6
         """
@@ -306,10 +307,10 @@ class TestFaillockPamProfileProperties:
     @pytest.mark.unit
     def test_authfail_profile_contains_authfail_directive(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock Authfail Auth Section
+        Authfail Profile Directive
 
-        The authfail profile SHALL contain the pam_faillock.so authfail
-        directive in both Auth and Auth-Initial sections.
+        Checks that the authfail profile template has `Auth-Type: Primary`, an
+        `Auth-Initial:` section and an `authfail` directive.
 
         Validates: PAM-7
         """
@@ -330,10 +331,11 @@ class TestFaillockPamProfileProperties:
     @pytest.mark.unit
     def test_authfail_profile_has_account_section(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock Authfail Account Section
+        Authfail Profile Account Section
 
-        The authfail profile SHALL contain an Account section to reset
-        the failure counter on successful login.
+        Checks that the authfail profile template has `Account-Type: Additional`
+        and an `Account:` section, which reset the failure counter on successful
+        login.
 
         Validates: PAM-17
         """
@@ -351,10 +353,10 @@ class TestFaillockPamProfileProperties:
     @pytest.mark.unit
     def test_both_profiles_set_default_yes(self):
         """
-        Feature: vps-bootstrap-playbook, Faillock PAM Profiles Default
+        Faillock Profiles Enabled by Default
 
-        Both faillock profiles SHALL set Default to yes so
-        pam-auth-update enables them automatically.
+        Checks that both faillock profile templates set `Default: yes`, so
+        pam-auth-update enables them.
 
         Validates: PAM-6, PAM-7
         """
@@ -387,10 +389,10 @@ class TestResourceLimitsProperties:
         limit_type: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Resource Limits Contains All Types
+        Resource Limits Types
 
-        The resource limits template SHALL contain nproc, nofile, and
-        core limit definitions.
+        Checks that the resource limits template mentions the drawn limit type:
+        `nproc`, `nofile` or `core`.
 
         Validates: PAM-10, PAM-11, PAM-12, PAM-13, PAM-14
         """
@@ -407,10 +409,10 @@ class TestResourceLimitsProperties:
     @pytest.mark.unit
     def test_limits_template_hardcodes_core_zero(self):
         """
-        Feature: vps-bootstrap-playbook, Resource Limits Core Zero
+        Resource Limits Hardcode core to 0
 
-        The resource limits template SHALL hardcode core to 0 to prevent
-        credential leaks in core dumps.
+        Checks that the first uncommented line of the resource limits template
+        that mentions `core` contains `0`.
 
         Validates: PAM-14
         """
@@ -430,10 +432,10 @@ class TestResourceLimitsProperties:
     @pytest.mark.unit
     def test_limits_template_has_separate_root_nproc(self):
         """
-        Feature: vps-bootstrap-playbook, Resource Limits Root Nproc
+        Resource Limits Separate Root nproc
 
-        The resource limits template SHALL define a separate nproc limit
-        for root using the pam_limits_nproc_root variable.
+        Checks that the resource limits template references both
+        `pam_limits_nproc` and `pam_limits_nproc_root`.
 
         Validates: PAM-10, PAM-11
         """
@@ -451,10 +453,10 @@ class TestResourceLimitsProperties:
     @pytest.mark.unit
     def test_limits_template_has_separate_root_nofile(self):
         """
-        Feature: vps-bootstrap-playbook, Resource Limits Root Nofile
+        Resource Limits Separate Root nofile
 
-        The resource limits template SHALL define a separate nofile limit
-        for root using the pam_limits_nofile_root variable.
+        Checks that the resource limits template references both
+        `pam_limits_nofile` and `pam_limits_nofile_root`.
 
         Validates: PAM-12, PAM-13
         """
@@ -472,10 +474,10 @@ class TestResourceLimitsProperties:
     @pytest.mark.unit
     def test_limits_template_uses_hard_limits_only(self):
         """
-        Feature: vps-bootstrap-playbook, Resource Limits Hard Only
+        Resource Limits Hard Only
 
-        The resource limits template SHALL use hard limits only (not soft).
-        Hard limits set the ceiling; users keep flexibility below it.
+        Checks that every non-blank, uncommented line of the resource limits
+        template says `hard` and none says `soft`.
 
         Validates: PAM-15
         """
@@ -500,9 +502,10 @@ class TestPamHardeningTasksProperties:
     @pytest.mark.unit
     def test_tasks_deploy_faillock_conf(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy faillock.conf
+        Tasks Deploy faillock.conf
 
-        The users role tasks SHALL deploy the faillock.conf template.
+        Checks that the users role tasks deploy `faillock.conf.j2` to
+        `/etc/security/faillock.conf`.
 
         Validates: PAM-1
         """
@@ -522,10 +525,11 @@ class TestPamHardeningTasksProperties:
     @pytest.mark.unit
     def test_tasks_deploy_faillock_pam_profiles(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy Faillock PAM Profiles
+        Tasks Deploy Faillock PAM Profiles
 
-        The users role tasks SHALL deploy both faillock PAM profiles
-        (preauth and authfail) to /usr/share/pam-configs/.
+        Checks that the users role tasks deploy the preauth and authfail profile
+        templates to `/usr/share/pam-configs/faillock-preauth` and
+        `/usr/share/pam-configs/faillock-authfail`.
 
         Validates: PAM-6, PAM-7
         """
@@ -549,10 +553,9 @@ class TestPamHardeningTasksProperties:
     @pytest.mark.unit
     def test_tasks_enable_faillock_via_pam_auth_update(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Enable Faillock via pam-auth-update
+        Faillock Enabled via pam-auth-update
 
-        The users role SHALL run pam-auth-update to enable faillock
-        after deploying the PAM profile (via handler or task).
+        Checks that the users role's tasks or handlers mention `pam-auth-update`.
 
         Validates: PAM-9
         """
@@ -574,10 +577,10 @@ class TestPamHardeningTasksProperties:
     @pytest.mark.unit
     def test_tasks_deploy_resource_limits(self):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy Resource Limits
+        Tasks Deploy Resource Limits
 
-        The users role tasks SHALL deploy the resource limits template
-        to /etc/security/limits.d/.
+        Checks that the users role tasks deploy `50-hardening.conf.j2` to
+        `/etc/security/limits.d/50-hardening.conf`.
 
         Validates: PAM-16
         """

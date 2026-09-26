@@ -82,33 +82,22 @@ class TestPlaybookIdempotencyProperties:
         zram_enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 33: Playbook Idempotency
+        Playbook Idempotency, structural preconditions
 
-        For any execution of the bootstrap playbook against an already-configured server,
-        the playbook SHALL complete without errors, report no changes for already-configured
-        items, and apply only configuration changes that differ from the current state.
+        Reads `site.yml` and the tasks and handlers of the roles in its list
+        (`networking` and `filesystem_hardening` are not in the list), and checks
+        module and directive substrings that make a re-run safe: declarative
+        modules, change controls where a role has more than two shell or command
+        tasks, `state` on apt and service tasks, `mode` on file tasks and a
+        restarted or reloaded state in handlers. It also checks that each listed
+        role appears in `site.yml`, in any order. Nothing is run.
 
         Validates: PRJ-13, and the play-level declarations it rests on —
-        PRJ-2 (every task runs as root), PRJ-3 (facts are gathered) and
-        PRJ-12 (every capability appears in the fixed order).
-
-        This property test verifies idempotency by checking that:
-        1. All roles use idempotent Ansible modules
-        2. Tasks check current state before making changes
-        3. Handlers only trigger when configuration actually changes
-        4. File operations use appropriate modules (template, copy, lineinfile)
-        5. Service operations use service/systemd modules
-        6. No tasks use shell/command without changed_when conditions
+        PRJ-2 (`become: true`) and PRJ-3 (`gather_facts: true`).
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
             return
-
-        # This property test verifies idempotency through static analysis of:
-        # 1. Main playbook structure
-        # 2. All role tasks
-        # 3. Module usage patterns
-        # 4. Handler definitions
 
         # Verify main playbook exists and is well-formed
         playbook_path = Path("site.yml")
@@ -126,7 +115,8 @@ class TestPlaybookIdempotencyProperties:
             "Playbook must gather facts for idempotent conditional logic"
         )
 
-        # Verify all roles are included
+        # Verify each role in this list is included; networking and
+        # filesystem_hardening are not in it, and the order is not checked
         expected_roles = [
             "system_updates",
             "users",
@@ -221,13 +211,11 @@ class TestPlaybookIdempotencyProperties:
             creates_count = tasks_content.count("creates:")
             check_mode_count = tasks_content.count("check_mode:")
 
-            # Each shell/command should have at least one idempotency control
-            # (This is a heuristic - not perfect but catches most issues)
+            # Change controls are counted across the whole file, not per task
             idempotency_controls = changed_when_count + creates_count + check_mode_count
 
-            # Allow some flexibility - not every shell/command needs these
-            # (e.g., read-only commands for verification)
-            # But most should have them
+            # Only a role with more than two shell/command tasks is checked, and
+            # one change control anywhere in the file satisfies it
             if shell_command_count > 2:
                 assert idempotency_controls > 0, (
                     f"Role {role_name} uses shell/command but lacks idempotency controls "
@@ -271,16 +259,14 @@ class TestPlaybookIdempotencyProperties:
                 f"Role {role_name} uses file module but doesn't specify mode parameter"
             )
 
-        # Idempotency Rule 6: Template operations should use validate when appropriate
+        # Idempotency Rule 6 is not enforced: the branch below passes whether or
+        # not `validate` is used
         if "ansible.builtin.template:" in tasks_content:
-            # For critical config files (sshd, sudoers, nftables), validate should be used
             critical_configs = ["sshd_config", "sudoers", "nftables"]
             has_critical_config = any(config in tasks_content for config in critical_configs)
 
             if has_critical_config:
-                # Validate option prevents broken configurations
-                # (This is a best practice, not strictly required for idempotency)
-                pass  # Optional check - validate is good practice but not required
+                pass
 
         # Idempotency Rule 7: Handlers should be used for service restarts
         # Check if role has handlers defined

@@ -75,26 +75,17 @@ class TestTailscaleInstallationProperties:
         enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 10: Tailscale Installation and Configuration
+        Tailscale Installation and Configuration
 
-        For any execution of the bootstrap playbook WHERE Tailscale is enabled,
-        the playbook SHALL install Tailscale packages, authenticate with the control
-        server using a pre-auth key from Vault, configure the control server URL,
-        enable the service, and start the service.
+        Checks that the role's task includes are guarded by `tailscale_enabled`,
+        that the install tasks fetch the signing key, add the repository from
+        `tailscale_repo_url` and install `tailscale`, run `tailscale up` with the
+        login server and pre-auth key variables behind a status check, and enable
+        and start `tailscaled`; and that the defaults leave Tailscale off, name the
+        interface `tailscale0` and point the repository at `pkgs.tailscale.com`.
 
-        Validates: TS-1, TS-3, TS-4, TS-5, TS-6, TS-7, TS-9, TS-12, TS-13, TS-14
+        Validates: TS-1, TS-2, TS-3, TS-4, TS-6, TS-7, TS-9, TS-12, TS-13, TS-14
         """
-        # This property test verifies the Tailscale role's behavior by checking:
-        # 1. The client is installed from the official repository (TS-3)
-        # 2. The repository is pinned to the official signing key (TS-4)
-        # 3. Repository and key follow the host's Debian release (TS-5)
-        # 4. The control server URL is configured (TS-6)
-        # 5. Registration uses the pre-auth key from Vault (TS-7)
-        # 6. Registration is skipped on an already-registered host (TS-9)
-        # 7. The service is enabled to start on boot (TS-12)
-        # 8. The service is started (TS-13)
-        # 9. Enrolment is opt-in and the interface name is configurable (TS-1, TS-14)
-
         # Read the Tailscale role main tasks
         main_tasks_path = Path("roles/tailscale/tasks/main.yml")
         assert main_tasks_path.exists(), "Tailscale main tasks file must exist"
@@ -250,19 +241,6 @@ class TestTailscaleInstallationProperties:
             "Repository URL must point to official Tailscale package repository"
         )
 
-        # Property verified: The Tailscale role configuration ensures that:
-        # - The client is installed from the official repository (TS-3)
-        # - The repository is pinned to the official signing key (TS-4)
-        # - Repository and key follow the host's Debian release (TS-5)
-        # - The control server URL is configured (TS-6)
-        # - Registration uses the pre-auth key from Vault (TS-7)
-        # - Registration is skipped on an already-registered host (TS-9)
-        # - The service is enabled to start on boot and started (TS-12, TS-13)
-        # - Enrolment is opt-in, defaulting to off (TS-1)
-        # - The interface name is configurable (TS-14)
-        # - Tasks are properly tagged for selective execution
-        # - This applies consistently across all valid configuration values
-
 
 class TestTailscaleConnectivityVerificationProperties:
     """Property-based tests for Tailscale connectivity verification."""
@@ -280,25 +258,16 @@ class TestTailscaleConnectivityVerificationProperties:
         timeout_seconds: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 12 (partial): Tailscale Connectivity Verification
+        Tailscale Connectivity Verification
 
-        For any execution of the bootstrap playbook WHERE Tailscale is enabled,
-        the playbook SHALL verify Tailscale connectivity before configuring SSH
-        to listen only on the Tailscale interface.
-
-        This test verifies the connectivity verification logic.
-        The SSH interface restriction logic is tested separately.
+        Checks that the verification tasks wait for the interface under
+        `/sys/class/net/`, require `BackendState` to reach `Running`, set
+        `tailscale_ipv4` from `tailscale ip -4` and fail if it is empty, ping over
+        the interface and fail if that fails, and contain the fail module. The SSH
+        interface restriction is tested separately.
 
         Validates: TS-14, TS-15, TS-16, TS-17, TS-19, TS-21
         """
-        # This property test verifies the Tailscale role's connectivity verification by checking:
-        # 1. The interface has to appear before the run continues (TS-15)
-        # 2. The backend has to reach Running (TS-16)
-        # 3. The IPv4 address is published as a fact (TS-17)
-        # 4. An unassigned IPv4 address fails the run (TS-19)
-        # 5. Connectivity over the interface is tested and acted on (TS-21)
-        # 6. The interface is named by a configurable variable (TS-14)
-
         # Read the Tailscale verification tasks
         verify_tasks_path = Path("roles/tailscale/tasks/verify.yml")
         assert verify_tasks_path.exists(), "Tailscale verification tasks file must exist"
@@ -414,16 +383,6 @@ class TestTailscaleConnectivityVerificationProperties:
             "Verification tasks must have verification tag"
         )
 
-        # Property verified: The Tailscale role verification ensures that:
-        # - Interface existence is verified with a timeout (TS-15)
-        # - The backend state is verified to be Running (TS-16)
-        # - The IPv4 address is published as a fact (TS-17)
-        # - An unassigned IPv4 address fails the run (TS-19)
-        # - Connectivity over the interface is tested and acted on (TS-21)
-        # - The interface name comes from a variable (TS-14)
-        # - Clear error messages name lockout as the reason
-        # - This applies consistently across all valid interface names and timeouts
-
 
 class TestTailscaleConditionalExecutionProperties:
     """Property-based tests for Tailscale conditional execution."""
@@ -436,26 +395,22 @@ class TestTailscaleConditionalExecutionProperties:
     )
     def test_property_11_tailscale_conditional_execution(self, enabled: bool):
         """
-        Feature: vps-bootstrap-playbook, Property 11: Tailscale Conditional Execution
+        Tailscale Conditional Execution
 
-        For any execution of the bootstrap playbook WHERE Tailscale is disabled,
-        the playbook SHALL skip all Tailscale installation, configuration, and
-        SSH restriction steps.
+        Checks that the role's install and verify includes are guarded by
+        `tailscale_enabled`, that `tailscale_enabled` defaults to false, and that
+        the emergency script's deployment is guarded by `emergency_access_enabled`,
+        whose default refers to `tailscale_enabled`.
 
         Validates: TS-1, TS-2, EMRG-2
         """
-        # This property test verifies the Tailscale role's conditional execution by checking:
-        # 1. All Tailscale tasks are conditional on tailscale_enabled (TS-2)
-        # 2. Emergency script deployment is conditional on tailscale_enabled (EMRG-2)
-        # 3. SSH restriction is conditional on tailscale_enabled
-
         # Read the Tailscale role main tasks
         main_tasks_path = Path("roles/tailscale/tasks/main.yml")
         assert main_tasks_path.exists(), "Tailscale main tasks file must exist"
 
         main_tasks_content = main_tasks_path.read_text()
 
-        # Verify all task includes are conditional
+        # Verify the install and verify includes are conditional
         task_includes = [
             "ansible.builtin.include_tasks: install.yml",
             "ansible.builtin.include_tasks: verify.yml",
@@ -508,13 +463,6 @@ class TestTailscaleConditionalExecutionProperties:
                     "emergency_access_enabled must reference tailscale_enabled (EMRG-2)"
                 )
 
-        # Property verified: The Tailscale role configuration ensures that:
-        # - Both task includes are conditional on tailscale_enabled (TS-2)
-        # - Emergency script deployment is conditional on tailscale_enabled (EMRG-2)
-        # - The flag defaults to false, so enrolment is opt-in (TS-1)
-        # - When disabled, all Tailscale-related tasks are skipped
-        # - This applies consistently regardless of enabled value
-
 
 class TestTailscaleRepositoryConfigurationProperties:
     """Property-based tests for Tailscale repository configuration."""
@@ -527,16 +475,13 @@ class TestTailscaleRepositoryConfigurationProperties:
     )
     def test_tailscale_repository_configuration(self, distribution_release: str):
         """
-        Feature: vps-bootstrap-playbook, Tailscale Repository Configuration
+        Tailscale Repository Configuration
 
-        For any execution of the bootstrap playbook on a Debian system,
-        the Tailscale role SHALL configure the official Tailscale package
-        repository with proper GPG key verification.
+        Checks that the repository and key URLs point at `pkgs.tailscale.com` and
+        follow `ansible_facts['distribution_release']`, and that the repository is
+        added with `signed-by` the keyring the key is saved to.
 
-        This property verifies that:
-        - The official Tailscale repository is used (TS-3)
-        - The repository is pinned to the official signing key (TS-4)
-        - Repository and key follow the host's Debian release (TS-5)
+        Validates: TS-3, TS-4, TS-5
         """
         # Read the Tailscale defaults
         defaults_path = Path("roles/tailscale/defaults/main.yml")
@@ -590,8 +535,3 @@ class TestTailscaleRepositoryConfigurationProperties:
         assert "ansible_facts['distribution_release']" in install_tasks_content, (
             "Repository configuration must use distribution release variable"
         )
-
-        # Property verified: The Tailscale role ensures:
-        # - The official repository is configured (TS-3)
-        # - The repository is pinned to the official signing key (TS-4)
-        # - Repository and key follow the host's Debian release (TS-5)

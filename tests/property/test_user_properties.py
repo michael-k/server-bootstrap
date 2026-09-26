@@ -6,15 +6,15 @@ SSH key deployment, sudo privileges, and authentication methods across various
 configuration parameters.
 
 Requirements: USR-1, USR-2, USR-3, USR-4, USR-5, USR-6, USR-7, USR-9, USR-10,
-USR-11, USR-12
+USR-12
 
 Every test below draws its values from a Hypothesis strategy and then asserts
 substrings against the unchanged text of the role's files, so the generated
 values reach no template, module or assertion. They are recorded as such in
 the user-accounts design's failure modes rather than repaired here.
 
-Property 3 covers the per-account sudo grants instead, citing SUDO-2 and
-SUDO-3 from the sudo-hardening spec.
+`test_property_3_sudo_privilege_configuration` covers the per-account sudo
+grants instead, citing SUDO-2 and SUDO-3 from the sudo-hardening spec.
 """
 
 from pathlib import Path
@@ -87,19 +87,15 @@ class TestUserManagementProperties:
         ansible_user: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 1: User Account Creation with Fixed UIDs
+        User Account Creation with Fixed UIDs
 
-        For any execution of the bootstrap playbook with configured user names,
-        the manual access user SHALL be created with uid 1000 and the Ansible user
-        SHALL be created with uid 1999.
+        Checks that the users role creates both accounts with the user module, with
+        home directories, and with uid 1000 for the manual account and uid 1999 for
+        the automation account, taken from `manual_user_uid` and `deploy_user_uid`
+        whose defaults are 1000 and 1999. The drawn usernames only decide whether
+        the test returns early.
 
-        Validates: USR-1, USR-2, USR-4, USR-5
-
-        This property test verifies that:
-        1. Users role creates manual access user with uid 1000
-        2. Users role creates Ansible user with uid 1999
-        3. UIDs are fixed regardless of username
-        4. User creation tasks use correct Ansible modules
+        Validates: USR-1, USR-4
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -170,20 +166,14 @@ class TestUserManagementProperties:
         file_mode: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 2: SSH Key Deployment and Permissions
+        SSH Key Deployment and Permissions
 
-        For any user account (manual or Ansible) with a configured SSH public key
-        file path, the playbook SHALL deploy the public key to the user's
-        authorized_keys file with mode 0600 and correct ownership.
+        Checks that the users role creates `.ssh` with mode `0700`, deploys keys
+        with `ansible.posix.authorized_key`, names each account's key file variable
+        or a file lookup, sets `authorized_keys` from `authorized_keys_mode`
+        (default `0600`), and sets an owner and group.
 
-        Validates: USR-9, USR-10, USR-11, USR-12
-
-        This property test verifies that:
-        1. SSH keys are deployed using authorized_key module
-        2. authorized_keys file has mode 0600
-        3. authorized_keys file has correct ownership
-        4. .ssh directory is created with mode 0700
-        5. SSH key file path is configurable
+        Validates: USR-9, USR-10, USR-12
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -269,20 +259,14 @@ class TestUserManagementProperties:
         ansible_user: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 3: Sudo Privilege Configuration
+        Sudo Privilege Configuration
 
-        For any execution of the bootstrap playbook, the manual access user SHALL
-        have password-required sudo privileges and the Ansible user SHALL have
-        passwordless sudo privileges.
+        Checks that the users role writes sudoers files under `/etc/sudoers.d/`,
+        granting `ALL=(ALL:ALL) ALL` and `NOPASSWD:ALL`, owned by root with mode
+        `0440`, validated with `visudo`, and named from `manual_user_name` and
+        `deploy_user_name`.
 
         Validates: SUDO-2, SUDO-3
-
-        This property test verifies that:
-        1. Manual user has sudo with password (ALL=(ALL:ALL) ALL)
-        2. Ansible user has passwordless sudo (ALL=(ALL:ALL) NOPASSWD:ALL)
-        3. Sudoers files are created in /etc/sudoers.d/
-        4. Sudoers files have mode 0440
-        5. Sudoers files are validated before deployment
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -337,8 +321,7 @@ class TestUserManagementProperties:
             "Sudoers files must have group root"
         )
 
-        # Verify separate sudoers files for each user
-        # This ensures clean separation of privileges
+        # Verify the sudoers content names both account variables
         assert "{{ manual_user_name }}" in tasks_content, (
             "Manual user sudoers file must use username variable"
         )
@@ -360,24 +343,18 @@ class TestUserManagementProperties:
         ansible_user: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 4: User Authentication Method Configuration
+        User Authentication Method Configuration
 
-        For any execution of the bootstrap playbook, the manual access user SHALL
-        support both password and SSH key authentication, while the Ansible user
-        SHALL support only SSH key authentication.
-
-        Validates: USR-3, USR-6
+        Checks that the users role sets the manual account's password from
+        `manual_user_password`, locks the automation account with `password: "!"`,
+        has at least two `ansible.posix.authorized_key` tasks, and names each
+        account's key file variable or a file lookup.
 
         Key-only authentication is enforced by sshd and belongs to the
         ssh-hardening spec (specs/ssh-hardening/). Nothing below asserts it:
         this test reads the users role only.
 
-        This property test verifies that:
-        1. Manual user has password set (hashed)
-        2. Manual user has SSH key deployed
-        3. Ansible user has password disabled (locked account)
-        4. Ansible user has SSH key deployed
-        5. Password authentication is configured correctly
+        Validates: USR-3, USR-6, USR-10
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:

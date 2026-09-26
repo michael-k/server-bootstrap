@@ -89,11 +89,15 @@ class TestFail2banProperties:
         ssh_enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 27: Fail2ban Installation and Configuration
+        Fail2ban Installation and Configuration
 
-        For any execution of the bootstrap playbook, fail2ban SHALL be installed,
-        configured to monitor SSHD logs, configured with a configurable ban threshold
-        and duration, integrated with NFTables, enabled to start on boot, and started.
+        Checks the fail2ban role's package install, configuration directory, jail
+        template and its destination, the restart handler it notifies, and the
+        service's enabled and started state; the defaults for the counters,
+        backend, ban action and SSH jail switch; that the jail template contains a
+        `[sshd]` header, the switch, `filter = sshd`, the counters, the port and
+        the protocol anywhere in the file; and that its `[DEFAULT]` section renders
+        the ban action, counters and backend.
 
         Validates: F2B-1, F2B-2, F2B-3, F2B-4, F2B-5, F2B-7, F2B-9, F2B-10,
         F2B-11, F2B-13, F2B-14, F2B-15
@@ -365,21 +369,18 @@ class TestFail2banJournaldIntegrationProperties:
     )
     def test_fail2ban_journald_backend_configuration(self, backend: str):
         """
-        Feature: vps-bootstrap-playbook, Fail2ban Journald Backend Configuration
+        Fail2ban Journald Backend Configuration
+
+        Checks that `fail2ban_ssh_backend` defaults to `systemd`, that the jail
+        template renders `backend = {{ fail2ban_ssh_backend }}`, and that the
+        `[sshd]` section mentions journald or systemd.
 
         Validates: F2B-7
 
-        This asserts on the rendered jail file's backend line and on the
-        defaults file, which is F2B-7's claim. It does not establish what
-        backend the [sshd] jail is created with: the distribution's
-        jail.d/defaults-debian.conf sets backend at jail level, which
-        outranks [DEFAULT]. Note also that the template assertion below is
-        not scoped to the [DEFAULT] section. See specs/fail2ban/design.md.
-
-        This property verifies that:
-        - Backend is configurable
-        - Default backend is systemd for journald integration
-        - No explicit logpath is needed with systemd backend
+        The template assertion is not scoped to the [DEFAULT] section. The test
+        does not establish what backend the [sshd] jail is created with: the
+        distribution's jail.d/defaults-debian.conf sets backend at jail level,
+        which outranks [DEFAULT]. See specs/fail2ban/design.md.
         """
         # Read the fail2ban defaults
         defaults_path = Path("roles/fail2ban/defaults/main.yml")
@@ -409,8 +410,7 @@ class TestFail2banJournaldIntegrationProperties:
             "Jail configuration must use fail2ban_ssh_backend variable"
         )
 
-        # Verify no explicit logpath is configured when using systemd backend
-        # (journald backend reads from systemd journal automatically)
+        # Check that the [sshd] section mentions journald or systemd
         sshd_section_start = template_content.find("[sshd]")
         if sshd_section_start != -1:
             # Find the next section or end of file
@@ -420,15 +420,9 @@ class TestFail2banJournaldIntegrationProperties:
             else:
                 sshd_section = template_content[sshd_section_start:next_section]
 
-            # Verify comment about journald backend not needing logpath
             assert "journald" in sshd_section.lower() or "systemd" in sshd_section.lower(), (
                 "SSH jail section should document journald/systemd backend usage"
             )
-
-        # Property verified: The fail2ban role ensures:
-        # - Backend is configurable via fail2ban_ssh_backend variable
-        # - Default backend is systemd for journald integration
-        # - Configuration is compatible with systemd-based logging
 
 
 class TestFail2banNFTablesIntegrationProperties:
@@ -442,7 +436,11 @@ class TestFail2banNFTablesIntegrationProperties:
     )
     def test_fail2ban_nftables_banaction_configuration(self, banaction: str):
         """
-        Feature: vps-bootstrap-playbook, Fail2ban NFTables Integration
+        Fail2ban NFTables Integration
+
+        Checks that `fail2ban_banaction` defaults to `nftables-multiport`, and that
+        the jail template's `[DEFAULT]` section renders both `banaction` and
+        `banaction_allports` from it.
 
         Validates: F2B-11
 
@@ -452,11 +450,6 @@ class TestFail2banNFTablesIntegrationProperties:
         blocking", which the value it asserts does not produce - Debian's own
         default for that setting is nftables[type=allports] and this project
         replaces it with a multiport action. See specs/fail2ban/design.md.
-
-        This property verifies that:
-        - Banaction is configurable
-        - Default banaction uses nftables
-        - Banaction is applied to both DEFAULT and SSH jail sections
         """
         # Read the fail2ban defaults
         defaults_path = Path("roles/fail2ban/defaults/main.yml")
@@ -499,16 +492,10 @@ class TestFail2banNFTablesIntegrationProperties:
             "DEFAULT section must configure banaction"
         )
 
-        # Verify banaction_allports is also configured for comprehensive blocking
+        # Verify banaction_allports is rendered from the same variable
         assert "banaction_allports = {{ fail2ban_banaction }}" in default_section, (
             "DEFAULT section should configure banaction_allports for all-port blocking"
         )
-
-        # Property verified: The fail2ban role ensures:
-        # - Banaction is configurable via fail2ban_banaction variable
-        # - Default banaction uses nftables-multiport
-        # - Banaction is configured in DEFAULT section for all jails
-        # - Integration with NFTables firewall component
 
 
 class TestFail2banConfigurationValidationProperties:
@@ -529,21 +516,19 @@ class TestFail2banConfigurationValidationProperties:
         find_time,
     ):
         """
-        Feature: vps-bootstrap-playbook, Fail2ban Configuration Consistency
+        Fail2ban Configuration Consistency
+
+        Checks that the jail template renders `maxretry`, `findtime` and `bantime`
+        from their variables in both the `[DEFAULT]` section and the `[sshd]`
+        section, and that the template mentions inheritance.
 
         Validates: F2B-9, F2B-10, F2B-12
 
-        F2B-12's coverage here is presence only. This asserts that the three
-        counters appear in both sections; it does not establish what the
-        restatement buys, which is that a jail-level setting outranks
-        [DEFAULT] from every file fail2ban reads. The assertion below that the
-        template mentions inheritance is a substring check on the word, so it
-        passes whether the surrounding sentence is true or false.
-
-        This property verifies that:
-        - Configuration parameters are defined in the DEFAULT section
-        - The SSH jail restates them at jail level
-        - Both copies render from the same variable
+        The jail-level check is presence only: it does not establish what the
+        restatement buys, which is that a jail-level setting outranks [DEFAULT]
+        from every file fail2ban reads. The inheritance assertion is a substring
+        check on the word, so it passes whether the surrounding sentence is true
+        or false.
         """
         # Read the jail configuration template
         template_path = Path("roles/fail2ban/templates/jail.local.j2")
@@ -595,9 +580,3 @@ class TestFail2banConfigurationValidationProperties:
             "Inherits from DEFAULT" in template_content
             or "inherit" in template_content.lower()
         ), "Template should document inheritance behavior from DEFAULT section"
-
-        # Property verified: The fail2ban role ensures:
-        # - Configuration parameters are defined in DEFAULT section
-        # - SSH jail can override DEFAULT values
-        # - Configuration is consistent and predictable
-        # - Inheritance behavior is documented

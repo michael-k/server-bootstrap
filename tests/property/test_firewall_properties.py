@@ -48,18 +48,15 @@ class TestNFTablesDualStackProperties:
         self, ssh_port: int, tailscale_enabled: bool
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 17: NFTables Dual-Stack Configuration
+        NFTables Dual-Stack Configuration
 
-        For any execution of the bootstrap playbook, NFTables rules SHALL be configured
-        for both IPv4 and IPv6 traffic with identical policies.
+        Checks that the nftables template defines one `inet` filter table and no
+        `ip` or `ip6` one, accepts ICMPv4 and ICMPv6, and hooks input, forward and
+        output chains; and that the tasks install nftables and deploy the ruleset
+        to `/etc/nftables.conf`, owned by root with mode `0644`.
 
         Validates: FW-1, FW-2, FW-8, FW-9, FW-16
         """
-        # This property test verifies the firewall role's dual-stack behavior by checking:
-        # 1. NFTables configuration uses inet family (supports both IPv4 and IPv6)
-        # 2. Rules apply to both IPv4 and IPv6 traffic uniformly
-        # 3. No separate IPv4/IPv6 tables are needed
-
         # Read the NFTables configuration template
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         assert template_path.exists(), "NFTables configuration template must exist"
@@ -140,13 +137,6 @@ class TestNFTablesDualStackProperties:
             "NFTables configuration must have group root"
         )
 
-        # Property verified: The firewall role configuration ensures that:
-        # - NFTables uses inet family for dual-stack support (FW-2)
-        # - Rules apply uniformly to both IPv4 and IPv6 traffic
-        # - ICMP is allowed for both protocol versions
-        # - Configuration is properly deployed with correct permissions
-        # - This applies consistently regardless of SSH port or Tailscale status
-
 
 class TestNFTablesStatefulFirewallProperties:
     """Property-based tests for NFTables stateful firewall rules."""
@@ -162,20 +152,16 @@ class TestNFTablesStatefulFirewallProperties:
         self, ssh_port: int, tailscale_enabled: bool
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 18: NFTables Stateful Firewall Rules
+        NFTables Stateful Firewall Rules
 
-        For any execution of the bootstrap playbook, NFTables SHALL allow established
-        and related connections, allow loopback interface traffic, and set default
-        input and forward policies to drop.
+        Checks that the nftables template accepts established and related
+        connections and loopback traffic ahead of the last `tcp dport … accept`
+        rule, gives the input and forward chains a drop policy and the output chain
+        an accept policy; and that the tasks enable and start nftables and notify a
+        handler that reloads or restarts it.
 
         Validates: FW-3, FW-4, FW-5, FW-6, FW-7, FW-17, FW-18, FW-19
         """
-        # This property test verifies the firewall role's stateful behavior by checking:
-        # 1. Established and related connections are allowed (FW-6)
-        # 2. Loopback interface traffic is allowed (FW-7)
-        # 3. Default input policy is drop (FW-3)
-        # 4. Default forward policy is drop (FW-4)
-
         # Read the NFTables configuration template
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         assert template_path.exists(), "NFTables configuration template must exist"
@@ -321,16 +307,6 @@ class TestNFTablesStatefulFirewallProperties:
             "Handler must reload or restart nftables service"
         )
 
-        # Property verified: The firewall role configuration ensures that:
-        # - Established and related connections are allowed (stateful) (FW-6)
-        # - Loopback interface traffic is allowed (FW-7)
-        # - Default input policy is drop (FW-3)
-        # - Default forward policy is drop (FW-4)
-        # - Service is enabled for boot persistence (FW-17)
-        # - Configuration changes trigger service reload
-        # - Rule ordering is optimized for performance
-        # - This applies consistently regardless of SSH port or Tailscale status
-
 
 class TestNFTablesSSHAccessControlProperties:
     """Property-based tests for NFTables SSH access control."""
@@ -347,20 +323,17 @@ class TestNFTablesSSHAccessControlProperties:
         self, ssh_port: int, tailscale_interface: str, wireguard_port: int
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 19: NFTables SSH Access Control
+        NFTables SSH Access Control
 
-        For any execution of the bootstrap playbook, NFTables SHALL restrict SSH port
-        access to the Tailscale interface only when Tailscale is enabled, or allow SSH
-        port access from all interfaces when Tailscale is disabled.
+        Checks that the nftables template's `firewall_tailscale_enabled` branch
+        accepts SSH only with `iifname` set to `firewall_tailscale_interface` and
+        accepts the WireGuard port, that its `else` branch accepts SSH with no
+        interface qualifier, that both render the port from `firewall_ssh_port`,
+        and that the defaults derive the firewall variables from `ssh_port`,
+        `tailscale_enabled` and `tailscale_interface`.
 
         Validates: FW-10, FW-11, FW-12, FW-13, FW-14
         """
-        # This property test verifies the firewall role's SSH access control by checking:
-        # 1. When Tailscale enabled: SSH restricted to the tailnet interface (FW-10)
-        # 2. When Tailscale disabled: SSH allowed from all interfaces (FW-13)
-        # 3. SSH port is configurable (FW-14)
-        # 4. Tailscale WireGuard traffic is allowed when enabled (FW-12)
-
         # Read the NFTables configuration template
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         assert template_path.exists(), "NFTables configuration template must exist"
@@ -511,16 +484,6 @@ class TestNFTablesSSHAccessControlProperties:
             "WireGuard rules must use UDP protocol"
         )
 
-        # Property verified: The firewall role configuration ensures that:
-        # - When Tailscale enabled: SSH restricted to the tailnet interface (FW-10)
-        # - When Tailscale disabled: SSH allowed from all interfaces (FW-13)
-        # - When Tailscale enabled: WireGuard traffic is allowed (FW-12)
-        # - SSH port is configurable
-        # - Tailscale interface is configurable
-        # - WireGuard port is configurable
-        # - Conditional logic correctly handles both scenarios
-        # - This applies consistently for any valid port and interface configuration
-
 
 class TestNFTablesServicePersistenceProperties:
     """Property-based tests for NFTables service persistence."""
@@ -536,19 +499,16 @@ class TestNFTablesServicePersistenceProperties:
         self, ssh_port: int, tailscale_enabled: bool
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 21: NFTables Service Persistence
+        NFTables Service Persistence
 
-        For any execution of the bootstrap playbook, the NFTables service SHALL be
-        enabled to start on boot, ensuring rules persist across system reboots.
+        Checks that the tasks deploy `nftables.conf.j2` to `/etc/nftables.conf`,
+        owned by root with mode `0644`, notify a handler that reloads or restarts
+        nftables, and have a service task for nftables that enables it and one
+        that starts it; and that the template defines the `inet` filter table and
+        its three chains.
 
         Validates: FW-16, FW-17, FW-18, FW-19
         """
-        # This property test verifies the firewall role's service persistence by checking:
-        # 1. NFTables service is enabled to start on boot (FW-17)
-        # 2. The ruleset is deployed where the service reads it (FW-16)
-        # 3. Configuration file is deployed to the correct location
-        # 4. Service is started after configuration
-
         # Read the firewall role tasks
         tasks_path = Path("roles/firewall/tasks/main.yml")
         assert tasks_path.exists(), "Firewall role tasks must exist"
@@ -640,7 +600,7 @@ class TestNFTablesServicePersistenceProperties:
 
         template_content = template_path.read_text()
 
-        # Verify template contains valid nftables syntax
+        # Verify the template defines the inet filter table and its three chains
         assert "table inet filter" in template_content, (
             "Template must define inet filter table"
         )
@@ -654,7 +614,7 @@ class TestNFTablesServicePersistenceProperties:
             "Template must define output chain"
         )
 
-        # Verify template has proper nftables structure (flush and define)
+        # Either `flush ruleset` or the inet table satisfies this check
         assert "flush ruleset" in template_content or "table inet filter" in template_content, (
             "Template must have proper nftables structure"
         )
@@ -717,15 +677,6 @@ class TestNFTablesServicePersistenceProperties:
             "Must have a task that starts nftables service"
         )
 
-        # Property verified: The firewall role configuration ensures that:
-        # - NFTables service is enabled to start on boot (FW-17)
-        # - NFTables configuration is deployed to /etc/nftables.conf (FW-16)
-        # - Configuration has correct permissions and ownership
-        # - Service is started after configuration deployment
-        # - Configuration changes trigger service reload via handlers
-        # - Template contains valid nftables syntax
-        # - This applies consistently regardless of SSH port or Tailscale status
-
 
 @st.composite
 def valid_knock_sequence(draw):
@@ -756,11 +707,12 @@ class TestNFTablesPortKnockingProperties:
         tailscale_enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Knock Rules Conditional Activation
+        Knock Rules Conditional Activation
 
-        Port knocking sets and rules SHALL appear in the NFTables template only when
-        Tailscale is disabled AND port_knocking_enabled is true. They SHALL NOT appear
-        when Tailscale is enabled or when port knocking is disabled.
+        Checks that the nftables template tests `firewall_tailscale_enabled` first,
+        puts the knock rules in an `elif firewall_port_knocking_enabled` branch,
+        renders the stage-1 and passed sets per address family, and has an `else`
+        branch for open SSH.
 
         Validates: KNOCK-1
         """
@@ -804,14 +756,14 @@ class TestNFTablesPortKnockingProperties:
         knock_sequence: list,
     ):
         """
-        Feature: vps-bootstrap-playbook, Knock Sequence Ports in Template
+        Knock Sequence Ports in Template
 
-        All ports from the configured knock sequence SHALL appear in the NFTables
-        template rules for both IPv4 and IPv6 address families.
+        Checks that the nftables template references each of the three sequence
+        positions and contains `firewall_port_knocking_sequence | join`. Nothing
+        here checks the set-membership qualifier that makes the second and third
+        stages conditional on the one before them, or the drop rule itself.
 
-        Validates: KNOCK-4, KNOCK-5, KNOCK-6 — the three sequence positions
-        only. Nothing here checks the set-membership qualifier that makes the
-        second and third stages conditional on the one before them.
+        Validates: KNOCK-4, KNOCK-5, KNOCK-6
         """
         template_path = Path("roles/firewall/templates/nftables.conf.j2")
         content = template_path.read_text()
@@ -827,7 +779,7 @@ class TestNFTablesPortKnockingProperties:
             "Template must reference third port in sequence"
         )
 
-        # Verify the drop rule references the full sequence
+        # Verify the full sequence is joined somewhere in the template
         assert "firewall_port_knocking_sequence | join" in content, (
             "Drop rule must reference the full knock sequence"
         )
@@ -843,10 +795,10 @@ class TestNFTablesPortKnockingProperties:
         addr_type: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Dual-Stack Knock Sets
+        Dual-Stack Knock Sets
 
-        The NFTables template SHALL define knock sets for both IPv4 and IPv6
-        address families.
+        Checks that the nftables template defines a set of the drawn address type,
+        `ipv4_addr` or `ipv6_addr`.
 
         Validates: KNOCK-3
         """
@@ -868,10 +820,10 @@ class TestNFTablesPortKnockingProperties:
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, SSH Accept References Knock Passed
+        SSH Accept References Knock Passed
 
-        When port knocking is enabled, the SSH accept rule SHALL reference the
-        knock_passed set for the given address family.
+        Checks that the nftables template has an `@knock4_passed accept` or
+        `@knock6_passed accept` rule for the drawn family.
 
         Validates: KNOCK-9
         """
@@ -893,10 +845,10 @@ class TestNFTablesPortKnockingProperties:
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Sets at Table Level
+        Sets at Table Level
 
-        Named NFTables sets SHALL be defined at the table level (outside chain
-        blocks), as required by NFTables syntax.
+        Checks that the drawn family's stage-1 set is defined before `chain input`,
+        at table level as nftables requires.
 
         Validates: KNOCK-3
         """
@@ -932,9 +884,10 @@ class TestNFTablesPortKnockingProperties:
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Timeout Variables Used
+        Timeout Variables Used
 
-        Knock set timeouts SHALL use the configured variables, not hardcoded values.
+        Checks that the nftables template references
+        `firewall_port_knocking_stage_timeout` and `firewall_port_knocking_timeout`.
 
         Validates: KNOCK-7
         """
@@ -959,10 +912,10 @@ class TestNFTablesPortKnockingProperties:
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Explicit Drop for Knock Ports
+        Explicit Drop for Knock Ports
 
-        Knock port packets SHALL be explicitly dropped after set processing
-        to prevent leakage to later rules or logs.
+        Checks that the nftables template has a drop rule over the joined knock
+        sequence, placed before the drawn family's passed-set SSH accept.
 
         Validates: KNOCK-8
         """
@@ -1001,10 +954,10 @@ class TestNFTablesPortKnockingProperties:
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, No Unconditional SSH Accept
+        No Unconditional SSH Accept
 
-        When port knocking is enabled, there SHALL NOT be an unconditional SSH
-        accept rule (one without @knock_passed set membership check).
+        Checks that every SSH accept rule in the nftables template's knocking
+        branch carries an `@knock` set-membership check.
 
         Validates: KNOCK-9
         """
@@ -1042,13 +995,14 @@ class TestNFTablesPortKnockingProperties:
         af: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Defaults Define Knock Variables
+        Defaults Define Knock Variables
 
-        The firewall role defaults SHALL define all port knocking variables
-        with the firewall_ prefix convention.
+        Checks that the firewall defaults define `firewall_port_knocking_enabled`,
+        `firewall_port_knocking_sequence`, `firewall_port_knocking_timeout` and
+        `firewall_port_knocking_stage_timeout`. What they are derived from and what
+        values they carry is not checked.
 
-        Validates: KNOCK-10 — that the four keys exist, not what they are
-        derived from and not what values they carry.
+        Validates: KNOCK-10
         """
         defaults_path = Path("roles/firewall/defaults/main.yml")
         assert defaults_path.exists(), "Firewall defaults must exist"
@@ -1067,7 +1021,6 @@ class TestNFTablesPortKnockingProperties:
         assert "firewall_port_knocking_stage_timeout:" in content, (
             "firewall_port_knocking_stage_timeout must be defined in defaults"
         )
-        # - Rules persist across system reboots through systemd service
 
 
 class TestPortKnockPrePlayProperties:

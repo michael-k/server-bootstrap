@@ -79,30 +79,17 @@ class TestSSHHardeningProperties:
         ssh_port: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 5: SSH Daemon Hardening Configuration
+        SSH Daemon Hardening Configuration
 
-        For any execution of the bootstrap playbook, the SSHD configuration SHALL
-        disable password authentication globally, disable root login, restrict key
-        exchange algorithms to modern elliptic curves, restrict ciphers to
-        authenticated encryption, restrict MACs to Encrypt-Then-MAC variants, and
-        disable X11 forwarding, TCP forwarding, agent forwarding, tunneling, and
-        empty passwords.
+        Checks that the sshd template disables password, root and empty-password
+        logins, enables public-key authentication, disables X11, TCP and agent
+        forwarding and tunnelling, and sets `KexAlgorithms`, `Ciphers` and `MACs`;
+        and that the defaults file defines `ssh_kex_algorithms`, `ssh_ciphers` and
+        `ssh_macs` and mentions curve25519, chacha20-poly1305 or gcm, and etm
+        somewhere.
 
         Validates: SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9,
         SSH-10, SSH-11
-
-        This property test verifies that:
-        1. Password authentication is disabled globally
-        2. Root login is disabled
-        3. Key exchange algorithms are restricted to modern elliptic curves
-        4. Ciphers are restricted to authenticated encryption (AEAD)
-        5. MACs are restricted to Encrypt-Then-MAC variants
-        6. X11 forwarding is disabled
-        7. TCP forwarding is disabled
-        8. Agent forwarding is disabled
-        9. Tunneling is disabled
-        10. Empty passwords are not permitted
-        11. Public key authentication is enabled
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -217,17 +204,12 @@ class TestSSHHardeningProperties:
         ansible_user: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 6: SSH Access Restriction
+        SSH Access Restriction
 
-        For any execution of the bootstrap playbook with configured group name,
-        the SSHD AllowGroups directive SHALL contain the ssh access group.
+        Checks that the sshd template has an `AllowGroups` directive naming
+        `ssh_access_group`, and that the defaults define `ssh_access_group`.
 
         Validates: SSH-12
-
-        This property test verifies that:
-        1. AllowGroups directive is present in configuration
-        2. AllowGroups references ssh_access_group variable
-        3. AllowGroups is configurable through variables
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -275,19 +257,13 @@ class TestSSHHardeningProperties:
         ssh_port: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 7: SSH Port Configuration
+        SSH Port Configuration
 
-        For any execution of the bootstrap playbook with an optional SSH port
-        variable, the SSHD SHALL listen on the specified port (or default port 22
-        if not specified).
+        Checks that the sshd template renders `Port` from `{{ ssh_port }}`, that
+        `ssh_port` defaults to 22, and that the tasks mention `validate:` and
+        `sshd`.
 
         Validates: SSH-13
-
-        This property test verifies that:
-        1. Port directive is present in configuration
-        2. Port uses configurable variable
-        3. Default port is 22
-        4. Port configuration is validated
         """
         # Verify SSH hardening role exists
         role_path = Path("roles/ssh_hardening")
@@ -326,8 +302,8 @@ class TestSSHHardeningProperties:
 
         tasks_content = tasks_path.read_text()
 
-        # SSH-19: the deployment validates the candidate file with sshd's own
-        # parser. This checks syntax, not that any ListenAddress is bindable.
+        # The tasks mention `validate:` and `sshd`; which task they belong to
+        # is not checked
         assert "validate:" in tasks_content, (
             "SSH config deployment must use validation"
         )
@@ -353,21 +329,14 @@ class TestSSHHardeningProperties:
         client_alive_count_max: int,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 8: SSH Session Security Configuration
+        SSH Session Security Configuration
 
-        For any execution of the bootstrap playbook, the SSHD configuration SHALL
-        set MaxAuthTries to a low value, LoginGraceTime to a short duration, and
-        configure ClientAliveInterval and ClientAliveCountMax for idle session
-        management.
+        Checks that the sshd template renders `MaxAuthTries`, `LoginGraceTime`,
+        `ClientAliveInterval` and `ClientAliveCountMax` from their variables, that
+        the defaults define all four, and that the `ssh_max_auth_tries` default is
+        at most 6.
 
         Validates: SSH-14, SSH-15, SSH-16
-
-        This property test verifies that:
-        1. MaxAuthTries is configured with a low value
-        2. LoginGraceTime is configured with a short duration
-        3. ClientAliveInterval is configured for keepalive
-        4. ClientAliveCountMax is configured for idle timeout
-        5. All session security settings are configurable
         """
         # Verify SSH hardening role exists
         role_path = Path("roles/ssh_hardening")

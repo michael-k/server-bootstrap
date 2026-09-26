@@ -39,10 +39,11 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, /tmp Mount Hardening
+        /tmp Mount Hardening
 
-        For any execution of the bootstrap playbook, /tmp SHALL be mounted
-        with noexec, nosuid, and nodev options via a systemd bind-mount unit.
+        Checks that the full bind-mount unit template `tmp.mount.j2` carries the
+        drawn option (`noexec`, `nosuid` or `nodev`), `Type=none`, `bind` and `rw`.
+        The drop-in template `tmp.mount.conf.j2` is not read.
 
         Validates: FS-1
         """
@@ -74,10 +75,10 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, /dev/shm Mount Hardening
+        /dev/shm Mount Hardening
 
-        For any execution of the bootstrap playbook, /dev/shm SHALL be mounted
-        with noexec, nosuid, and nodev options via a systemd drop-in override.
+        Checks that the `/dev/shm` drop-in template carries the drawn option
+        (`noexec`, `nosuid` or `nodev`) and `rw`.
 
         Validates: FS-3
         """
@@ -109,10 +110,11 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, /var/tmp Mount Hardening
+        /var/tmp Mount Hardening
 
-        For any execution of the bootstrap playbook, /var/tmp SHALL be mounted
-        with noexec, nosuid, and nodev options as a bind-mount to /tmp.
+        Checks that the `var-tmp.mount` template carries the drawn option
+        (`noexec`, `nosuid` or `nodev`) and bind-mounts `/tmp` onto `/var/tmp` with
+        `Type=none`.
 
         Validates: FS-2
         """
@@ -143,10 +145,10 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, /var/tmp Depends on /tmp
+        /var/tmp Depends on /tmp
 
-        For any execution of the bootstrap playbook, the var-tmp.mount unit
-        SHALL declare a dependency on tmp.mount via After= and Requires=.
+        Checks that the `var-tmp.mount` template orders itself `After=tmp.mount`
+        and declares `Requires=tmp.mount`.
 
         Validates: FS-2
         """
@@ -173,10 +175,10 @@ class TestFilesystemHardeningProperties:
         mountpoint: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Tasks Deploy All Mount Units
+        Tasks Deploy All Mount Units
 
-        For any execution of the bootstrap playbook, the filesystem_hardening
-        tasks SHALL deploy systemd units for all three hardened mountpoints.
+        Checks that the role's tasks deploy, by the template module, the unit or
+        drop-in for the drawn mountpoint to its path under `/etc/systemd/system/`.
 
         Validates: FS-1, FS-2, FS-3, FS-4
         """
@@ -216,11 +218,11 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, No DefaultDependencies Override
+        No DefaultDependencies Override
 
-        For any execution of the bootstrap playbook, mount units SHALL NOT set
-        DefaultDependencies=no, to preserve systemd's implicit boot ordering
-        (After=sysinit.target) that ensures root FS is mounted rw first.
+        Checks that neither `tmp.mount.j2` nor `var-tmp.mount.j2` sets
+        `DefaultDependencies=no`, which would drop systemd's implicit ordering
+        after the root filesystem is mounted read-write.
 
         Validates: FS-1, FS-2
         """
@@ -247,10 +249,10 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Handler Triggers Daemon Reload
+        Handler Triggers Daemon Reload
 
-        For any execution of the bootstrap playbook, unit file changes SHALL
-        trigger a systemd daemon-reload via the handler.
+        Checks that the role's handler runs a systemd daemon-reload and that the
+        tasks notify it.
 
         Validates: FS-4
         """
@@ -281,11 +283,11 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, /dev/shm Uses Drop-in Override
+        /dev/shm Uses Drop-in Override
 
-        For any execution of the bootstrap playbook, /dev/shm hardening SHALL
-        use a drop-in conf file (not a full unit replacement) to preserve the
-        base unit's Type/What/Where while only changing Options.
+        Checks that the tasks create the `dev-shm.mount.d` directory and that the
+        drop-in template has a `[Mount]` section and no `[Unit]` or `[Install]`
+        section.
 
         Validates: FS-3
         """
@@ -325,12 +327,11 @@ class TestFilesystemHardeningProperties:
         mount_option: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Missing Option Detection
+        Missing Option Detection
 
-        Verify that the testing approach can detect a missing security option.
-        If an options line does NOT contain a required option, the assertion fails.
-
-        Validates: FS-1, FS-2, FS-3 (negative test)
+        Checks the substring test the other tests rely on against two synthetic
+        `Options=` lines, one missing the drawn option and one carrying all three.
+        It reads no file from the role, so it cites no requirement.
         """
         # Simulate an options line missing one required option
         all_options = {"noexec", "nosuid", "nodev"}

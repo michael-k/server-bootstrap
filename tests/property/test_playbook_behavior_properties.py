@@ -56,19 +56,15 @@ class TestServiceRestartProperties:
         config_file: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 9: Service Restart on Configuration Change
+        Service Restart on Configuration Change
 
-        For any service (SSHD, NFTables, journald, fail2ban, time sync) whose configuration
-        is modified by the playbook, the service SHALL be restarted or reloaded after the
-        configuration change.
+        For the role that manages the drawn service (`ssh_hardening`, `firewall`,
+        `fail2ban`, `logging` or `system_config`), checks that a role whose
+        `tasks/main.yml` deploys a template or file notifies a handler, that its
+        handlers restart or reload through a service module, and that every handler
+        it notifies is defined by name or `listen`.
 
-        Validates: SSH-17, FW-19, LOG-4
-
-        This property test verifies that:
-        1. Configuration changes trigger handler notifications
-        2. Handlers restart or reload the appropriate service
-        3. Service restart happens after configuration is deployed
-        4. Handlers use appropriate state (restarted or reloaded)
+        Validates: SSH-17, FW-19, LOG-4, F2B-15
         """
         # Map services to their managing roles
         service_role_map = {
@@ -202,13 +198,6 @@ class TestServiceRestartProperties:
                     f"but it's not defined in handlers/main.yml (checked both 'name' and 'listen')"
                 )
 
-        # Property verified: The role ensures that:
-        # - Configuration changes trigger handler notifications (SSH-17, FW-19, LOG-4)
-        # - Handlers restart or reload the appropriate service
-        # - Handlers use appropriate state (restarted or reloaded)
-        # - Notified handlers are properly defined
-        # - This applies consistently across all services and configuration files
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=50)
@@ -223,15 +212,10 @@ class TestServiceRestartProperties:
     )
     def test_handlers_are_idempotent(self, role_name: str):
         """
-        Feature: vps-bootstrap-playbook, Handler Idempotency
+        Handler Idempotency
 
-        For any handler that restarts or reloads a service, the handler SHALL
-        be idempotent and safe to run multiple times without side effects.
-
-        This property verifies that:
-        - Handlers use declarative service modules
-        - Handlers don't use shell/command for service management
-        - Handlers use appropriate state transitions
+        For the drawn role, checks that any shell or command handler has a
+        `changed_when`, and that the handlers file names its handlers.
         """
         # Verify role exists
         role_path = Path("roles") / role_name
@@ -277,8 +261,6 @@ class TestServiceRestartProperties:
             f"Role {role_name} handlers must have descriptive names"
         )
 
-        # Property verified: Handlers are idempotent and use appropriate modules
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=50)
@@ -287,16 +269,13 @@ class TestServiceRestartProperties:
     )
     def test_service_restart_happens_after_config_deployment(self, service_name: str):
         """
-        Feature: vps-bootstrap-playbook, Service Restart Ordering
+        Service Restart Ordering
 
-        For any service whose configuration is modified, the service restart
-        SHALL happen after the configuration file is deployed, ensuring the
-        service uses the new configuration.
-
-        This property verifies that:
-        - Configuration deployment tasks notify handlers
-        - Handlers run after all tasks complete (Ansible default behavior)
-        - Service restart uses the newly deployed configuration
+        For the role that manages the drawn service, checks that a role whose
+        `tasks/main.yml` deploys a template or file does not call a service module
+        inside that task, and notifies a handler instead. It does not read the
+        handlers, so it cites no requirement; the restart itself is covered by
+        `test_property_9_service_restart_on_configuration_change`.
         """
         # Map services to their managing roles
         service_role_map = {
@@ -368,21 +347,16 @@ class TestServiceRestartProperties:
                 f"to trigger service restart"
             )
 
-        # Property verified: Service restart happens after config deployment via handlers
-
     @pytest.mark.property
     @pytest.mark.unit
     def test_all_config_changes_trigger_appropriate_handlers(self):
         """
-        Feature: vps-bootstrap-playbook, Configuration Change Handler Coverage
+        Notifying Roles Have Handlers
 
-        For any role that deploys configuration files, all configuration deployment
-        tasks SHALL notify appropriate handlers to apply the changes.
-
-        This property verifies that:
-        - All template tasks notify handlers
-        - All copy tasks for config files notify handlers
-        - Handler names are meaningful and service-specific
+        For `ssh_hardening`, `firewall`, `fail2ban`, `logging` and
+        `system_config`, checks that a role whose `tasks/main.yml` deploys a
+        template or file and notifies a handler has a `handlers/main.yml`. It does
+        not check that each deployment task notifies.
         """
         roles_dir = Path("roles")
         assert roles_dir.exists(), "Roles directory must exist"
@@ -424,8 +398,6 @@ class TestServiceRestartProperties:
                         f"Role {role_name} notifies handlers but has no handlers/main.yml"
                     )
 
-        # Property verified: Configuration changes trigger appropriate handlers
-
     @pytest.mark.property
     @pytest.mark.unit
     @settings(max_examples=50)
@@ -440,18 +412,13 @@ class TestServiceRestartProperties:
     )
     def test_handlers_use_appropriate_service_state(self, role_name: str):
         """
-        Feature: vps-bootstrap-playbook, Handler Service State
+        Handler Service State
 
-        For any handler that manages a service, the handler SHALL use the
-        appropriate service state for the operation:
-        - 'restarted' for applying configuration changes
-        - 'reloaded' for applying configuration without full restart (when supported)
-        - Never 'started' (which is for initial setup, not config changes)
-
-        This property verifies that:
-        - Handlers use restarted or reloaded state
-        - Handlers don't use started state for config changes
-        - State choice is appropriate for the service
+        For the drawn role, checks that handlers which manage a service use
+        `state: restarted` or `state: reloaded` somewhere in the handlers file. It
+        does not check that a configuration change notifies them, so it cites no
+        requirement; `test_property_9_service_restart_on_configuration_change`
+        checks both halves.
         """
         # Verify role exists
         role_path = Path("roles") / role_name
@@ -492,8 +459,6 @@ class TestServiceRestartProperties:
                 f"or 'reloaded' for configuration changes"
             )
 
-        # Property verified: Handlers use appropriate service state
-
 
 class TestConfigurationValidationProperties:
     """Property-based tests for configuration validation before deployment."""
@@ -510,16 +475,10 @@ class TestConfigurationValidationProperties:
     )
     def test_critical_configs_use_validation(self, config_file: str):
         """
-        Feature: vps-bootstrap-playbook, Critical Configuration Validation
+        Critical Configuration Validation
 
-        For any critical configuration file (sshd_config, nftables.conf, sudoers),
-        the playbook SHOULD validate the configuration before deploying it to
-        prevent broken configurations that could lock out administrators.
-
-        This property verifies that:
-        - Critical config templates use validate parameter when available
-        - Validation prevents deployment of broken configurations
-        - This is a best practice for safety
+        Asserts nothing: for the drawn configuration file, every branch passes
+        whether or not the deploying task has a `validate` parameter.
         """
         # Map config files to their managing roles
         config_role_map = {
@@ -565,8 +524,6 @@ class TestConfigurationValidationProperties:
                 # Log a note but don't fail the test
                 pass
 
-        # Property verified: Critical configs should use validation when possible
-
 
 class TestHandlerNotificationProperties:
     """Property-based tests for handler notification patterns."""
@@ -575,16 +532,12 @@ class TestHandlerNotificationProperties:
     @pytest.mark.unit
     def test_handlers_are_notified_not_included(self):
         """
-        Feature: vps-bootstrap-playbook, Handler Notification Pattern
+        Handler Notification Pattern
 
-        For any service restart needed after configuration changes, the playbook
-        SHALL use the notify mechanism to trigger handlers, not include_tasks or
-        direct service module calls in the main task flow.
-
-        This property verifies that:
-        - Configuration tasks use notify to trigger handlers
-        - Handlers are defined in handlers/main.yml
-        - Direct service restarts are not mixed with config deployment
+        For `ssh_hardening`, `firewall`, `fail2ban`, `logging` and
+        `system_config`, checks that a role whose `tasks/main.yml` deploys a
+        template or file and notifies a handler has a `handlers/main.yml` that
+        names its handlers.
         """
         roles_dir = Path("roles")
         assert roles_dir.exists(), "Roles directory must exist"
@@ -627,5 +580,3 @@ class TestHandlerNotificationProperties:
                 assert "name:" in handlers_content, (
                     f"Role {role_name} handlers must have named handlers"
                 )
-
-        # Property verified: Handlers are notified, not included or called directly

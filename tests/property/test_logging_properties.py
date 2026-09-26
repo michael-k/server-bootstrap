@@ -75,19 +75,14 @@ class TestJournaldProperties:
         compress: str,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 28: Journald Persistent Logging Configuration
+        Journald Persistent Logging Configuration
 
-        For any execution of the bootstrap playbook, journald SHALL be configured to
-        persist logs to disk with configurable maximum disk usage and retention time.
+        Checks the journald template's storage, disk-usage and retention settings
+        and their defaults, the journal directory's ownership and mode, and the
+        restart handler the configuration task notifies and flushes.
 
-        Validates: LOG-1, LOG-2, LOG-3, LOG-5
+        Validates: LOG-1, LOG-2, LOG-3, LOG-4, LOG-5
         """
-        # This property test verifies the logging role's behavior by checking:
-        # 1. journald is configured to persist logs to disk (LOG-1)
-        # 2. journald maximum disk usage is configurable (LOG-2)
-        # 3. journald log retention time is configurable (LOG-3)
-        # 4. the persistent journal directory has correct ownership/mode (LOG-5)
-
         # Read the logging role tasks
         tasks_path = Path("roles/logging/tasks/main.yml")
         assert tasks_path.exists(), "Logging tasks file must exist"
@@ -242,15 +237,6 @@ class TestJournaldProperties:
             "Restart handler must restart the service"
         )
 
-        # Property verified: The logging role configuration ensures that:
-        # - journald is configured to persist logs to disk (LOG-1)
-        # - maximum disk usage is configurable via journald_max_disk_usage (LOG-2)
-        # - retention time is configurable via journald_max_retention_time (LOG-3)
-        # - configuration changes trigger service restart (LOG-4)
-        # - journal directory is created with correct permissions (LOG-5)
-        # - compression is enabled for efficient storage
-        # - This applies consistently across all valid configuration values
-
 
 class TestJournaldStorageModeProperties:
     """Property-based tests for journald storage mode configuration."""
@@ -263,15 +249,11 @@ class TestJournaldStorageModeProperties:
     )
     def test_journald_storage_mode_configuration(self, storage_mode: str):
         """
-        Feature: vps-bootstrap-playbook, Journald Storage Mode Configuration
+        Journald Storage Mode Configuration
 
-        For any execution of the bootstrap playbook, journald SHALL be configured
-        with persistent storage mode to ensure logs survive system reboots.
-
-        This property verifies that:
-        - Storage mode is set to persistent (LOG-1)
-        - Journal directory is created for persistent storage (LOG-5)
-        - Directory has correct ownership and permissions (LOG-5)
+        Checks that the journald template sets `Storage=persistent` and that the
+        role creates `/var/log/journal` as a directory. Ownership and mode are
+        checked by `test_property_28_journald_persistent_logging_configuration`.
 
         Validates: LOG-1, LOG-5
         """
@@ -305,11 +287,6 @@ class TestJournaldStorageModeProperties:
             "Journal path must be created as directory (LOG-5)"
         )
 
-        # Property verified: The logging role ensures:
-        # - Storage mode is persistent for log persistence across reboots (LOG-1)
-        # - Journal directory is created with correct permissions (LOG-5)
-        # - Logs survive system reboots
-
 
 class TestJournaldCompressionProperties:
     """Property-based tests for journald compression configuration."""
@@ -322,14 +299,11 @@ class TestJournaldCompressionProperties:
     )
     def test_journald_compression_configuration(self, compress: str):
         """
-        Feature: vps-bootstrap-playbook, Journald Compression Configuration
+        Journald Compression Configuration
 
-        For any execution of the bootstrap playbook, journald SHALL be configured
-        with compression enabled to reduce disk space usage for log storage.
-
-        This property verifies that:
-        - Compression is enabled
-        - Configuration uses efficient compression algorithm
+        Checks that the journald template sets `Compress=yes` in its `[Journal]`
+        section. Compression is out of scope of the logging spec, so this test
+        cites no requirement.
         """
         # Read the journald configuration template
         template_path = Path("roles/logging/templates/journald.conf.j2")
@@ -346,10 +320,6 @@ class TestJournaldCompressionProperties:
         assert "[Journal]" in template_content, (
             "Journald configuration must have [Journal] section"
         )
-
-        # Property verified: The logging role ensures:
-        # - Compression is enabled for efficient disk space usage
-        # - Logs are compressed automatically by journald
 
 
 class TestJournaldServiceRestartProperties:
@@ -368,16 +338,11 @@ class TestJournaldServiceRestartProperties:
         max_retention_time,
     ):
         """
-        Feature: vps-bootstrap-playbook, Journald Service Restart
+        Journald Service Restart
 
-        For any execution of the bootstrap playbook where journald configuration
-        is modified, the systemd-journald service SHALL be restarted to apply
-        the new configuration.
-
-        This property verifies that:
-        - Configuration changes trigger service restart via handler (LOG-4)
-        - Handler is flushed immediately after configuration (LOG-4)
-        - Service restart uses systemd module
+        Checks that the configuration task notifies the systemd-journald restart
+        handler, that handlers are flushed straight after it, and that the handler
+        restarts `systemd-journald` through the systemd module.
 
         Validates: LOG-4
         """
@@ -423,9 +388,3 @@ class TestJournaldServiceRestartProperties:
         assert "state: restarted" in handlers_content, (
             "Handler must restart the service"
         )
-
-        # Property verified: The logging role ensures:
-        # - Configuration changes trigger service restart (LOG-4)
-        # - Restart happens immediately via handler flush (LOG-4)
-        # - Service restart uses systemd module
-        # - New configuration is applied without manual intervention

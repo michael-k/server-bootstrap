@@ -708,10 +708,9 @@ to `ansible.builtin.template`, which renders the candidate to a temporary
 file, runs the command, and installs the file only on a zero exit status.
 `test_ssh_configuration_validation_prevents_lockout` asserts the `validate:`
 key, the `/usr/sbin/sshd` path, the `-t` flag and the `%s` placeholder are
-all present in the task file;
-`test_property_7_ssh_port_configuration` asserts `validate:` and `sshd`; and
+all present in the task file, and
 `test_property_12_ssh_interface_restriction_with_safety_check` asserts
-`validate:` and the literal `/usr/sbin/sshd -t`. All three are substring
+`validate:` and the literal `/usr/sbin/sshd -t`. Both are substring
 checks against the task file's text — no test renders a deliberately broken
 template and confirms the task fails, so nothing establishes that the hook
 actually fires.

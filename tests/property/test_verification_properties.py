@@ -83,31 +83,19 @@ class TestConfigurationVerificationProperties:
         disk_swap_enabled: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 34: Configuration Verification Round-Trip
+        Configuration Verification Coverage
 
-        For any configuration aspect modified by the bootstrap playbook, the test suite
-        SHALL verify the configuration matches the expected state, demonstrating that
-        playbook execution followed by test execution confirms correctness.
-
-        Validates: every VRFY-4 citation in tests/verify_bootstrap.yml (each
-        block names the feature requirement ID it verifies, in place of the
-        retired flat Requirement 14 numbering)
-
-        This property test verifies that the verification playbook:
-        1. Tests all user account configurations (USR-1, USR-4)
-        2. Tests all SSH hardening configurations (SSH-1, SSH-2, SSH-5 through
-           SSH-13, SSH-18, SSH-20)
-        3. Tests Tailscale configuration when enabled (TS-12, TS-13, EMRG-1)
-        4. Tests NFTables firewall configuration (FW-3, FW-4, FW-6, FW-7,
-           FW-14, FW-17, FW-18)
-        5. Tests hostname configuration when set (HOST-1)
-        6. Tests fail2ban configuration (F2B-4, F2B-13, F2B-14)
-        7. Tests journald configuration (LOG-1)
-        8. Tests time synchronization (TIME-4, TIME-5), and names a
-           synchronization-status task
-        9. Tests swap configuration when enabled (SWAP-4, SWAP-5, SWAP-7,
-           SWAP-9, SWAP-11, SWAP-12, SWAP-14, SWAP-15)
-        10. Provides clear pass/fail reporting (this spec's own VRFY-3)
+        Checks, by substrings of the task names in `tests/verify_bootstrap.yml`,
+        that the verification playbook has a task for each of: the two accounts'
+        uids and sudo grants; sshd's password, root-login, port, AllowGroups, key
+        exchange, cipher, MAC, forwarding and tunnelling settings, its service
+        state and its Tailscale restriction; the Tailscale service and the
+        emergency script; the nftables service, policies, established, loopback
+        and SSH rules; the hostname; the fail2ban service and its SSH jail;
+        persistent journald; the time-sync service and its status; zram and disk
+        swap; and a summary. It does not run the playbook or read what the checks
+        assert, and a task name showing that a check is present does not verify
+        the feature it names, so it cites no feature requirement.
         """
         # Skip if usernames are identical (invalid configuration)
         if manual_user == ansible_user:
@@ -152,250 +140,251 @@ class TestConfigurationVerificationProperties:
 
     def _verify_user_account_tests(self, task_names: list[str]):
         """
-        Verify tests for user account configuration (USR-1, USR-4, SUDO-2,
-        SUDO-3).
+        Require tasks named for the manual account's uid 1000 and sudo, and the
+        automation account's uid 1999 and passwordless sudo.
 
         Args:
             task_names: List of task names from verification playbook
         """
-        # Verify USR-1: Manual user exists with uid 1000
+        # Manual user exists with uid 1000
         assert any(
             "manual" in name.lower() and "uid 1000" in name.lower() for name in task_names
-        ), "Verification playbook must test manual user with uid 1000 (USR-1)"
+        ), "Verification playbook must test manual user with uid 1000"
 
-        # Verify USR-4: Ansible user exists with uid 1999
+        # Ansible user exists with uid 1999
         assert any(
             "ansible" in name.lower() and "uid 1999" in name.lower() for name in task_names
-        ), "Verification playbook must test Ansible user with uid 1999 (USR-4)"
+        ), "Verification playbook must test Ansible user with uid 1999"
 
-        # Verify SUDO-2: Manual user has sudo privileges
+        # Manual user has sudo privileges
         assert any(
             "manual" in name.lower() and "sudo" in name.lower() for name in task_names
-        ), "Verification playbook must test manual user sudo privileges (SUDO-2)"
+        ), "Verification playbook must test manual user sudo privileges"
 
-        # Verify SUDO-3: Ansible user has passwordless sudo
+        # Ansible user has passwordless sudo
         assert any(
             "ansible" in name.lower() and "passwordless" in name.lower() for name in task_names
-        ), "Verification playbook must test Ansible user passwordless sudo (SUDO-3)"
+        ), "Verification playbook must test Ansible user passwordless sudo"
 
     def _verify_ssh_hardening_tests(self, task_names: list[str]):
         """
-        Verify tests for SSH hardening configuration (SSH-1, SSH-2, SSH-5,
-        SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13, and
-        SSH-20 for the two service-state checks below).
+        Require tasks named for sshd's password authentication, root login, port,
+        AllowGroups, key exchange, ciphers, MACs, X11, TCP and agent forwarding,
+        tunnelling, and sshd running and enabled.
 
         Args:
             task_names: List of task names from verification playbook
         """
-        # Verify SSH-1: Password authentication disabled
+        # Password authentication disabled
         assert any(
             "password authentication" in name.lower() and "disabled" in name.lower()
             for name in task_names
-        ), "Verification playbook must test SSH password authentication disabled (SSH-1)"
+        ), "Verification playbook must test SSH password authentication disabled"
 
-        # Verify SSH-2: Root login disabled
+        # Root login disabled
         assert any(
             "root login" in name.lower() and "disabled" in name.lower() for name in task_names
-        ), "Verification playbook must test SSH root login disabled (SSH-2)"
+        ), "Verification playbook must test SSH root login disabled"
 
-        # Verify SSH-13: SSH listening on configured port
+        # SSH listening on configured port
         assert any("port" in name.lower() and "ssh" in name.lower() for name in task_names), (
-            "Verification playbook must test SSH port configuration (SSH-13)"
+            "Verification playbook must test SSH port configuration"
         )
 
-        # Verify SSH-12: AllowGroups restricted
+        # AllowGroups restricted
         assert any("allowgroups" in name.lower() for name in task_names), (
-            "Verification playbook must test SSH AllowGroups restriction (SSH-12)"
+            "Verification playbook must test SSH AllowGroups restriction"
         )
 
-        # Verify SSH-5: Key exchange algorithms
+        # Key exchange algorithms
         assert any(
             "key exchange" in name.lower() or "kexalgorithms" in name.lower()
             for name in task_names
-        ), "Verification playbook must test SSH key exchange algorithms (SSH-5)"
+        ), "Verification playbook must test SSH key exchange algorithms"
 
-        # Verify SSH-6: Ciphers
+        # Ciphers
         assert any("cipher" in name.lower() for name in task_names), (
-            "Verification playbook must test SSH ciphers (SSH-6)"
+            "Verification playbook must test SSH ciphers"
         )
 
-        # Verify SSH-7: MACs
+        # MACs
         assert any("mac" in name.lower() for name in task_names), (
-            "Verification playbook must test SSH MACs (SSH-7)"
+            "Verification playbook must test SSH MACs"
         )
 
-        # Verify SSH-8: X11 forwarding disabled
+        # X11 forwarding disabled
         assert any("x11" in name.lower() for name in task_names), (
-            "Verification playbook must test X11 forwarding disabled (SSH-8)"
+            "Verification playbook must test X11 forwarding disabled"
         )
 
-        # Verify SSH-9: TCP forwarding disabled
+        # TCP forwarding disabled
         assert any("tcp forwarding" in name.lower() for name in task_names), (
-            "Verification playbook must test TCP forwarding disabled (SSH-9)"
+            "Verification playbook must test TCP forwarding disabled"
         )
 
-        # Verify SSH-10: Agent forwarding disabled
+        # Agent forwarding disabled
         assert any("agent forwarding" in name.lower() for name in task_names), (
-            "Verification playbook must test agent forwarding disabled (SSH-10)"
+            "Verification playbook must test agent forwarding disabled"
         )
 
-        # Verify SSH-11: Tunneling disabled
+        # Tunneling disabled
         assert any("tunnel" in name.lower() for name in task_names), (
-            "Verification playbook must test tunneling disabled (SSH-11)"
+            "Verification playbook must test tunneling disabled"
         )
 
-        # SSH-20: sshd running
+        # Sshd running
         assert any(
             "sshd" in name.lower() and "running" in name.lower() for name in task_names
         ), "Verification playbook must test SSHD service running"
 
-        # SSH-20: sshd enabled
+        # Sshd enabled
         assert any(
             "sshd" in name.lower() and "enabled" in name.lower() for name in task_names
         ), "Verification playbook must test SSHD service enabled"
 
     def _verify_tailscale_tests(self, task_names: list[str], tailscale_enabled: bool):
         """
-        Verify tests for Tailscale configuration (TS-12, TS-13, SSH-18,
-        EMRG-1).
+        Require tasks named for tailscaled running and enabled, SSH restricted to
+        Tailscale, and the emergency script. `tailscale_enabled` is not used.
 
         Args:
             task_names: List of task names from verification playbook
             tailscale_enabled: Whether Tailscale is enabled in configuration
         """
-        # Verify TS-13: Tailscale service running (conditional)
+        # Tailscale service running (conditional)
         assert any(
             "tailscale" in name.lower() and "running" in name.lower() for name in task_names
-        ), "Verification playbook must test Tailscale service running (TS-13)"
+        ), "Verification playbook must test Tailscale service running"
 
-        # Verify TS-12: Tailscale service enabled (conditional)
+        # Tailscale service enabled (conditional)
         assert any(
             "tailscale" in name.lower() and "enabled" in name.lower() for name in task_names
-        ), "Verification playbook must test Tailscale service enabled (TS-12)"
+        ), "Verification playbook must test Tailscale service enabled"
 
-        # Verify SSH-18: SSH restricted to Tailscale interface (conditional)
+        # SSH restricted to Tailscale interface (conditional)
         assert any(
             "ssh" in name.lower() and "restricted" in name.lower() and "tailscale" in name.lower()
             for name in task_names
-        ), "Verification playbook must test SSH restricted to Tailscale (SSH-18)"
+        ), "Verification playbook must test SSH restricted to Tailscale"
 
-        # Verify EMRG-1: Emergency script exists (conditional)
+        # Emergency script exists (conditional)
         assert any(
             "emergency" in name.lower() and "script" in name.lower() for name in task_names
-        ), "Verification playbook must test emergency script exists (EMRG-1)"
+        ), "Verification playbook must test emergency script exists"
 
     def _verify_firewall_tests(self, task_names: list[str]):
         """
-        Verify tests for NFTables firewall configuration (FW-3, FW-4, FW-6,
-        FW-7, FW-14, FW-17, FW-18).
+        Require tasks named for the nftables service active and enabled, the input
+        and forward drop policies, established or related traffic, loopback, and
+        the SSH port.
 
         Args:
             task_names: List of task names from verification playbook
         """
-        # Verify FW-18: NFTables service active
+        # NFTables service active
         assert any(
             "nftables" in name.lower() and "active" in name.lower() for name in task_names
-        ), "Verification playbook must test NFTables service active (FW-18)"
+        ), "Verification playbook must test NFTables service active"
 
-        # Verify FW-17: NFTables service enabled
+        # NFTables service enabled
         assert any(
             "nftables" in name.lower() and "enabled" in name.lower() for name in task_names
-        ), "Verification playbook must test NFTables service enabled (FW-17)"
+        ), "Verification playbook must test NFTables service enabled"
 
-        # Verify FW-3: Default input policy drop
+        # Default input policy drop
         assert any(
             "input" in name.lower() and "policy" in name.lower() and "drop" in name.lower()
             for name in task_names
-        ), "Verification playbook must test NFTables input policy drop (FW-3)"
+        ), "Verification playbook must test NFTables input policy drop"
 
-        # Verify FW-4: Default forward policy drop
+        # Default forward policy drop
         assert any(
             "forward" in name.lower() and "policy" in name.lower() and "drop" in name.lower()
             for name in task_names
-        ), "Verification playbook must test NFTables forward policy drop (FW-4)"
+        ), "Verification playbook must test NFTables forward policy drop"
 
-        # Verify FW-6: Established/related connections allowed
+        # Established/related connections allowed
         assert any(
             "established" in name.lower() or "related" in name.lower() for name in task_names
-        ), "Verification playbook must test established/related connections (FW-6)"
+        ), "Verification playbook must test established/related connections"
 
-        # Verify FW-7: Loopback traffic allowed
+        # Loopback traffic allowed
         assert any("loopback" in name.lower() for name in task_names), (
-            "Verification playbook must test loopback traffic allowed (FW-7)"
+            "Verification playbook must test loopback traffic allowed"
         )
 
-        # Verify FW-14: SSH port accessible through firewall
+        # SSH port accessible through firewall
         assert any(
             "ssh" in name.lower() and ("port" in name.lower() or "accessible" in name.lower())
             for name in task_names
-        ), "Verification playbook must test SSH port accessible (FW-14)"
+        ), "Verification playbook must test SSH port accessible"
 
     def _verify_hostname_tests(self, task_names: list[str], hostname: str):
         """
-        Verify tests for hostname configuration (HOST-1).
+        Require a task named for the hostname. `hostname` is not used.
 
         Args:
             task_names: List of task names from verification playbook
             hostname: Configured hostname (empty if not set)
         """
-        # Verify HOST-1: Hostname matches configured value (conditional)
+        # Hostname matches configured value (conditional)
         assert any("hostname" in name.lower() for name in task_names), (
-            "Verification playbook must test hostname configuration (HOST-1)"
+            "Verification playbook must test hostname configuration"
         )
 
     def _verify_fail2ban_tests(self, task_names: list[str]):
         """
-        Verify tests for fail2ban configuration (F2B-4, F2B-13, F2B-14).
+        Require tasks named for fail2ban active, enabled and monitoring.
 
         Args:
             task_names: List of task names from verification playbook
         """
-        # Verify F2B-14: Fail2ban service active
+        # Fail2ban service active
         assert any(
             "fail2ban" in name.lower() and "active" in name.lower() for name in task_names
-        ), "Verification playbook must test fail2ban service active (F2B-14)"
+        ), "Verification playbook must test fail2ban service active"
 
-        # Verify F2B-13: Fail2ban service enabled
+        # Fail2ban service enabled
         assert any(
             "fail2ban" in name.lower() and "enabled" in name.lower() for name in task_names
-        ), "Verification playbook must test fail2ban service enabled (F2B-13)"
+        ), "Verification playbook must test fail2ban service enabled"
 
-        # Verify F2B-4: Fail2ban monitoring SSHD
+        # Fail2ban monitoring SSHD
         assert any(
             "fail2ban" in name.lower() and "monitoring" in name.lower() for name in task_names
-        ), "Verification playbook must test fail2ban monitoring SSHD (F2B-4)"
+        ), "Verification playbook must test fail2ban monitoring SSHD"
 
     def _verify_logging_tests(self, task_names: list[str]):
         """
-        Verify tests for journald logging configuration (LOG-1).
+        Require a task named for persistent journald.
 
         Args:
             task_names: List of task names from verification playbook
         """
-        # Verify LOG-1: Journald persistent logging
+        # Journald persistent logging
         assert any(
             "journald" in name.lower() and "persist" in name.lower() for name in task_names
-        ), "Verification playbook must test journald persistent logging (LOG-1)"
+        ), "Verification playbook must test journald persistent logging"
 
     def _verify_time_sync_tests(self, task_names: list[str]):
         """
-        Verify tests for time synchronization (TIME-4, TIME-5), and that a task
-        named for synchronization status exists.
+        Require tasks named for the time-sync service active and enabled, and one
+        named for time synchronisation.
 
         Args:
             task_names: List of task names from verification playbook
         """
-        # Verify TIME-5: Time sync service active
+        # Time sync service active
         assert any(
             "time" in name.lower() and "sync" in name.lower() and "active" in name.lower()
             for name in task_names
-        ), "Verification playbook must test time sync service active (TIME-5)"
+        ), "Verification playbook must test time sync service active"
 
-        # Verify TIME-4: Time sync service enabled
+        # Time sync service enabled
         assert any(
             "time" in name.lower() and "sync" in name.lower() and "enabled" in name.lower()
             for name in task_names
-        ), "Verification playbook must test time sync service enabled (TIME-4)"
+        ), "Verification playbook must test time sync service enabled"
 
         # A task named for time synchronization exists
         assert any(
@@ -406,54 +395,54 @@ class TestConfigurationVerificationProperties:
         self, task_names: list[str], zram_enabled: bool, disk_swap_enabled: bool
     ):
         """
-        Verify tests for swap configuration (SWAP-4, SWAP-5, SWAP-7, SWAP-9,
-        SWAP-11, SWAP-12, SWAP-14, SWAP-15).
+        Require tasks named for the zram device existing, active as swap, its
+        compression and its priority, and for the disk swap file existing, active
+        and in fstab. `zram_enabled` and `disk_swap_enabled` are not used.
 
         Args:
             task_names: List of task names from verification playbook
             zram_enabled: Whether zram is enabled in configuration
             disk_swap_enabled: Whether disk swap is enabled in configuration
         """
-        # Verify SWAP-4: Zram device exists (conditional)
+        # Zram device exists (conditional)
         assert any("zram" in name.lower() and "exists" in name.lower() for name in task_names), (
-            "Verification playbook must test zram device exists (SWAP-4)"
+            "Verification playbook must test zram device exists"
         )
 
-        # Verify SWAP-7: Zram device active as swap (conditional)
+        # Zram device active as swap (conditional)
         assert any(
             "zram" in name.lower() and "active" in name.lower() and "swap" in name.lower()
             for name in task_names
-        ), "Verification playbook must test zram device active as swap (SWAP-7)"
+        ), "Verification playbook must test zram device active as swap"
 
-        # Verify SWAP-5: Zram compression algorithm (conditional)
+        # Zram compression algorithm (conditional)
         assert any(
             "zram" in name.lower() and "compression" in name.lower() for name in task_names
-        ), "Verification playbook must test zram compression algorithm (SWAP-5)"
+        ), "Verification playbook must test zram compression algorithm"
 
-        # Verify SWAP-9: Zram priority higher than disk swap (conditional).
-        # The playbook's own check only verifies SWAP-9's rendered value, not
-        # SWAP-16's comparison against disk swap - see
-        # specs/verification/design.md's ## Failure modes.
+        # Zram priority (conditional). The playbook's own check
+        # reads the rendered value only and does not compare it with the disk
+        # swap priority - see specs/verification/design.md's ## Failure modes.
         assert any("zram" in name.lower() and "priority" in name.lower() for name in task_names), (
-            "Verification playbook must test zram priority (SWAP-9)"
+            "Verification playbook must test zram priority"
         )
 
-        # Verify SWAP-11, SWAP-12: Disk swap file exists (conditional)
+        # Disk swap file exists (conditional)
         assert any(
             "disk" in name.lower() and "swap" in name.lower() and "exists" in name.lower()
             for name in task_names
-        ), "Verification playbook must test disk swap file exists (SWAP-11, SWAP-12)"
+        ), "Verification playbook must test disk swap file exists"
 
-        # Verify SWAP-14: Disk swap file active (conditional)
+        # Disk swap file active (conditional)
         assert any(
             "disk" in name.lower() and "swap" in name.lower() and "active" in name.lower()
             for name in task_names
-        ), "Verification playbook must test disk swap file active (SWAP-14)"
+        ), "Verification playbook must test disk swap file active"
 
-        # Verify SWAP-15: Disk swap file in fstab (conditional)
+        # Disk swap file in fstab (conditional)
         assert any(
             "swap" in name.lower() and "fstab" in name.lower() for name in task_names
-        ), "Verification playbook must test disk swap file in fstab (SWAP-15)"
+        ), "Verification playbook must test disk swap file in fstab"
 
     def _verify_summary_reporting(self, task_names: list[str]):
         """
@@ -471,7 +460,7 @@ class TestConfigurationVerificationProperties:
 
     def _verify_test_structure(self, tasks: list[dict]):
         """
-        Verify that verification tests follow best practices.
+        Asserts nothing: each branch below ends in `pass`.
 
         Args:
             tasks: List of task dictionaries from verification playbook
@@ -483,24 +472,18 @@ class TestConfigurationVerificationProperties:
             if "summary" in task_name.lower():
                 continue
 
-            # Verify test tasks use block structure for better organization
+            # Not checked: whether test tasks use block structure
             if task_name.startswith("Verify "):
-                # Test tasks should use block structure or direct assertions
-                # This is a best practice but not strictly required
                 pass
 
-            # Verify conditional tests use 'when' clause
+            # Not checked: whether conditional tests carry a 'when' clause
             if any(
                 keyword in task_name.lower()
                 for keyword in ["tailscale", "zram", "disk swap", "hostname"]
             ):
-                # Conditional tests should have 'when' clause
-                # (This is checked at runtime, not in static analysis)
                 pass
 
-            # Verify test tasks use appropriate modules
-            # Tests should use command, stat, slurp, systemd, assert modules
-            # (This is verified by the test execution, not static analysis)
+            # Not checked: which modules test tasks use
             pass
 
     @pytest.mark.property
@@ -529,7 +512,7 @@ class TestConfigurationVerificationProperties:
         tasks = verify_play["tasks"]
         task_names = [task.get("name", "") for task in tasks if "name" in task]
 
-        # A requirement ID looks like PREFIX-N (e.g. SSH-1, SUDO-11); a task
+        # A requirement ID looks like PREFIX-N; a task
         # name may cite several, comma-separated, when one assert verifies
         # conditions belonging to more than one requirement.
         requirement_id = re.compile(r"\b[A-Z][A-Z0-9]*-\d+\b")
@@ -604,8 +587,11 @@ class TestConfigurationVerificationProperties:
         """
         Verify that verification tests use proper assertion patterns.
 
-        This test checks that tests use ansible.builtin.assert module
-        with clear fail_msg and success_msg for user feedback.
+        Checks that `ansible.builtin.assert:`, `fail_msg:`, `success_msg:` and
+        `that:` each appear somewhere in the playbook. It does not tie the messages
+        to any particular assert, so an assert with no messages would pass.
+
+        Validates: VRFY-3
         """
         verify_playbook_path = Path("tests/verify_bootstrap.yml")
         assert verify_playbook_path.exists(), (
@@ -685,10 +671,11 @@ class TestConfigurationVerificationProperties:
         Verify that the verification playbook provides clear output for users.
 
         This test checks that the playbook includes:
-        1. Clear test names with requirement IDs
-        2. Success messages with checkmarks
-        3. Failure messages with clear descriptions
-        4. Summary reporting at the end
+        1. A test name of the form `Verify PREFIX-N`
+        2. A checkmark somewhere in the file
+        3. Summary reporting through the debug module
+
+        Validates: VRFY-4
         """
         verify_playbook_path = Path("tests/verify_bootstrap.yml")
         assert verify_playbook_path.exists(), (

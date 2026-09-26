@@ -54,7 +54,7 @@ file rather than by reading intent. Three requirements have no citation in the
 template, because none is a directive: `SSH-17` (its sites are the task's
 `notify`, the handler, and the two property suites that check the
 notify-and-handler pattern), `SSH-19` (its sites are the task's
-`validate:` and the three tests that assert it is configured) and `SSH-20`
+`validate:` and the two tests that assert it is configured) and `SSH-20`
 (its site is the handler, which restarts sshd; the
 unit's enabled and running state comes from the base image). The
 interface-restriction suite cites exactly two requirements — `SSH-18`, which

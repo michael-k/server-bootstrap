@@ -347,13 +347,18 @@ in both default paths: a tilde expands against whichever machine resolves it,
 so a path that silently resolved against the target's root home would find no
 key, or find a different one, with nothing in the run's output naming the
 machine it looked on.
-**Verified:** both deployments obtain the key through a file lookup, which
-Ansible evaluates on the controller, and `PRJ-7`'s pre-flight checks stat the
-same two paths with execution delegated to the controller before the first
-change to the host. The property suite's assertion is a substring check for
-`lookup('file'` in the role's task text. Nothing asserts that the pre-flight
-check and the deployment resolve the same path, and no test exercises a path
-that exists on one machine and not the other.
+**Verified:** by reading the files, not by a test. Both deployments in
+`roles/users/tasks/main.yml` obtain the key through
+`lookup('file', manual_user_ssh_key_file)` and
+`lookup('file', deploy_user_ssh_key_file)`, which Ansible evaluates on the
+controller, and `PRJ-7`'s pre-flight checks in `site.yml` stat the same two
+variables with `delegate_to: localhost` before the first change to the host.
+No test cites this requirement. The property suite's key-deployment tests
+accept either the key-file variable's name or the substring `lookup('file'`
+in the role's task text, so they pass whether or not the key is read through
+a lookup. Nothing asserts that the pre-flight check and the deployment
+resolve the same path, and no test exercises a path that exists on one
+machine and not the other.
 
 ### USR-12 — `authorized_keys` mode configurable, default `0600`
 

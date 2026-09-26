@@ -45,20 +45,14 @@ class TestSystemUpdatesProperties:
         autoclean: bool,
     ):
         """
-        Feature: vps-bootstrap-playbook, Property 16: System Package Updates
+        System Package Updates
 
-        For any execution of the bootstrap playbook on a Debian stable system,
-        the playbook SHALL execute apt update and apt upgrade, and notify the
-        operator if a reboot is required.
+        Checks the apt tasks' index refresh, upgrade, autoremove and autoclean
+        parameters and their variables and defaults, and the reboot-required check
+        and the operator notice it gates.
 
         Validates: UPD-1, UPD-2, UPD-3, UPD-4, UPD-6
         """
-        # This property test verifies the system_updates role's behavior by checking:
-        # 1. apt update is executed to refresh package lists (UPD-1)
-        # 2. apt upgrade is executed to install available updates (UPD-2)
-        # 3. The default upgrade type is dist, appropriate for Debian stable (UPD-2)
-        # 4. Operator is notified when package upgrades require a reboot (UPD-6)
-
         # Read the system_updates role tasks
         tasks_path = Path("roles/system_updates/tasks/main.yml")
         assert tasks_path.exists(), "System updates tasks file must exist"
@@ -223,17 +217,6 @@ class TestSystemUpdatesProperties:
             "Notification should include list of packages requiring reboot"
         )
 
-        # Property verified: The system_updates role configuration ensures that:
-        # - apt update is executed to refresh package lists (7.1)
-        # - apt upgrade is executed to install available updates (7.2)
-        # - Default upgrade type is 'dist' for Debian stable (7.3)
-        # - Operator is notified when reboot is required (7.4)
-        # - Notification includes list of packages requiring reboot
-        # - Cache validity time is configurable and reasonable
-        # - Autoremove and autoclean are configurable
-        # - Tasks are properly tagged for selective execution
-        # - This applies consistently across all valid configuration values
-
 
 class TestSystemUpdatesIdempotencyProperties:
     """Property-based tests for system updates idempotency."""
@@ -246,16 +229,10 @@ class TestSystemUpdatesIdempotencyProperties:
     )
     def test_system_updates_cache_idempotency(self, cache_valid_time: int):
         """
-        Feature: vps-bootstrap-playbook, System Updates Cache Idempotency
+        System Updates Cache Validity
 
-        For any execution of the bootstrap playbook with a configured cache validity time,
-        the apt update task SHALL skip cache refresh if the cache is still valid,
-        ensuring idempotent behavior.
-
-        This property verifies that:
-        - cache_valid_time parameter is used correctly
-        - Repeated executions within cache validity period don't refresh unnecessarily
-        - This reduces network traffic and execution time
+        Checks that the apt task bounds the index refresh with `cache_valid_time`
+        taken from `apt_update_cache_valid_time`.
 
         Validates: UPD-1
         """
@@ -278,11 +255,6 @@ class TestSystemUpdatesIdempotencyProperties:
             "Must use ansible.builtin.apt module for cache management"
         )
 
-        # Property verified: The system_updates role ensures:
-        # - cache_valid_time parameter is properly configured
-        # - apt module will skip cache refresh if cache is still valid
-        # - This provides idempotent behavior for repeated executions
-
 
 class TestSystemUpdatesNonInteractiveProperties:
     """Property-based tests for non-interactive system updates."""
@@ -295,16 +267,11 @@ class TestSystemUpdatesNonInteractiveProperties:
     )
     def test_system_updates_non_interactive_execution(self, upgrade_type: str):
         """
-        Feature: vps-bootstrap-playbook, System Updates Non-Interactive Execution
+        System Updates Upgrade Task
 
-        For any execution of the bootstrap playbook, the apt upgrade task SHALL
-        execute in non-interactive mode, ensuring automated execution without
-        requiring user input.
-
-        This property verifies that:
-        - apt upgrade runs without prompts
-        - Suitable for automated/unattended execution
-        - No manual intervention required during bootstrap
+        Checks that the role's tasks use the apt module and contain an `upgrade:`
+        parameter. It checks neither the configured strategy nor its default, and
+        not how the module handles prompts, so it cites no requirement.
         """
         # Read the system_updates role tasks
         tasks_path = Path("roles/system_updates/tasks/main.yml")
@@ -326,8 +293,3 @@ class TestSystemUpdatesNonInteractiveProperties:
         # The ansible.builtin.apt module automatically handles non-interactive execution
         # by setting DEBIAN_FRONTEND=noninteractive and using appropriate apt flags
         # No additional configuration is needed
-
-        # Property verified: The system_updates role ensures:
-        # - apt upgrade executes non-interactively
-        # - Suitable for automated bootstrap execution
-        # - No manual intervention required
