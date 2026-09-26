@@ -519,13 +519,17 @@ IPv6 address, and it runs only under Incus.
 THE Bootstrap SHALL fail the run, with a message naming lockout as the
 reason, if no tailnet IPv4 address is assigned.
 
-**Why:** `TS-17` publishes whatever the client returns, including nothing.
-An empty fact does not stop a downstream template from rendering — it
-renders an empty `ListenAddress`, which sshd rejects (measured on OpenSSH
-10.4), so the run would still stop, but later, at `SSH-19`'s validation,
-with a parser error that names neither the tailnet nor the missing address.
-Failing explicitly on the empty value is what keeps `INV-8`'s
-guarantee from depending on every consumer independently checking for it.
+**Why:** the value of this check is an early failure that says what is
+missing. `TS-17` publishes whatever the client returns, including nothing,
+and an empty fact still renders: it becomes an empty `ListenAddress`, which
+sshd already rejects (measured on OpenSSH 10.4). Without this check the run
+would still stop before sshd is narrowed, but later, at `SSH-19`'s
+validation, with a parser error that names neither the tailnet nor the
+missing address. This check stops it here instead, with a message that
+names the tailnet interface and the IPv4 address it lacks. It is one of the
+checks `TS-22` orders before SSH is narrowed, so the refusal comes from
+`INV-8`'s verification rather than from sshd's parser, but `INV-8` does not
+rest on it alone: `SSH-19` refuses the empty address either way.
 **Verified:** the task "Fail if Tailscale IPv4 is not assigned" fails when
 `tailscale_ipv4` is the empty string, with a message mentioning lockout
 prevention. `test_property_12_tailscale_connectivity_verification` asserts
@@ -538,9 +542,10 @@ task's own failure behaviour makes this guard hard to reach in practice.
 THE Bootstrap SHALL fail the run, with a message naming lockout as the
 reason, if no tailnet IPv6 address is assigned.
 
-**Why:** the dual-stack half of `TS-19`, for the reason `TS-18` gives: sshd
-binds both families from this pair, so an empty IPv6 fact is the same
-lockout risk as an empty IPv4 one, one family over.
+**Why:** the dual-stack half of `TS-19`. sshd binds both families from
+this pair (`TS-18`), and an empty IPv6 fact renders an empty
+`ListenAddress` just as an empty IPv4 one does, so this check has the same
+value one family over.
 **Verified:** the task "Fail if Tailscale IPv6 is not assigned" fails when
 `tailscale_ipv6` is the empty string, with a message mentioning lockout
 prevention. No test in any suite asserts this task's presence or its

@@ -222,8 +222,10 @@ break-glass interaction in `## Failure modes` a real one.
   addresses are assigned, and `TS-22` requires all of it to have completed
   before this role renders its template. `TS`'s own design records that its
   final connectivity check pings the host's own address and so proves less
-  than it appears to, which makes the address-assignment checks
-  (`TS-19`, `TS-20`) the load-bearing ones for this spec.
+  than it appears to. `TS-19` and `TS-20` do not make up for that: they
+  refuse only an empty address, which `SSH-19` would refuse anyway. What
+  this spec leans on is that the addresses `TS-17` and `TS-18` publish are
+  the ones the client reports.
 - **The restart is deferred, so the lockout lands long after this role
   has finished.** `SSH-17`'s handler fires at the next handler flush after
   this role — not the play's first, which is
