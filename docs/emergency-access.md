@@ -106,7 +106,9 @@ sudo /root/emergency-ssh-access.sh --restore
 
 # 7. Verify SSH is restricted again
 sudo sshd -T | grep listenaddress
-# Should show: listenaddress 100.x.x.x (Tailscale IP)
+# Should show the two Tailscale addresses, each with the SSH port attached:
+# listenaddress 100.x.x.x:22
+# listenaddress [fd7a:115c:a1e0::x]:22
 ```
 
 ## Security Considerations

@@ -248,23 +248,33 @@ break-glass interaction in `## Failure modes` a real one.
   no-address-bound case or the false success of the partial-bind case. In
   neither case does the loss show on the connection the run is using; it
   shows on the next new one.
-- **A partial bind silently leaves a dual-stack host narrowed on one family
-  only, and the verification play would not notice.** `SSH-18` renders a
+- **A partial bind leaves a dual-stack host narrowed on one family only;
+  the verification play catches it by comparing both the parsed and the
+  bound addresses with the tailnet's own.** `SSH-18` renders a
   `ListenAddress` for each address family. sshd treats a bind failure as
   fatal only when *every* configured address fails; if the tailnet IPv4
   address binds and the IPv6 address does not — a stale fact, an address
   withdrawn by the control server, a tailnet interface that came up
   without IPv6 — sshd logs the one failure, starts, and serves IPv4 only.
-  The handler succeeds, the run reports success, and nothing in the role or
-  the play distinguishes that host from a correctly narrowed one.
-  `verify_bootstrap.yml`'s `Verify SSH-18: SSH is restricted to Tailscale
-  interface` does not close this: it asserts that `sshd -T` reports *a*
-  `listenaddress` and does not report `listenaddress 0.0.0.0`, both of which
-  an IPv4-only tailnet binding satisfies. This is `INV-4`'s "no separate, looser path for one family"
-  failing in the other direction — not a hole, but a half-narrowing whose
-  IPv6 half is simply absent, so an operator whose only route to the host is
-  IPv6 is locked out while every check reports success. A check asserting an
-  address of each family would catch it.
+  The handler succeeds and the run reports success. That is `INV-4`'s "no
+  separate, looser path for one family" failing in the other direction:
+  an operator whose only route to the host is IPv6 is locked out. Asking
+  only that `sshd -T` report *a* `listenaddress` other than `0.0.0.0`
+  would not notice. `verify_bootstrap.yml`'s
+  `Verify SSH-18: SSH is restricted to Tailscale interface` reads the
+  tailnet interface's own IPv4 and IPv6 addresses with `ip addr show` and
+  requires the `listenaddress` values `sshd -T` reports to be exactly
+  those two, each with `ssh_port` attached, since `sshd -T` prints every
+  `listenaddress` with its port. It compares them as whole values, so
+  that port `22` never matches `2222`. That reads what `sshd -T` parsed,
+  not what it bound — resolution and binding are separate facts, per
+  `SSH-18`'s own **Verified:** note — so the same block also runs
+  `ss -tlnp` and requires the local addresses of the listening sockets
+  owned by `sshd` to be exactly the same two, which an IPv4-only bind, a
+  wildcard bind and an extra socket on any other address all fail. It
+  also fails if any process listens on `ssh_port` at a wildcard address:
+  `*`, or `0.0.0.0` or `[::]` with or without a `%<name>` interface
+  suffix.
 - **The break-glass script's edits are reverted by the next bootstrap
   run.** The emergency-access spec's script restores public reachability by
   deleting every `ListenAddress` line from `/etc/ssh/sshd_config` and

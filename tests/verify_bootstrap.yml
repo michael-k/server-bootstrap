@@ -417,14 +417,71 @@
           changed_when: false
           failed_when: false
 
+        # The tailscale role's own pre-narrowing checks fail the run if
+        # either tailnet address is missing, and order that check before
+        # the ssh_hardening role narrows sshd, so a completed run
+        # guarantees both families are available whenever
+        # `tailscale_enabled` is true. After a completed run, that condition
+        # therefore coincides with the one `sshd_config.j2` renders both
+        # `ListenAddress` lines under.
+        - name: Get Tailscale IPv6 address
+          ansible.builtin.command: "ip -6 addr show {{ tailscale_interface | default('tailscale0') }}"
+          register: tailscale_ip6
+          changed_when: false
+          failed_when: false
+
+        - name: Extract the Tailscale IPv4 address
+          ansible.builtin.set_fact:
+            tailscale_actual_ipv4: "{{ ((tailscale_ip.stdout | regex_findall('inet ([0-9.]+)/')) or ['']) | first }}"
+
+        - name: Extract the Tailscale IPv6 address
+          ansible.builtin.set_fact:
+            tailscale_actual_ipv6: "{{ ((tailscale_ip6.stdout | regex_findall('inet6 ([0-9a-fA-F:]+)/\\d+ scope global')) or ['']) | first }}"
+
+        # A partial bind (one family binds, the other silently does not) is
+        # the failure mode specs/ssh-hardening/design.md's `## Failure modes`
+        # records. sshd -T prints every listenaddress with its port
+        # attached. Compare whole address:port values with the tailnet
+        # addresses, so that `:22` never matches `:2222`.
+        - name: Extract sshd's configured listen addresses
+          ansible.builtin.set_fact:
+            ssh_listen_addresses: "{{ sshd_config.stdout | regex_findall('(?im)^listenaddress\\s+(\\S+)') }}"
+
+        - name: Build the expected Tailscale listen addresses
+          ansible.builtin.set_fact:
+            ssh_expected_listen: "{{ [tailscale_actual_ipv4 ~ ':' ~ ssh_port, '[' ~ tailscale_actual_ipv6 ~ ']:' ~ ssh_port] | sort }}"
+
         - name: Verify SSH restricted to Tailscale
           ansible.builtin.assert:
             that:
               - tailscale_ip.rc == 0
-              - sshd_config.stdout is search('listenaddress')
-              - not (sshd_config.stdout is search('listenaddress 0.0.0.0'))
-            fail_msg: "SSH is not restricted to Tailscale interface"
+              - tailscale_actual_ipv4 | length > 0
+              - tailscale_actual_ipv6 | length > 0
+              - ssh_listen_addresses | sort == ssh_expected_listen
+            fail_msg: "SSH is not restricted to exactly the Tailscale IPv4 address and the Tailscale IPv6 address"
             success_msg: "✓ SSH is restricted to Tailscale interface"
+
+        # SSH-18: sshd -T shows what sshd parsed, not what it bound. This
+        # reads the sockets sshd actually holds.
+        - name: Check the listening sockets sshd actually holds
+          ansible.builtin.command: ss -H -tlnp
+          register: ssh_sockets
+          changed_when: false
+
+        # Field 4 of `ss -H -tlnp` output is the local address:port.
+        - name: Extract the local addresses of sshd's listening sockets
+          ansible.builtin.set_fact:
+            ssh_sshd_sockets: "{{ ssh_sockets.stdout_lines | select('search', 'users:\\(\\(\"sshd\",') | map('split') | map(attribute='3') | list | sort }}"
+
+        - name: Verify sshd's live sockets match its configured Tailscale-only binding
+          ansible.builtin.assert:
+            that:
+              - ssh_sshd_sockets == ssh_expected_listen
+              - not (ssh_sockets.stdout is search('(^|\s)0\.0\.0\.0(%\S+)?:' ~ (ssh_port | string) ~ '(\s|$)'))
+              - not (ssh_sockets.stdout is search('(^|\s)\*:' ~ (ssh_port | string) ~ '(\s|$)'))
+              - not (ssh_sockets.stdout is search('(^|\s)\[::\](%\S+)?:' ~ (ssh_port | string) ~ '(\s|$)'))
+            fail_msg: "sshd's live listening sockets do not match its configured Tailscale-only binding"
+            success_msg: "✓ sshd holds listening sockets only on the Tailscale addresses"
 
     - name: "Verify EMRG-1: emergency script exists"
       when: tailscale_enabled | default(false)

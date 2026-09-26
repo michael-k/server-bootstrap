@@ -648,13 +648,19 @@ in this spec.
 `test_ssh_interface_restriction_variable_propagation` add substring checks
 on the same construction. The verification play's
 `Verify SSH-18: SSH is restricted to Tailscale interface`, which runs only
-when Tailscale is enabled, asserts that a live `sshd -T` reports a
-`listenaddress` and does *not* report `listenaddress 0.0.0.0`. That is the
-only check anywhere that reads what a running daemon resolved — but note
-what it reads: `sshd -T` prints the configuration sshd parsed, not the
-sockets it holds, and it would print exactly the same thing on a host where
-the daemon subsequently failed to bind the address. Resolution and binding
-are separate facts, and only the first is checked here.
+when Tailscale is enabled, reads the tailnet interface's actual IPv4 and
+IPv6 addresses with `ip addr show` and asserts that a live `sshd -T`
+reports exactly those two as its `listenaddress` values, each with
+`ssh_port` attached, since `sshd -T` prints every `listenaddress` with its
+port attached. That is the only check anywhere that reads what a running daemon
+resolved — but note what it reads: `sshd -T` prints the configuration
+sshd parsed, not the sockets it holds, and it would print exactly the same
+thing on a host where the daemon subsequently failed to bind one of the two addresses.
+Resolution and binding are separate facts; the same block also runs
+`ss -tlnp` and asserts that the listening sockets owned by `sshd` are
+exactly the two tailnet addresses at `ssh_port`, and that nothing listens
+on `ssh_port` at a wildcard (`0.0.0.0`, `[::]`, `*`) address, which is
+what closes that gap on a live host.
 
 The two unit assertions for the disabled branch take `0.0.0.0` and `::`
 from `base_vars`, a hand-written copy of the role defaults, so they confirm
@@ -662,17 +668,19 @@ the fixture's values rather than the deployed ones; the enabled-branch
 assertions override the facts in the test body, so they are independent of
 the fixture.
 
-What none of them establishes is that the addresses bound are addresses the
-host actually has. `SSH-19`'s validation parses `ListenAddress` without
-attempting to bind it, so an unusable address passes validation and passes
-every test here. What happens at the restart depends on how many addresses
-are unbindable: sshd treats a bind failure as fatal only if *every*
-configured address fails, so a host that can bind one of the pair starts
-normally and serves one family — the run reports success and nothing
-notices. `design.md`'s `## Failure modes` sets out both cases. The whole
-protection against that is `TS-22` and the checks before it, which are
-outside this spec. The integration suite's tailnet tests are the only place
-a real bound address is confirmed, and they run only under Incus.
+What none of the unit and property tests establishes is that the addresses
+bound are addresses the host actually has. `SSH-19`'s validation parses
+`ListenAddress` without attempting to bind it, so an unusable address
+passes validation and passes every test here. What happens at the restart
+depends on how many addresses are unbindable: sshd treats a bind failure
+as fatal only if *every* configured address fails, so a host that can bind
+one of the pair starts normally and serves one family. `design.md`'s
+`## Failure modes` sets out both cases and records that the verification
+play's `ss -tlnp` check notices the one-family case, because the sockets
+sshd holds then differ from the two tailnet addresses. The integration
+suite's tailnet tests remain the only place a real bound address is
+confirmed end to end (a live SSH connection succeeding over both
+families), and they run only under Incus.
 
 ### SSH-19 — Candidate configuration parsed by sshd before it is installed
 
