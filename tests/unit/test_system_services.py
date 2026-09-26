@@ -230,7 +230,7 @@ class TestJournaldConfiguration:
 # Time Synchronization
 # ---------------------------------------------------------------------------
 
-class TestTimeSyncServiceSelection:
+class TestTimeSyncServerList:
     """Tests for the NTP server list rendered into each service's config (TIME-3)."""
 
     @pytest.fixture
