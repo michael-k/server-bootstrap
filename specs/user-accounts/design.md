@@ -128,20 +128,13 @@ can leave an `authorized_keys` more readable than an earlier run left it.
 
 ## Failure modes
 
-- **The role's usage example supplies the manual account's password outside
-  the vault.** `USR-3` and INV-5 require the password to come from Ansible
-  Vault only. The example in the users role's defaults file passes it with
-  `ansible-playbook -e`, so an operator who follows it puts the value in the
-  controller's process table and in their shell history, and nothing in the
-  run notices. The example inventory's vault path is unaffected.
 - **A plaintext `manual_user_password` produces an account that cannot
   authenticate, and the run reports success.** The account module writes the
-  variable's value into the shadow file as a hash. The defaults file's own
-  usage example passes a plaintext string, so an operator following the
-  documentation in front of them creates an account whose shadow entry no
-  typed password can match. Nothing validates the shape of the value; the
-  pre-flight check asserts only that it is defined. The failure appears at
-  the console, during whatever incident made the console necessary.
+  variable's value into the shadow file as a hash, so a plaintext value
+  creates an account whose shadow entry no typed password can match. Nothing
+  validates the shape of the value; the pre-flight check asserts only that
+  it is defined. The failure appears at the console, during whatever
+  incident made the console necessary.
 - **`update_password: on_create` means a wrong password cannot be fixed by
   re-running.** Following directly from the previous item: having created the
   account with an unusable password, changing the variable and running again

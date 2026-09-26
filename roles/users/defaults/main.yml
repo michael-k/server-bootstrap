@@ -15,8 +15,7 @@ manual_user_shell: "/bin/bash"
 manual_user_groups: []
 # USR-3: manual_user_password has no default here on purpose — it is supplied
 # from the vault.
-# Example: ansible-playbook -e "manual_user_password=SecurePassword123"
-# Or from vault: manual_user_password: "{{ vault_manual_user_password }}"
+# For example, in inventory: manual_user_password: "{{ vault_manual_user_password }}"
 
 # Ansible User Configuration (uid 1999)
 # USR-5: the automation account's name is configurable.

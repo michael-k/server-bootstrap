@@ -77,8 +77,7 @@ consults. The public keys `USR-10` deploys are the only credential either
 account presents over the network.
 
 INV-5 is upheld by `USR-3`, which takes the manual account's password from
-Ansible Vault only. The users role's own usage example contradicts it, and
-`USR-3` records that divergence.
+Ansible Vault only.
 
 This spec relies on INV-3 rather than upholding it. Removing root's remote
 login path is `SSH`'s work, and it is what makes these two accounts load
@@ -153,9 +152,8 @@ this fleet-wide credential in version control, and a value passed with
 `ansible-playbook -e` sits in that process's argument list for the length of
 the run. The silent failure is on the other side of
 the variable: the account module writes the value into the shadow file as a
-password *hash*, so a plaintext value — which is exactly what the defaults
-file's own usage example shows — produces an account whose shadow entry is a
-string no typed password can ever hash to. Every task succeeds, the account
+password *hash*, so a plaintext value produces an account whose shadow entry
+is a string no typed password can ever hash to. Every task succeeds, the account
 exists, and the operator learns their password does not work at the moment
 they need it: at the console, mid-incident, with remote root already gone
 (INV-3). A correction on the next run does not help either, because the
@@ -170,15 +168,9 @@ policy. Nothing checks that the supplied value is a hash rather than a
 plaintext string, nothing exercises the account module, and the property
 suite's assertion that the variable is "documented in defaults" is satisfied
 by a comment, since the defaults file deliberately defines no value for it.
-
-**The role's own documentation contradicts this requirement.** The usage
-example in `roles/users/defaults/main.yml` supplies the password with
-`ansible-playbook -e "manual_user_password=..."`, which bypasses the vault
-and puts the value in a process argument list. The example inventory takes
-the vault path. Nothing checks which channel a run used: the pre-flight
-check asserts only that the variable is defined. The image publisher also
-supplies the value outside the vault, which `IMG-10` records. Nothing is
-changed here; see `design.md`'s `## Failure modes`.
+Nothing checks which channel a run used: the pre-flight check asserts only
+that the variable is defined. The image publisher supplies the value
+outside the vault, which `IMG-10` records.
 
 ### USR-4 — Automation account created with uid 1999
 
