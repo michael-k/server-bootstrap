@@ -403,7 +403,7 @@ states.
   on a knock-gated host — FW-20, FW-21, FW-15, KNOCK-8. Every hole a
   drop-in opens must be documented in the purpose repository's own exposure
   registers, with the columns and the public/tailnet split of
-  `specs/project/security-invariants.md`'s — PRJ-28
+  `specs/project/security-invariants.md`'s exposure registers — PRJ-28
 - **`/etc/fail2ban/jail.d/*.conf`** — the bootstrap's own jail policy is
   confined to `jail.local`, and the SSH jail's counters are pinned at jail
   level against any `[DEFAULT]` a drop-in sets — F2B-3, F2B-12. Confinement to

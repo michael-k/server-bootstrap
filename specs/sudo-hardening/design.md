@@ -104,6 +104,16 @@ has a documented reason to need it.
 
 ## Failure modes
 
+- **Grants the base image or cloud-init leave on the host are neither
+  removed nor registered. `INV-7` is not upheld for them.** The role writes
+  its three `sudoers.d` files and touches no other sudoers file. Whatever
+  else the image ships in `/etc/sudoers` or `/etc/sudoers.d/`, such as a
+  file cloud-init writes for a provider's default user, stays in force
+  after a run, with no row in the non-exposure allowance register. If such
+  a grant is passwordless, whoever reaches that account becomes root
+  without authenticating again, and nothing in the run or in
+  `tests/verify_bootstrap.yml` reports it. Removing or registering those
+  grants is a behaviour change, not made here.
 - **`SUDO-1` has no test coverage of any kind.** Neither suite references
   the package-installation task; a regression that removed it would pass
   every test in both suites and only surface on a base image that did not

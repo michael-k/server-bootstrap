@@ -50,7 +50,8 @@ cap and the retention time are configurable.
 **Allowances claimed:** none
 
 INV-7 requires both that privilege escalation is restricted to named
-principals and that its use leaves an audit trail. This spec is what makes
+principals who authenticate to escalate, unless a registered allowance
+covers the grant, and that its use leaves an audit trail. This spec is what makes
 the second half real rather than nominal: sudo, and everything else on the
 host, logs through journald, and a log that lives only in `/run` is erased by
 the next reboot before anyone reads it. `LOG-1`'s persistence is what turns

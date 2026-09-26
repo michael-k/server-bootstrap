@@ -56,33 +56,45 @@ rather than unrestricted root.
 ## Security invariants
 
 **Upholds:** INV-7
-**Allowances claimed:** none
+**Allowances claimed:** ALW-9
 
 INV-7 requires that privilege escalation be restricted to explicitly named
-principals and leave an audit trail of its use, and this spec is what makes
-that true rather than merely stated. Sudo is granted per account through
-its own dedicated `sudoers.d` file (`SUDO-2`, `SUDO-3`) rather than through
-a shared group entry, so the set of principals who can escalate is exactly
-the set of files in `/etc/sudoers.d/` naming one account each. `su` is
+principals who authenticate to escalate, unless a registered allowance
+covers the grant, and that it leave an audit trail of its use. This spec is
+where the Bootstrap's own grants meet that. Sudo is granted per account
+through its own dedicated `sudoers.d` file (`SUDO-2`, `SUDO-3`) rather than
+through a shared group entry, so each account this spec grants escalation
+to is named in a file of its own. `su` is
 restricted the same way, to members of a group with a fixed membership
 (`SUDO-11` through `SUDO-13`). The audit trail is `SUDO-8`'s and `SUDO-9`'s:
 enriched syslog entries and a sudo-controlled pty mean a session run
 through sudo is both logged and, while it runs, observable.
 
-The automation account's grant is passwordless (`SUDO-3`), which might look
-like a departure from "restricted" — but INV-7 restricts escalation to
-*named* principals with an *audit trail*, and says nothing about a
-password being part of either property. The automation account is still
-named individually in its own `sudoers.d` file, and its sudo use is logged
-exactly as the manual account's is; the absence of a password changes how
-the escalation is authenticated, not whether it is named or recorded. The
-password itself would authenticate nothing a network attacker could not
-already defeat by other means: the account has no interactive network
-authenticator of its own (`SSH` enforces key-only access to it, `USR-6`
-leaves it with no usable password at all), so a password prompt on `sudo`
-would gate access already gated by the key that got the caller onto the
-account in the first place. On that basis this spec upholds INV-7 outright
-rather than bending it, and claims no allowance.
+The automation account's grant is passwordless (`SUDO-3`), and INV-7
+requires a principal to authenticate to escalate unless a registered
+allowance covers the grant. This spec upholds INV-7 for that grant by
+claiming `ALW-9` in the non-exposure allowance register of
+`specs/project/security-invariants.md`. The row names the compensating
+control. The account is still named individually in its own `sudoers.d`
+file, and its sudo use is logged as the manual account's is (`SUDO-8`), so
+the missing password changes how the escalation is authenticated, not
+whether it is named or recorded. A password would also add little here:
+the account has no interactive network authenticator of its own (`SSH`
+enforces key-only access to it, `USR-6` leaves it with no usable password
+at all), so a password prompt on `sudo` would gate access already gated by
+the key that got the caller onto the account in the first place.
+
+**`INV-7` is not upheld for grants the Bootstrap did not write.** The base
+image can ship grants of its own in `/etc/sudoers` or `/etc/sudoers.d/`,
+and on a provider image cloud-init can write one for the provider's
+default user, which may be passwordless. The role writes three files under
+`/etc/sudoers.d/` and leaves every other grant in place, and none of those
+grants has a row in the non-exposure allowance register. `INV-7` covers
+them all the same: a grant the Bootstrap leaves on the host is one it
+has not restricted. The invariant is kept as written rather than narrowed
+to the grants the role writes, because `specs/` is authoritative, and the
+gap is a bug in the implementation. Nothing is changed here; see
+`design.md`'s `## Failure modes`.
 
 ## Requirements
 
@@ -133,10 +145,10 @@ its own `sudoers.d` file, without requiring a password.
 **Why:** this account is the one the playbook itself runs subsequent tasks
 as, non-interactively, over an SSH connection that is not present to
 answer a password prompt. A password requirement here would not add a
-meaningful barrier — see this spec's Security invariants — and would
-instead fail every unattended run the moment it reached a `become: true`
-task, discovered only when the run stops dead with no operator watching a
-terminal to supply one.
+meaningful barrier — see this spec's Security invariants and `ALW-9` —
+and would instead fail every unattended run the moment it reached a
+`become: true` task, discovered only when the run stops dead with no
+operator watching a terminal to supply one.
 **Verified:** the task writes
 `{{ deploy_user_name }} ALL=(ALL:ALL) NOPASSWD:ALL` to
 `/etc/sudoers.d/{{ deploy_user_name }}`, mode `0440`, validated with

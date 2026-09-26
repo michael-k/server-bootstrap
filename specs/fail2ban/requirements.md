@@ -87,8 +87,9 @@ attacker and a first-order control over the audit trail.
 
 The way this spec upholds `INV-7` is indirect and worth stating precisely,
 because the obvious reading — that fail2ban guards the escalation path — is
-wrong. `INV-7` has two halves: escalation is restricted to named principals,
-and its use leaves an audit trail. Nothing here touches the first half.
+wrong. `INV-7` has two halves: escalation is restricted to named principals
+who authenticate to escalate, unless a registered allowance covers the
+grant, and its use leaves an audit trail. Nothing here touches the first half.
 `SUDO` and `PAM` own it, and a banned address was never going to reach
 `sudo` anyway, because it never authenticated. What this spec defends is the
 second half, and it defends it against volume rather than against tampering.

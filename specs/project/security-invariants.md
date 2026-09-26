@@ -1,9 +1,10 @@
 # Security Invariants
 
-These invariants bind every spec in the tree. `INV-1` and `INV-10` build
-an allowance into their own SHALL: an exposure is permitted when a row in
-one of the registers below covers it. A spec that opens an exposure
-upholds them by claiming that numbered allowance on its
+These invariants bind every spec in the tree. `INV-1`, `INV-7` and
+`INV-10` build an allowance into their own SHALL: an exposure, or a
+privilege grant `INV-7` would otherwise forbid, is permitted when a row in
+one of the registers below covers it. A spec that needs one upholds the
+invariant by claiming that numbered allowance on its
 `**Allowances claimed:**` line, naming the compensating control in the
 row, and saying so in its `## Security invariants` section. For any other
 invariant, a spec that cannot uphold it does not get to quietly narrow it:
@@ -80,12 +81,23 @@ call of its own.
 ### INV-7 — Named, audited privilege escalation
 
 THE Bootstrap SHALL restrict privilege escalation to explicitly named
-principals and leave an audit trail of its use.
+principals who authenticate to escalate, unless an allowance in the
+non-exposure allowance register covers the grant, and leave an audit trail
+of its use.
 
 **Why:** Sudo is granted per named user through a dedicated sudoers drop-in
 file rather than an open group, `su` is restricted to members of a named
 group, and sudo's defaults require a pty and enrich its log entries so
-escalation is both restricted to named principals and recorded.
+escalation is both restricted to named principals and recorded. Asking the
+principal to authenticate when it escalates means a key that reaches an
+account does not, by that alone, make its holder root. A grant that skips
+that step is listed in the non-exposure allowance register below, for the
+same reason exposures are listed: a reviewer can see in one place which
+accounts need no more than their SSH key to become root, and what stands
+in for the missing step. That holds only for the grants the Bootstrap
+writes. Grants the base image or cloud-init leave on the host are
+neither removed nor registered, which is a known divergence recorded in
+`specs/sudo-hardening/requirements.md`.
 
 ### INV-8 — Verify before narrowing
 
@@ -124,13 +136,15 @@ the public one does.
 
 ## Allowance registers
 
-Both registers share one row format. The first three columns are the ones
+Every register's rows start with the same three columns, the ones
 `make spec-check` reads: the allowance, the invariants it is claimed
-under, and the requirements that claim it. The remaining columns say what is open, to
-whom, when, and what compensates for it.
+under, and the requirements that claim it. In the two exposure registers
+the remaining columns say what is open, to whom, when, and what
+compensates for it. The non-exposure register's say what the allowance
+permits, when, and what compensates for it.
 
-**Completeness, and its method.** For the base ruleset, the two registers
-are complete by this method: every `accept` rule in the input chain of
+**Completeness, and its method.** For the base ruleset, the two exposure
+registers are complete by this method: every `accept` rule in the input chain of
 `roles/firewall/templates/nftables.conf.j2`, plus the break-glass script's
 edits. The established-and-related accept (`FW-6`) and the loopback
 accept (`FW-7`) need no row, because neither admits a packet a remote
@@ -167,7 +181,7 @@ peers may send is decided by the tailnet's own policy, which lives on the
 control server (for example headscale's ACLs or grants). This repository
 does not manage that policy, so no row claims it as a control.
 
-The split between the two registers assumes that `firewall_tailscale_enabled`
+The split between the two exposure registers assumes that `firewall_tailscale_enabled`
 tracks whether the host is enrolled, which it does by default: it defaults
 to `tailscale_enabled`. An inventory that sets it false on an enrolled host
 makes the knock-gated SSH, open SSH and ICMP accepts match the tailnet
@@ -178,6 +192,32 @@ interface too, and this register does not cover that configuration.
 | ALW-6 | INV-10 | FW-10 | SSH on `firewall_ssh_port` | Packets arriving on `firewall_tailscale_interface`, from any peer the tailnet's policy permits | `firewall_tailscale_enabled` is true | sshd accepts public keys only (`INV-2`) and gives root no remote login (`INV-3`) |
 | ALW-7 | INV-10 | FW-8, FW-9 | ICMPv4 and ICMPv6, every type | Packets arriving on `firewall_tailscale_interface`, from any peer the tailnet's policy permits | `firewall_tailscale_enabled` is true | None in the ruleset. The exposure is accepted for the reasons `ALW-5` gives |
 | ALW-8 | INV-10 | FW-12 | UDP on `firewall_wireguard_port` | Packets arriving on `firewall_tailscale_interface`, from any peer the tailnet's policy permits. The rule does not name an interface, so the tailnet interface is among the ones it matches | `firewall_tailscale_enabled` is true | WireGuard does not answer a packet it cannot authenticate |
+
+### Non-exposure allowance register
+
+These allowances open nothing to the network. Each covers a grant that an
+invariant's own SHALL admits when a row here covers it, so a spec that
+claims one upholds that invariant, as a spec claiming an exposure row
+upholds `INV-1` or `INV-10`.
+
+For the privilege grants the Bootstrap writes, this register is complete
+by this method: every file `roles/users/tasks/main.yml` writes under
+`/etc/sudoers.d/`, and its `su` restriction. The manual account's grant
+requires a password (`SUDO-2`), the `00-sudo-security` file sets defaults
+and grants nothing (`SUDO-4`), and the `su` restriction adds
+`pam_wheel`'s group check to Debian's `su` PAM stack, ahead of that
+stack's password prompt, and removes nothing from it (`SUDO-13`).
+
+The method does not reach grants the Bootstrap did not write: those the
+base image ships in `/etc/sudoers` or `/etc/sudoers.d/`, including any file
+cloud-init writes there for a provider's default user. `INV-7` still
+covers them. The Bootstrap neither removes them nor registers them here,
+and that is a known divergence from `INV-7`, which
+`specs/sudo-hardening/requirements.md` records.
+
+| Allowance | Invariants | Claimed by | What it permits | Condition | Compensating control |
+|---|---|---|---|---|---|
+| ALW-9 | INV-7 | SUDO-3 | `deploy_user_name` runs any command as any user through sudo without authenticating to escalate (`NOPASSWD:ALL`) | Always | The grant names one principal, in a drop-in file of its own, `/etc/sudoers.d/` followed by the account's name (`SUDO-3`). The account has no password that could be guessed or phished (`USR-6`), and sshd admits it by public key only (`INV-2`), so the key that reaches the account is the credential the grant rests on. sudo logs each use to syslog's AUTH facility, which journald keeps, with the year and the host on each entry (`SUDO-8`) |
 
 Rows are added by the spec that needs one, not by this file. The checker
 fails if a row here names no claiming requirement, or if a requirement

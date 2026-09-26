@@ -414,8 +414,8 @@ OPTIONAL with its default.
 
 A purpose repository built on this bootstrap SHALL document every hole it
 opens in the host's firewall in exposure registers of its own, with the
-columns of `specs/project/security-invariants.md`'s registers and the same
-split between public and tailnet exposure.
+columns of `specs/project/security-invariants.md`'s exposure registers and
+the same split between public and tailnet exposure.
 
 **Traceability:** exempt — this requirement's subject is a repository built
 on this bootstrap, not this repository, so there is no code site here to

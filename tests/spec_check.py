@@ -275,7 +275,7 @@ def check_structure(specs_dir: Path, prefixes: dict[str, str]) -> list[Finding]:
 
 
 def parse_allowance_register(path: Path) -> dict[str, set[str]]:
-    """Read both allowance registers, mapping each ALW id to its claiming requirements."""
+    """Read every allowance register, mapping each ALW id to its claiming requirements."""
     register: dict[str, set[str]] = {}
     if not path.is_file():
         return register
