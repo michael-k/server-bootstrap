@@ -4,7 +4,8 @@
 
 The role is one task. It renders a single template over
 `/etc/ssh/sshd_config`, owned by root and mode `0644`, and notifies one
-handler. Everything this spec requires is a directive in that one file, so
+handler. Everything this spec requires of sshd's configuration is a
+directive in that one file, so
 there is no ordering to get right inside the role, no partially-applied
 state, and no second place a setting could come from.
 
@@ -42,18 +43,20 @@ flush, against the restarted daemon.
 | `roles/ssh_hardening/defaults/main.yml` | SSH-5, SSH-6, SSH-7, SSH-12, SSH-13, SSH-14, SSH-15, SSH-16, SSH-18 |
 | `roles/ssh_hardening/tasks/main.yml` | SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13, SSH-14, SSH-15, SSH-16, SSH-17, SSH-18, SSH-19 |
 | `roles/ssh_hardening/templates/sshd_config.j2` | SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13, SSH-14, SSH-15, SSH-16, SSH-18 |
-| `roles/ssh_hardening/handlers/main.yml` | SSH-17 |
+| `roles/ssh_hardening/handlers/main.yml` | SSH-17, SSH-20 |
 | `tests/unit/test_ssh_hardening.py` | SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13, SSH-14, SSH-15, SSH-16, SSH-18 |
 | `tests/property/test_ssh_hardening_properties.py` | SSH-1, SSH-2, SSH-3, SSH-4, SSH-5, SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13, SSH-14, SSH-15, SSH-16, SSH-17, SSH-18, SSH-19 |
 | `tests/property/test_ssh_interface_restriction_properties.py` | SSH-18, SSH-19 |
 | `tests/property/test_playbook_behavior_properties.py` | SSH-17 |
 
 Every requirement appears above, and every row was checked by grepping the
-file rather than by reading intent. Two requirements have no citation in the
-template, because neither is a directive: `SSH-17` (its sites are the task's
+file rather than by reading intent. Three requirements have no citation in the
+template, because none is a directive: `SSH-17` (its sites are the task's
 `notify`, the handler, and the two property suites that check the
-notify-and-handler pattern) and `SSH-19` (its sites are the task's
-`validate:` and the three tests that assert it is configured). The
+notify-and-handler pattern), `SSH-19` (its sites are the task's
+`validate:` and the three tests that assert it is configured) and `SSH-20`
+(its site is the handler, which restarts sshd; the
+unit's enabled and running state comes from the base image). The
 interface-restriction suite cites exactly two requirements — `SSH-18`, which
 it exists for, and `SSH-19`, because it asserts the `/usr/sbin/sshd -t`
 validation string against the task file.
@@ -62,7 +65,8 @@ validation string against the task file.
 `tests/integration/test_tailscale_integration.py` and
 `tests/verify_bootstrap.yml` all exercise this role's output on a live host
 and are named throughout `requirements.md`'s `**Verified:**` lines. The
-playbook belongs to `VRFY` and its task names cite `SSH` IDs; the
+playbook belongs to `VRFY` and its task names cite `SSH` IDs, except the
+two blocks that check `SSH-20`, which cite it in a comment; the
 integration modules belong to the testing spec and carry no `SSH-N`
 citations.
 
@@ -76,8 +80,10 @@ port and then connects on it (`SSH-13`), and reaches a narrowed host from a
 separate tailnet peer over both address families (`SSH-18`). Its
 `test_unknown_user_rejected` is consistent with `SSH-12` but does not
 isolate it, since an account outside the group is also an account with no
-key. Nothing live covers `SSH-3`, `SSH-4`, `SSH-14`, `SSH-15`, `SSH-16`,
-`SSH-17` or `SSH-19`.
+key. The playbook also checks `SSH-20` live, through the unit's
+`ActiveState` and `UnitFileState` rather than `sshd -T`. Nothing live
+covers `SSH-3`, `SSH-4`, `SSH-14`, `SSH-15`, `SSH-16`, `SSH-17` or
+`SSH-19`.
 
 ## Key decisions
 

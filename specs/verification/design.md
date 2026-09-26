@@ -240,13 +240,9 @@ never this one's to restate.
   spec exists to prevent from being invisible, and `make spec-check`'s
   `dangling-citation` finding is what would catch an ID renumbered or
   retired out from under a citation here.
-- `SSH` — two checks, sshd's `ActiveState` and `UnitFileState`, cite no
-  `SSH-*` requirement because none states them: this project's SSH spec
-  configures sshd's file and restarts it on change, never its service
-  enablement or start, which the base image supplies. `SSH` may assume this
-  playbook checks nothing about sshd's service state on its behalf; if a
-  future `SSH` requirement were added for it, the corresponding block here
-  would gain the citation it currently lacks.
+- `SSH` — two checks, sshd's `ActiveState` and `UnitFileState`, verify
+  `SSH-20`. They cite it in a comment, not in their task names, so they
+  fall short of `VRFY-4`, as that requirement's `**Verified:**` records.
 - `KNOCK` and `TS` — that this playbook can reach the host at all. It
   cannot, unaided, on a knock-gated host, and depends on being run from
   inside the tailnet on a Tailscale-narrowed one; `## Failure modes` records

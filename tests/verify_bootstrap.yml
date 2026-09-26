@@ -334,10 +334,7 @@
             fail_msg: "SSHD tunneling is not disabled"
             success_msg: "✓ SSHD tunneling is disabled"
 
-    # No SSH-* requirement states this: this project's SSH spec configures
-    # sshd's file and restarts it on change, never its service state, which the
-    # base Debian image ships already enabled and running. This checks that
-    # default, not anything this bootstrap sets. See VRFY-4.
+    # SSH-20
     - name: "Verify sshd service is running"
       block:
         - name: Check SSHD service status
@@ -353,7 +350,7 @@
             fail_msg: "SSHD service is not running"
             success_msg: "✓ SSHD service is running"
 
-    # Same note as above: no SSH-* requirement states this either. See VRFY-4.
+    # SSH-20
     - name: "Verify sshd service is enabled"
       block:
         - name: Check SSHD service enablement

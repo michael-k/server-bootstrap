@@ -7,6 +7,7 @@
 # runs at the next flush after it, which roles/logging/tasks/main.yml forces
 # as its last task, so the restart lands after the firewall, emergency-access
 # and fail2ban roles.
+# SSH-20: restarting starts sshd again; it neither stops nor disables the unit.
 - name: Restart sshd
   ansible.builtin.systemd:
     name: sshd

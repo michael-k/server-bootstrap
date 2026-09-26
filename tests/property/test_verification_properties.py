@@ -96,7 +96,7 @@ class TestConfigurationVerificationProperties:
         This property test verifies that the verification playbook:
         1. Tests all user account configurations (USR-1, USR-4)
         2. Tests all SSH hardening configurations (SSH-1, SSH-2, SSH-5 through
-           SSH-13, SSH-18)
+           SSH-13, SSH-18, SSH-20)
         3. Tests Tailscale configuration when enabled (TS-12, TS-13, EMRG-1)
         4. Tests NFTables firewall configuration (FW-3, FW-4, FW-6, FW-7,
            FW-14, FW-17, FW-18)
@@ -181,10 +181,8 @@ class TestConfigurationVerificationProperties:
     def _verify_ssh_hardening_tests(self, task_names: list[str]):
         """
         Verify tests for SSH hardening configuration (SSH-1, SSH-2, SSH-5,
-        SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13; the two
-        service-state checks below cite no SSH-* requirement, since none
-        states sshd's service enablement or start - see
-        specs/verification/requirements.md's VRFY-4).
+        SSH-6, SSH-7, SSH-8, SSH-9, SSH-10, SSH-11, SSH-12, SSH-13, and
+        SSH-20 for the two service-state checks below).
 
         Args:
             task_names: List of task names from verification playbook
@@ -246,12 +244,12 @@ class TestConfigurationVerificationProperties:
             "Verification playbook must test tunneling disabled (SSH-11)"
         )
 
-        # SSHD service running - no owning SSH-* requirement; see VRFY-4.
+        # SSH-20: sshd running
         assert any(
             "sshd" in name.lower() and "running" in name.lower() for name in task_names
         ), "Verification playbook must test SSHD service running"
 
-        # SSHD service enabled - no owning SSH-* requirement; see VRFY-4.
+        # SSH-20: sshd enabled
         assert any(
             "sshd" in name.lower() and "enabled" in name.lower() for name in task_names
         ), "Verification playbook must test SSHD service enabled"

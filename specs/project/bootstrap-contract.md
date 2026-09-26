@@ -148,6 +148,8 @@ read, and to break visibly when the requirement they name changes.
   every interface — SSH-18
 - A candidate configuration is parsed by sshd itself before it is installed,
   and sshd is restarted when the installed file changes — SSH-17, SSH-19
+- sshd is enabled and running when the run succeeds, where the base image
+  ships it that way — SSH-20
 
 ## Firewall (nftables)
 

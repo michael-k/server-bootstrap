@@ -281,14 +281,13 @@ matters, where `Test 14.5` named neither.
 requirement ID — several name more than one, where a single assert checks
 conditions that belong to different requirements of the same feature (for
 example `Verify SUDO-11, SUDO-12, SUDO-13: wheel group and su restriction`).
-Three blocks name none, each for a stated reason rather than an oversight:
-the two checks of sshd's own service state (`ActiveState`, `UnitFileState`)
-verify a condition no `SSH-*` requirement states — this project's SSH spec
-configures sshd's file, never its service state, which the base Debian
-image ships already enabled and running, so these two blocks check the
-image's default rather than anything this bootstrap sets; and the closing
-"Display verification summary" block is this spec's own reporting, not a
-check of a feature requirement, so it has none to cite. Every ID cited was
+Three blocks name none. The closing "Display verification summary" block
+is this spec's own reporting, not a check of a feature requirement, so it
+has none to cite. The other two are the checks of sshd's own service state
+(`ActiveState`, `UnitFileState`), and for them this requirement is not met:
+they check `SSH-20` and cite it in a comment above each block, but their
+task names do not name it. Renaming them changes the playbook's output, and
+is left to a change of its own. Every ID cited was
 checked against the `### ` headings of its spec's `requirements.md` to
 confirm it exists.
 `test_verification_playbook_covers_all_requirements` asserts, over the
@@ -298,9 +297,8 @@ form, which counted blocks titled `Test 14.N` and asserted the numbering
 ran from 1 to at least 40. That check is retired along with the numbering
 it measured: a per-component ID scheme has no single sequence to start at 1
 or reach 40, so the same assertion would be false of a healthy file under
-the new convention. No test confirms which three blocks are the ones citing
-none, or that each names the reason recorded above; that is asserted only
-in this document.
+the new convention. No test confirms which three blocks are the ones naming
+none; that is asserted only in this document.
 
 ### VRFY-5 — A disabled feature's checks are skipped, not failed
 

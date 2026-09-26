@@ -44,6 +44,7 @@ binds, and the operator discovers it by not being able to log in to fix it.
   unauthenticated grace period, and the keepalive probe interval and count.
 - Restarting sshd when its configuration changes, and validating the
   candidate configuration with sshd's own parser before it is installed.
+- Leaving sshd enabled and running as the base image ships it.
 - The `ListenAddress` binding and the condition that chooses between the
   tailnet addresses and the all-interfaces fallback, including the
   `ssh_listen_address_ipv4` and `ssh_listen_address_ipv6` defaults used in
@@ -719,3 +720,33 @@ The same holds for any directive that is well-formed but wrong: a `Port` no
 firewall admits, an `AllowGroups` naming a group that does not exist. This
 requirement covers well-formedness only, and is written that way
 deliberately rather than claiming more.
+
+### SSH-20 — sshd left running and enabled
+
+WHERE the base image ships sshd enabled and running, THE Bootstrap SHALL
+leave it enabled and running when a run succeeds.
+
+**Why:** sshd is the host's remote way in. A hardened file behind a stopped
+daemon is a host nobody can reach, and a disabled unit is one that stops
+being reachable at the next reboot, which is the same lockout arriving
+later. The requirement is written on the base image's state because that is
+what the Bootstrap does: it neither starts nor enables the unit. The Debian
+`openssh-server` package enables and starts it when it is installed, which
+is how the base image comes to ship it that way (the Incus test image
+installs the package with `apt-get`, in `incus/src/incus/vm.py`).
+`SSH-17`'s restart starts the daemon again under the new configuration. A
+restart into a
+configuration under which sshd can bind no address leaves the daemon
+stopped and fails the run; `design.md`'s `## Failure modes` records that case.
+**Verified:** the verification play's `Verify sshd service is running` and
+`Verify sshd service is enabled` blocks assert, on a live host, that the
+unit's `ActiveState` is `active` and its `UnitFileState` is `enabled`. They
+cite this requirement in a comment above each block; their task names do
+not name it, which `VRFY-4` records. A grep of `roles/` and `site.yml` for
+`ansible.builtin.systemd`, `ansible.builtin.service` and `systemctl` finds
+two sites that act on sshd: `SSH-17`'s handler, which restarts it, and the
+break-glass script (`EMRG`), which restarts it when an operator runs it.
+Neither stops or disables it. The grep cannot see what a package's
+maintainer scripts do when the system upgrade (`UPD-2`) upgrades
+`openssh-server`. Beyond the property suite's check that the playbook
+contains the two blocks, no unit or property test covers this requirement.
